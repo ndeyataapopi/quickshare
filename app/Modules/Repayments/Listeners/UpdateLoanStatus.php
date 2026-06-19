@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Modules\Repayments\Listeners;
+
+use App\Models\ActivityLog;
+use App\Modules\Repayments\Events\LoanFullyRepaid;
+
+class UpdateLoanStatus
+{
+    public function handle(LoanFullyRepaid $event): void
+    {
+        ActivityLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'loan.fully_repaid',
+            'description' => "Loan #{$event->loanId} has been fully repaid",
+            'metadata' => ['loan_id' => $event->loanId],
+            'ip_address' => request()->ip(),
+        ]);
+
+        // TODO: Update loan model status to 'completed'
+    }
+}

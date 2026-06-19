@@ -1,0 +1,128 @@
+version: '3.8'
+
+services:
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quickshare-php
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    networks:
+      - quickshare-network
+    depends_on:
+      - mysql
+      - redis
+
+  nginx:
+    image: nginx:alpine
+    container_name: quickshare-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    networks:
+      - quickshare-network
+    depends_on:
+      - php
+
+  mysql:
+    image: mysql:8.0
+    container_name: quickshare-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: quickshare
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - quickshare-network
+    ports:
+      - "3306:3306"
+
+  redis:
+    image: redis:alpine
+    container_name: quickshare-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - quickshare-network
+    ports:
+      - "6379:6379"
+
+  supervisor:
+    image: php:8.3-fpm
+    container_name: quickshare-supervisor
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/supervisor/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+    networks:
+      - quickshare-network
+    depends_on:
+      - php
+      - mysql
+      - redis
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quickshare-scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    command: php artisan schedule:work
+    networks:
+      - quickshare-network
+    depends_on:
+      - mysql
+      - redis
+
+  backup:
+    image: mysql:8.0
+    container_name: quickshare-backup
+    restart: unless-stopped
+    volumes:
+      - ./docker/backup:/backup
+      - mysql-data:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: quickshare
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    command: >
+      sh -c "while true; do
+        echo 'Starting backup at $(date)';
+        mysqldump -h mysql -u root -p${DB_ROOT_PASSWORD} quickshare > /backup/quickshare_$(date +%Y%m%d_%H%M%S).sql;
+        echo 'Backup completed at $(date)';
+        find /backup -type f -mtime +7 -delete;
+        sleep 86400;
+      done"
+    networks:
+      - quickshare-network
+    depends_on:
+      - mysql
+
+networks:
+  quickshare-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data:

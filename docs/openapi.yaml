@@ -1,0 +1,1047 @@
+openapi: 3.1.0
+info:
+  title: QuickShare API
+  description: |
+    Peer-to-peer lending platform API.
+
+    ## Authentication
+    All protected endpoints require a Bearer token obtained via `POST /api/v1/auth/login`.
+    Include it as: `Authorization: Bearer <token>`
+
+    ## Rate Limiting
+    - **General API**: 60 requests/minute per user
+    - **Auth endpoints**: 10 requests/minute per IP
+    - **Upload endpoints**: 20 requests/minute per user
+
+    ## Response Format
+    All responses follow:
+    ```json
+    {
+      "success": true|false,
+      "message": "Human-readable message",
+      "data": { ... }
+    }
+    ```
+  version: "1.0.0"
+  contact:
+    name: QuickShare Support
+    email: support@quickshare.com
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+  - url: https://api.quickshare.com/api/v1
+    description: Production
+
+tags:
+  - name: Auth
+    description: Authentication and profile management
+  - name: KYC
+    description: Know Your Customer verification
+  - name: Loans
+    description: Loan requests and management
+  - name: Marketplace
+    description: Browse available loans for funding
+  - name: Funding
+    description: Fund loans and manage lender portfolio
+  - name: Repayments
+    description: Repayment schedules and payments
+  - name: Notifications
+    description: User notification management
+
+# ─── Security ──────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ─── Schemas ────────────────────────────────────────────────────────────
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+
+    PaginatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+
+    ValidationError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Validation failed.
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, pending]
+        roles:
+          type: array
+          items:
+            type: string
+        trust_score:
+          type: object
+          properties:
+            score:
+              type: integer
+            tier:
+              type: string
+              enum: [unrated, bronze, silver, gold, platinum]
+            risk_level:
+              type: string
+              enum: [very_high, high, medium, low, very_low]
+        verification:
+          type: object
+          properties:
+            email_verified:
+              type: boolean
+            phone_verified:
+              type: boolean
+        referral_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Loan:
+      type: object
+      properties:
+        id:
+          type: integer
+        reference:
+          type: string
+          example: QS-20260001
+        status:
+          type: string
+          enum: [pending, approved, rejected, marketplace, funded, active, completed, cancelled, defaulted]
+        amounts:
+          type: object
+          properties:
+            requested:
+              type: number
+            approved:
+              type: number
+            funded:
+              type: number
+            total_repayment:
+              type: number
+        terms:
+          type: object
+          properties:
+            interest_rate:
+              type: number
+            loan_term_days:
+              type: integer
+            repayment_date:
+              type: string
+              format: date
+        funding_progress:
+          type: object
+          properties:
+            percentage:
+              type: number
+            fully_funded:
+              type: boolean
+        risk_score:
+          type: number
+        timestamps:
+          type: object
+          properties:
+            submitted_at:
+              type: string
+              format: date-time
+            approved_at:
+              type: string
+              format: date-time
+            disbursed_at:
+              type: string
+              format: date-time
+
+    FundingTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        transaction_reference:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, refunded]
+        amounts:
+          type: object
+          properties:
+            funded:
+              type: number
+            expected_return:
+              type: number
+            interest_rate:
+              type: number
+        confirmed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    Repayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        transaction_reference:
+          type: string
+        status:
+          type: string
+          enum: [pending, paid, overdue, defaulted, waived]
+        amounts:
+          type: object
+          properties:
+            total:
+              type: number
+            principal:
+              type: number
+            interest:
+              type: number
+            penalty:
+              type: number
+        dates:
+          type: object
+          properties:
+            due_date:
+              type: string
+              format: date
+            paid_date:
+              type: string
+              format: date
+        days_overdue:
+          type: integer
+
+    KycSubmission:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [pending, approved, rejected, resubmission_required]
+        missing_documents:
+          type: array
+          items:
+            type: string
+        has_all_documents:
+          type: boolean
+        rejection_reason:
+          type: string
+        timestamps:
+          type: object
+          properties:
+            submitted_at:
+              type: string
+              format: date-time
+            reviewed_at:
+              type: string
+              format: date-time
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        data:
+          type: object
+        read_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_read:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+# ─── Paths ──────────────────────────────────────────────────────────────────
+paths:
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: Authenticate and receive a Sanctum Bearer token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@quickshare.com
+                password:
+                  type: string
+                  format: password
+                  example: password
+                device_name:
+                  type: string
+                  example: MyPhone
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          token:
+                            type: string
+                          token_type:
+                            type: string
+                            example: Bearer
+        '401':
+          description: Invalid credentials
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '429':
+          description: Too many login attempts
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+        '401':
+          description: Unauthenticated
+
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout from all devices
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logged out from all devices
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+    put:
+      tags: [Auth]
+      summary: Update profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                phone:
+                  type: string
+                date_of_birth:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Profile updated
+        '422':
+          description: Validation error
+
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change password
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password, password_confirmation]
+              properties:
+                current_password:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+      responses:
+        '200':
+          description: Password changed
+        '422':
+          description: Validation error
+
+  /auth/tokens:
+    get:
+      tags: [Auth]
+      summary: List active tokens
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Active tokens list
+
+  /auth/tokens/{tokenId}:
+    delete:
+      tags: [Auth]
+      summary: Revoke a specific token
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: tokenId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Token revoked
+
+  # ── KYC ───────────────────────────────────────────────────────────────────
+  /kyc/status:
+    get:
+      tags: [KYC]
+      summary: Get current user's KYC status
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: KYC status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/KycSubmission'
+
+  /kyc/submit:
+    post:
+      tags: [KYC]
+      summary: Submit KYC documents
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [national_id_number, documents]
+              properties:
+                national_id_number:
+                  type: string
+                documents:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: KYC submitted
+        '422':
+          description: Validation error
+
+  /kyc/{submission}/resubmit:
+    post:
+      tags: [KYC]
+      summary: Resubmit rejected KYC
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: submission
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Resubmitted
+
+  /kyc/admin/pending:
+    get:
+      tags: [KYC]
+      summary: "[Admin] List pending KYC submissions"
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Pending submissions
+        '403':
+          description: Forbidden
+
+  /kyc/admin/{submission}/review:
+    post:
+      tags: [KYC]
+      summary: "[Admin] Approve or reject KYC"
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: submission
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [approved, rejected, resubmission_required]
+                rejection_reason:
+                  type: string
+                admin_notes:
+                  type: string
+      responses:
+        '200':
+          description: Review submitted
+
+  # ── Loans ─────────────────────────────────────────────────────────────────
+  /loans:
+    get:
+      tags: [Loans]
+      summary: List own loans
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Loans list
+
+  /loans/request:
+    post:
+      tags: [Loans]
+      summary: Request a new loan
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requested_amount, loan_term_days]
+              properties:
+                requested_amount:
+                  type: number
+                  example: 5000
+                loan_term_days:
+                  type: integer
+                  example: 30
+                purpose:
+                  type: string
+      responses:
+        '201':
+          description: Loan created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Loan'
+        '422':
+          description: Validation error
+
+  /loans/calculate:
+    post:
+      tags: [Loans]
+      summary: Calculate loan costs
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, loan_term_days]
+              properties:
+                amount:
+                  type: number
+                loan_term_days:
+                  type: integer
+      responses:
+        '200':
+          description: Loan calculation
+
+  /loans/{loan}:
+    get:
+      tags: [Loans]
+      summary: Get loan details
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: loan
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Loan details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Loan'
+        '404':
+          description: Loan not found
+
+  /loans/{loan}/cancel:
+    post:
+      tags: [Loans]
+      summary: Cancel a pending loan
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: loan
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Loan cancelled
+
+  # ── Marketplace ───────────────────────────────────────────────────────────
+  /marketplace:
+    get:
+      tags: [Marketplace]
+      summary: Browse loan listings
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: min_amount
+          schema:
+            type: number
+        - in: query
+          name: max_amount
+          schema:
+            type: number
+        - in: query
+          name: min_interest
+          schema:
+            type: number
+        - in: query
+          name: max_term_days
+          schema:
+            type: integer
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Marketplace listings
+
+  /marketplace/stats:
+    get:
+      tags: [Marketplace]
+      summary: Marketplace statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Statistics
+
+  /marketplace/{loan}:
+    get:
+      tags: [Marketplace]
+      summary: Get marketplace loan details
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: loan
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Loan details
+
+  # ── Funding ───────────────────────────────────────────────────────────────
+  /funding:
+    get:
+      tags: [Funding]
+      summary: List lender's funding transactions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Funding transactions
+
+  /funding/{loan}:
+    post:
+      tags: [Funding]
+      summary: Fund a loan
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: loan
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: number
+                  example: 2500
+      responses:
+        '200':
+          description: Funding confirmed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/FundingTransaction'
+        '422':
+          description: Validation error
+
+  /funding/portfolio/summary:
+    get:
+      tags: [Funding]
+      summary: Lender portfolio summary
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Portfolio summary
+
+  # ── Repayments ────────────────────────────────────────────────────────────
+  /repayments:
+    get:
+      tags: [Repayments]
+      summary: List own repayments
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Repayments list
+    post:
+      tags: [Repayments]
+      summary: Make a repayment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [loan_id, amount, payment_method]
+              properties:
+                loan_id:
+                  type: integer
+                amount:
+                  type: number
+                payment_method:
+                  type: string
+                  enum: [bank_transfer, eft, cash, debit_order]
+      responses:
+        '200':
+          description: Repayment processed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Repayment'
+
+  /repayments/schedule/{loan}:
+    get:
+      tags: [Repayments]
+      summary: Get repayment schedule for a loan
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: loan
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Repayment schedule
+
+  /repayments/{repayment}:
+    get:
+      tags: [Repayments]
+      summary: Get repayment details
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: repayment
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Repayment details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Repayment'
+
+  # ── Notifications ─────────────────────────────────────────────────────────
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List all notifications
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 15
+      responses:
+        '200':
+          description: Notifications list
+    delete:
+      tags: [Notifications]
+      summary: Delete all notifications
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All notifications deleted
+
+  /notifications/unread:
+    get:
+      tags: [Notifications]
+      summary: List unread notifications
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Unread notifications
+
+  /notifications/count:
+    get:
+      tags: [Notifications]
+      summary: Get notification counts
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Notification counts
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          unread:
+                            type: integer
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all notifications as read
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All marked as read
+
+  /notifications/{id}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark notification as read
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification marked as read
+        '404':
+          description: Notification not found
+
+  /notifications/{id}:
+    delete:
+      tags: [Notifications]
+      summary: Delete a notification
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification deleted
+        '404':
+          description: Notification not found
