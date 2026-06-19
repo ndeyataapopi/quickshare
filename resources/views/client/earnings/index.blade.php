@@ -3,7 +3,7 @@
 <div class="page-breadcrumb border-bottom">
     <div class="row">
         <div class="col-lg-3 col-md-4 col-xs-12 align-self-center">
-            <h5 class="font-medium text-uppercase mb-0">My Earnings</h5>
+            <h5 class="font-medium text-uppercase mb-0"><i class="mdi mdi-cash-multiple mr-2"></i>My Earnings</h5>
         </div>
         <div class="col-lg-9 col-md-8 col-xs-12 align-self-center">
             <nav aria-label="breadcrumb" class="mt-2 float-md-right float-left">

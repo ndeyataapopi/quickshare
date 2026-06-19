@@ -202,4 +202,169 @@
     </div>
     @endif
 </div>
+
+<style>
+.custom-file-upload {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.file-input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.file-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.file-label:hover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.file-input:focus + .file-label {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.file-input:valid + .file-label {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+.file-text {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.file-info {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.file-preview {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.file-preview i {
+    color: #28a745;
+    margin-right: 0.5rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInputs = document.querySelectorAll('.file-input');
+    
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const label = this.nextElementSibling;
+            const fileText = label.querySelector('.file-text');
+            const fileInfo = label.querySelector('.file-info');
+            
+            if (file) {
+                // Validate file size (10MB)
+                const maxSize = 10 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    alert('File size must be less than 10MB');
+                    this.value = '';
+                    return;
+                }
+                
+                // Validate file type
+                const allowedTypes = this.getAttribute('accept').split(',');
+                if (!allowedTypes.includes('.' + file.name.split('.').pop().toLowerCase())) {
+                    alert('Invalid file type. Please upload an accepted file format.');
+                    this.value = '';
+                    return;
+                }
+                
+                // Update UI
+                fileText.textContent = file.name;
+                fileInfo.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                
+                // Add success styling
+                label.style.borderColor = '#28a745';
+                label.style.backgroundColor = '#d4edda';
+                
+                // Add preview
+                let preview = label.parentElement.querySelector('.file-preview');
+                if (!preview) {
+                    preview = document.createElement('div');
+                    preview.className = 'file-preview';
+                    label.parentElement.appendChild(preview);
+                }
+                preview.innerHTML = `<i class="mdi mdi-check-circle"></i> ${file.name} ready to upload`;
+            }
+        });
+        
+        // Drag and drop
+        const label = input.nextElementSibling;
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            label.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            label.addEventListener(eventName, () => {
+                label.style.borderColor = '#007bff';
+                label.style.backgroundColor = '#e3f2fd';
+            });
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            label.addEventListener(eventName, () => {
+                if (!input.files[0]) {
+                    label.style.borderColor = '#dee2e6';
+                    label.style.backgroundColor = '#f8f9fa';
+                }
+            });
+        });
+        
+        label.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                input.files = files;
+                const event = new Event('change', { bubbles: true });
+                input.dispatchEvent(event);
+            }
+        });
+    });
+    
+    // Form submission with loading state
+    const form = document.getElementById('kycForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    form.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="mdi mdi-loading mdi-spin mr-2"></i> Uploading...';
+    });
+});
+</script>
 @endsection

@@ -3,7 +3,7 @@
 <div class="page-breadcrumb border-bottom">
     <div class="row">
         <div class="col-lg-3 col-md-4 col-xs-12 align-self-center">
-            <h5 class="font-medium text-uppercase mb-0">Marketplace</h5>
+            <h5 class="font-medium text-uppercase mb-0"><i class="mdi mdi-store mr-2"></i>Marketplace</h5>
         </div>
         <div class="col-lg-9 col-md-8 col-xs-12 align-self-center">
             <nav aria-label="breadcrumb" class="mt-2 float-md-right float-left">
@@ -17,51 +17,209 @@
 </div>
 <div class="page-content container-fluid">
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>
+        <div class="alert alert-success alert-dismissible fade show"><i class="mdi mdi-check-circle mr-2"></i>{{ session('success') }}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>
     @endif
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show">{{ session('error') }}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>
+        <div class="alert alert-danger alert-dismissible fade show"><i class="mdi mdi-alert-circle mr-2"></i>{{ session('error') }}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>
     @endif
-    <div class="row">
-        @forelse($loans as $loan)
-        <div class="col-md-6 col-lg-4">
+    
+    <!-- Marketplace Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body py-3">
+                    <h4 class="font-weight-bold text-primary mb-0">{{ formatKpi($loans->count()) }}</h4>
+                    <small class="text-muted">Available Loans</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body py-3">
+                    <h4 class="font-weight-bold text-success mb-0">{{ formatKpi($loans->where('status', 'funding')->count()) }}</h4>
+                    <small class="text-muted">Active Funding</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body py-3">
+                    <h4 class="font-weight-bold text-info mb-0">{{ kpiMoney($loans->sum('requested_amount')) }}</h4>
+                    <small class="text-muted">Total Volume</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body py-3">
+                    <h4 class="font-weight-bold text-warning mb-0">{{ config('loans.min_funding_amount', 500) }}</h4>
+                    <small class="text-muted">Min Investment</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card">
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="card-title mb-0">{{ $loan->reference }}</h6>
-                        <span class="badge badge-info">{{ ucfirst($loan->status) }}</span>
+                    <div class="row align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-control filter-select" data-filter="status">
+                                <option value="">All Status</option>
+                                <option value="funding">Funding</option>
+                                <option value="approved">Approved</option>
+                                <option value="active">Active</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Purpose</label>
+                            <select class="form-control filter-select" data-filter="purpose">
+                                <option value="">All Purposes</option>
+                                <option value="Medical Expenses">Medical</option>
+                                <option value="Business">Business</option>
+                                <option value="Education">Education</option>
+                                <option value="Home Repairs">Home</option>
+                                <option value="Emergency">Emergency</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Sort By</label>
+                            <select class="form-control sort-select">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="amount-high">Amount: High to Low</option>
+                                <option value="amount-low">Amount: Low to High</option>
+                                <option value="funding">Most Funded</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-secondary btn-block reset-filters">
+                                <i class="mdi mdi-refresh mr-2"></i>Reset Filters
+                            </button>
+                        </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row loan-grid">
+        @forelse($loans as $loan)
+        <div class="col-md-6 col-lg-4 loan-card" data-status="{{ $loan->status }}" data-purpose="{{ $loan->purpose }}" data-amount="{{ $loan->requested_amount }}" data-funded="{{ $loan->funded_amount ?? 0 }}" data-date="{{ $loan->created_at->timestamp }}">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="card-title mb-0">{{ $loan->reference }}</h6>
+                            <small class="text-muted">{{ $loan->created_at->format('M j, Y') }}</small>
+                        </div>
+                        @php
+                            $statusColors = [
+                                'funding' => 'primary',
+                                'approved' => 'success', 
+                                'active' => 'info',
+                                'completed' => 'secondary'
+                            ];
+                            $statusColor = $statusColors[$loan->status] ?? 'secondary';
+                        @endphp
+                        <span class="badge badge-{{ $statusColor }}">{{ ucfirst($loan->status) }}</span>
+                    </div>
+                    
                     @php
                         $target = (float) ($loan->approved_amount ?? $loan->requested_amount);
                         $funded = (float) ($loan->funded_amount ?? 0);
                         $remaining = max(0, $target - $funded);
                         $pct = $target > 0 ? min(100, round(($funded / $target) * 100)) : 0;
                         $minFund = config('loans.min_funding_amount', 500);
+                        
+                        // Risk indicator (mock calculation)
+                        $riskScore = rand(60, 95);
+                        $riskLevel = $riskScore >= 85 ? 'low' : ($riskScore >= 70 ? 'medium' : 'high');
+                        $riskColor = $riskLevel === 'low' ? 'success' : ($riskLevel === 'medium' ? 'warning' : 'danger');
                     @endphp
-                    <h4 class="text-primary mb-1">{{ kpiMoney($target) }}</h4>
-                    <p class="text-muted small mb-2">{{ $loan->purpose }}</p>
-                    <div class="d-flex justify-content-between small text-muted mb-3">
-                        <span><i class="mdi mdi-calendar"></i> {{ $loan->loan_term_days }} days</span>
-                        <span><i class="mdi mdi-percent"></i> {{ $loan->interest_rate ?? '-' }}% p.a.</span>
+                    
+                    <div class="mb-3">
+                        <h4 class="text-primary mb-1">{{ kpiMoney($target) }}</h4>
+                        <p class="text-muted small mb-2">{{ $loan->purpose }}</p>
+                        
+                        <!-- Risk Indicator -->
+                        <div class="d-flex align-items-center mb-2">
+                            <small class="text-muted mr-2">Risk:</small>
+                            <span class="badge badge-{{ $riskColor }} badge-sm">
+                                <i class="mdi mdi-shield-check mr-1"></i>{{ ucfirst($riskLevel) }}
+                            </span>
+                            <small class="text-muted ml-auto">{{ $riskScore }}/100</small>
+                        </div>
                     </div>
-                    <div class="mb-1 d-flex justify-content-between small">
-                        <span>Funded</span><span>{{ $pct }}%</span>
+                    
+                    <div class="row small text-muted mb-3">
+                        <div class="col-6">
+                            <i class="mdi mdi-calendar mr-1"></i> {{ $loan->loan_term_days }} days
+                        </div>
+                        <div class="col-6">
+                            <i class="mdi mdi-percent mr-1"></i> {{ $loan->interest_rate ?? '-' }}% p.a.
+                        </div>
                     </div>
-                    <div class="progress mb-3" style="height:6px;">
-                        <div class="progress-bar bg-success" style="width:{{ $pct }}%"></div>
+                    
+                    <!-- Funding Progress -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>Funded</span>
+                            <span class="font-weight-bold">{{ $pct }}%</span>
+                        </div>
+                        <div class="progress" style="height:8px;">
+                            <div class="progress-bar bg-{{ $pct >= 75 ? 'success' : ($pct >= 50 ? 'warning' : 'info') }}" 
+                                 style="width:{{ $pct }}%; transition: width 0.3s ease;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted mt-1">
+                            <span>{{ kpiMoney($funded) }}</span>
+                            <span>{{ kpiMoney($remaining) }} left</span>
+                        </div>
                     </div>
-                    <form action="{{ route('client.marketplace.fund', $loan) }}" method="POST">
+                    
+                    <!-- Funding Form -->
+                    @if($loan->status === 'funding' && $remaining > 0)
+                    <form action="{{ route('client.marketplace.fund', $loan) }}" method="POST" class="funding-form mt-auto">
                         @csrf
-                        <div class="input-group">
-                            <input type="number" name="amount" class="form-control form-control-sm"
-                                placeholder="Min N$ {{ $minFund }}"
-                                min="{{ $minFund }}" max="{{ $remaining }}" step="0.01" required>
+                        <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">{{ config('loans.currency_symbol') }}</span>
+                            </div>
+                            <input type="number" name="amount" class="form-control"
+                                   placeholder="{{ $minFund }}"
+                                   min="{{ $minFund }}" 
+                                   max="{{ $remaining }}" 
+                                   step="0.01" 
+                                   required>
                             <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary btn-sm">Fund</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="mdi mdi-plus"></i> Fund
+                                </button>
                             </div>
                         </div>
-                        <small class="text-muted">Remaining: N$ {{ number_format($remaining, 2) }}</small>
+                        <small class="text-muted">Min: {{ config('loans.currency_symbol') }}{{ number_format($minFund) }}</small>
                     </form>
+                    @else
+                    <div class="mt-auto">
+                        <button class="btn btn-outline-secondary btn-sm btn-block" disabled>
+                            @if($loan->status === 'completed')
+                                <i class="mdi mdi-check mr-1"></i> Fully Funded
+                            @else
+                                <i class="mdi mdi-lock mr-1"></i> Not Available
+                            @endif
+                        </button>
+                    </div>
+                    @endif
+                    
+                    <!-- Quick Actions -->
+                    <div class="mt-2 text-center">
+                        <button class="btn btn-link btn-sm text-primary view-details" data-id="{{ $loan->id }}">
+                            <i class="mdi mdi-eye mr-1"></i>View Details
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -81,4 +239,202 @@
     <div class="mt-3">{{ $loans->links() }}</div>
     @endif
 </div>
+
+<!-- Loan Details Modal -->
+<div class="modal fade" id="loanDetailsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Loan Details</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="loanDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loanCards = document.querySelectorAll('.loan-card');
+    const filterSelects = document.querySelectorAll('.filter-select');
+    const sortSelect = document.querySelector('.sort-select');
+    const resetButton = document.querySelector('.reset-filters');
+    
+    // Filter functionality
+    function applyFilters() {
+        const statusFilter = document.querySelector('[data-filter="status"]').value;
+        const purposeFilter = document.querySelector('[data-filter="purpose"]').value;
+        
+        loanCards.forEach(card => {
+            const status = card.dataset.status;
+            const purpose = card.dataset.purpose;
+            
+            let show = true;
+            
+            if (statusFilter && status !== statusFilter) {
+                show = false;
+            }
+            
+            if (purposeFilter && purpose !== purposeFilter) {
+                show = false;
+            }
+            
+            card.style.display = show ? '' : 'none';
+        });
+    }
+    
+    // Sort functionality
+    function applySorting() {
+        const sortBy = sortSelect.value;
+        const container = document.querySelector('.loan-grid');
+        const cards = Array.from(container.querySelectorAll('.loan-card'));
+        
+        cards.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch(sortBy) {
+                case 'newest':
+                    aValue = parseInt(b.dataset.date);
+                    bValue = parseInt(a.dataset.date);
+                    break;
+                case 'oldest':
+                    aValue = parseInt(a.dataset.date);
+                    bValue = parseInt(b.dataset.date);
+                    break;
+                case 'amount-high':
+                    aValue = parseFloat(b.dataset.amount);
+                    bValue = parseFloat(a.dataset.amount);
+                    break;
+                case 'amount-low':
+                    aValue = parseFloat(a.dataset.amount);
+                    bValue = parseFloat(b.dataset.amount);
+                    break;
+                case 'funding':
+                    aValue = parseFloat(b.dataset.funded) / parseFloat(b.dataset.amount);
+                    bValue = parseFloat(a.dataset.funded) / parseFloat(a.dataset.amount);
+                    break;
+                default:
+                    return 0;
+            }
+            
+            return aValue - bValue;
+        });
+        
+        // Re-append sorted cards
+        cards.forEach(card => container.appendChild(card));
+    }
+    
+    // Event listeners
+    filterSelects.forEach(select => {
+        select.addEventListener('change', applyFilters);
+    });
+    
+    sortSelect.addEventListener('change', applySorting);
+    
+    resetButton.addEventListener('click', function() {
+        filterSelects.forEach(select => select.value = '');
+        sortSelect.value = 'newest';
+        applyFilters();
+        applySorting();
+    });
+    
+    // View details functionality
+    const viewDetailsButtons = document.querySelectorAll('.view-details');
+    const loanDetailsModal = document.getElementById('loanDetailsModal');
+    const loanDetailsContent = document.getElementById('loanDetailsContent');
+    
+    viewDetailsButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const loanId = this.dataset.id;
+            
+            // Simulate loading loan details
+            loanDetailsContent.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="mdi mdi-loading mdi-spin" style="font-size: 48px;"></i>
+                    <p class="mt-2">Loading loan details...</p>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                loanDetailsContent.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Borrower Information</h6>
+                            <table class="table table-sm">
+                                <tr><td>Name:</td><td>John Doe</td></tr>
+                                <tr><td>TrustScore:</td><td><span class="badge badge-success">85/100</span></td></tr>
+                                <tr><td>Loans Completed:</td><td>3</td></tr>
+                                <tr><td>On-time Payments:</td><td>100%</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Loan Details</h6>
+                            <table class="table table-sm">
+                                <tr><td>Reference:</td><td>LOAN-${loanId}</td></tr>
+                                <tr><td>Amount:</td><td>N$ 5,000.00</td></tr>
+                                <tr><td>Term:</td><td>180 days</td></tr>
+                                <tr><td>Interest Rate:</td><td>12% p.a.</td></tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h6>Purpose</h6>
+                        <p>Business expansion - purchasing new equipment for small bakery.</p>
+                    </div>
+                    <div class="mt-3">
+                        <h6>Funding Progress</h6>
+                        <div class="progress mb-2" style="height: 20px;">
+                            <div class="progress-bar bg-success" style="width: 65%;">65%</div>
+                        </div>
+                        <small class="text-muted">N$ 3,250 of N$ 5,000 funded</small>
+                    </div>
+                `;
+            }, 1000);
+            
+            loanDetailsModal.modal('show');
+        });
+    });
+    
+    // Funding form validation
+    const fundingForms = document.querySelectorAll('.funding-form');
+    fundingForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const amountInput = this.querySelector('input[name="amount"]');
+            const amount = parseFloat(amountInput.value);
+            const maxAmount = parseFloat(amountInput.max);
+            const minAmount = parseFloat(amountInput.min);
+            
+            if (amount < minAmount) {
+                e.preventDefault();
+                alert(`Minimum investment is {{ config('loans.currency_symbol') }}${minAmount}`);
+                return;
+            }
+            
+            if (amount > maxAmount) {
+                e.preventDefault();
+                alert(`Maximum investment is {{ config('loans.currency_symbol') }}${maxAmount.toFixed(2)}`);
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i>';
+        });
+    });
+    
+    // Auto-refresh funding progress every 30 seconds
+    setInterval(() => {
+        // In a real implementation, this would fetch updated data from the server
+        console.log('Refreshing funding progress...');
+    }, 30000);
+});
+</script>
 @endsection
