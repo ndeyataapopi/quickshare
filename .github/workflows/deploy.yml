@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy To Production
 
 on:
   push:
@@ -7,12 +7,11 @@ on:
 
 jobs:
   deploy:
-    name: SSH Deploy
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy to Production
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
@@ -23,25 +22,30 @@ jobs:
 
             cd /var/www/html/quickshare
 
-            echo "→ Pulling latest code..."
+            echo "Pulling latest code..."
             git pull origin master
 
-            echo "→ Installing PHP dependencies..."
+            echo "Installing dependencies..."
             composer install --no-dev --optimize-autoloader --no-interaction
 
-            echo "→ Installing Node dependencies & building assets..."
+            echo "Clearing caches..."
+            php artisan optimize:clear
+
+            echo "Running migrations..."
+            php artisan migrate --force
+
+            echo "Building assets..."
             npm ci
             npm run build
 
-            echo "→ Running migrations..."
-            php artisan migrate --force
-
-            echo "→ Clearing & caching config..."
+            echo "Caching..."
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
 
-            echo "→ Restarting queue workers..."
+            echo "Restarting queues..."
             php artisan queue:restart
 
-            echo "✓ Deployment complete."
+            echo "Deployment completed"
+
+            php artisan about
