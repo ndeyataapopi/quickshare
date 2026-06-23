@@ -21,9 +21,7 @@ jobs:
             set -e
 
             cd /var/www/html/quickshare
-
-            git config --global --add safe.directory /var/www/html/quickshare
-
+            
             echo "Pulling latest code..."
             git pull origin master
 
