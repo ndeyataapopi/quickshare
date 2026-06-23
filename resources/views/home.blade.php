@@ -1222,7 +1222,7 @@
                 <a href="#">How It Works</a>
                 <a href="#">Trust Score</a>
                 <a href="#">Security</a>
-                <a href="#">Pricing</a>
+                <a href="#">Contact Us</a>
             </div>
 
             <div class="footer-links">
