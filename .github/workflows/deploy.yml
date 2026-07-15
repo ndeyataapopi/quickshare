@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Deploy to Production
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
@@ -19,49 +19,24 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             set -e
-
             cd /var/www/html/quickshare
             
-            echo "Checking environment..."
-            if [ ! -f .env ]; then
-              echo "Error: .env file not found"
-              exit 1
-            fi
-
-            echo "Creating backup..."
-            cp -r . ../quickshare-backup-$(date +%Y%m%d-%H%M%S) || true
-
             echo "Pulling latest code..."
             git pull origin master
-
             echo "Installing dependencies..."
             composer install --no-dev --optimize-autoloader --no-interaction
-
             echo "Clearing caches..."
             php artisan optimize:clear
-
             echo "Running migrations..."
             php artisan migrate --force
-
-            echo "Creating storage link..."
-            php artisan storage:link
-
-            echo "Setting permissions..."
-            chmod -R 775 storage bootstrap/cache
-            chown -R www-data:www-data storage bootstrap/cache
-
             echo "Building assets..."
             npm ci
             npm run build
-
             echo "Caching..."
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-
             echo "Restarting queues..."
             php artisan queue:restart
-
             echo "Deployment completed"
-
             php artisan about
