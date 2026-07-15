@@ -3,7 +3,7 @@ name: Deploy To Production
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   deploy:
@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Deploy to Production
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
@@ -22,8 +22,17 @@ jobs:
 
             cd /var/www/html/quickshare
             
+            echo "Checking environment..."
+            if [ ! -f .env ]; then
+              echo "Error: .env file not found"
+              exit 1
+            fi
+
+            echo "Creating backup..."
+            cp -r . ../quickshare-backup-$(date +%Y%m%d-%H%M%S) || true
+
             echo "Pulling latest code..."
-            git pull origin master
+            git pull origin main
 
             echo "Installing dependencies..."
             composer install --no-dev --optimize-autoloader --no-interaction
@@ -33,6 +42,13 @@ jobs:
 
             echo "Running migrations..."
             php artisan migrate --force
+
+            echo "Creating storage link..."
+            php artisan storage:link
+
+            echo "Setting permissions..."
+            chmod -R 775 storage bootstrap/cache
+            chown -R www-data:www-data storage bootstrap/cache
 
             echo "Building assets..."
             npm ci
