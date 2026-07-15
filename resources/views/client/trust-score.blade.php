@@ -79,9 +79,9 @@
     </div>
 
     <!-- Score History Chart -->
-    <div class="row mb-4 align-items-stretch">
+    <div class="row mb-4">
         <div class="col-md-8">
-            <div class="card h-100">
+            <div class="card" style="height: 400px;">
                 <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="card-title text-uppercase mb-0">Score History</h6>
@@ -91,17 +91,17 @@
                             <button class="btn btn-outline-primary" data-period="year">Year</button>
                         </div>
                     </div>
-                    <div style="flex: 1; min-height: 0; height: 350px;">
+                    <div style="flex: 1; min-height: 0;">
                         <canvas id="scoreHistoryChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card h-100">
+            <div class="card" style="height: 400px;">
                 <div class="card-body d-flex flex-column">
                     <h6 class="card-title text-uppercase mb-3">Score Factors</h6>
-                    <div style="flex: 1; min-height: 0; height: 350px;">
+                    <div style="flex: 1; min-height: 0;">
                         <canvas id="scoreFactorsChart"></canvas>
                     </div>
                 </div>
