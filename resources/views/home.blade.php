@@ -769,7 +769,7 @@
                     <i class="fa-solid fa-arrow-right"></i>
                 </a>
 
-                <a href="/" class="btn btn-outline">
+                <a href="#how" class="btn btn-outline">
                     <i class="fa-solid fa-circle-play"></i>
                     How It Works
                 </a>
