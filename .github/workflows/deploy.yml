@@ -21,8 +21,10 @@ jobs:
             set -e
             cd /var/www/html/quickshare
             
-            echo "Pulling latest code..."
-            git pull origin master
+            echo "Fetching latest code..."
+            git fetch origin master
+            echo "Resetting to origin/master..."
+            git reset --hard origin/master
             echo "Installing dependencies..."
             composer install --no-dev --optimize-autoloader --no-interaction
             echo "Clearing caches..."
