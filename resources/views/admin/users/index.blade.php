@@ -23,7 +23,12 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title text-uppercase mb-3">All Users</h5>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title text-uppercase mb-0">All Users</h5>
+                        <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Client
+                        </a>
+                    </div>
                     <form method="GET" class="form-inline mb-4">
                         <input type="text" name="search" class="form-control mr-2 mb-2" placeholder="Search users..." value="{{ request('search') }}">
                         <select name="role" class="form-control mr-2 mb-2">
@@ -54,7 +59,7 @@
                             </thead>
                             <tbody>
                                 @forelse($users as $user)
-                                <tr>
+                                <tr class="cursor-pointer" onclick="window.location='{{ route('admin.users.show', $user) }}'">
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-2" style="width:36px;height:36px;font-size:13px;font-weight:600;flex-shrink:0;">
@@ -84,7 +89,7 @@
                                         <span class="badge badge-{{ $user->status === 'active' ? 'success' : ($user->status === 'pending' ? 'warning' : 'danger') }}">{{ ucfirst($user->status) }}</span>
                                     </td>
                                     <td>{{ $user->created_at->format('M j, Y') }}</td>
-                                    <td>
+                                    <td onclick="event.stopPropagation()">
                                         @if($user->kycSubmission && $user->kycSubmission->status === 'pending')
                                             <a href="{{ route('admin.kyc.show', $user->kycSubmission) }}" class="btn btn-sm btn-warning">Review KYC</a>
                                         @else

@@ -3,8 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Address;
+use App\Models\ReferralCode;
+use App\Models\SourceOfIncome;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -49,6 +54,95 @@ class UserController extends Controller
         return view('admin.users.index', compact('users'));
     }
 
+    public function create()
+    {
+        return view('admin.users.create');
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'national_id' => ['required', 'string', 'max:20', 'unique:users,national_id'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
+            'date_of_birth' => ['required', 'date', 'before:-18 years'],
+            'password' => ['required', 'string', 'min:8'],
+            'status' => ['sometimes', 'in:active,pending,suspended'],
+            'skip_referral' => ['sometimes', 'accepted'],
+
+            // Address
+            'address.country' => ['required', 'string', 'max:255'],
+            'address.city' => ['required', 'string', 'max:255'],
+            'address.suburb' => ['nullable', 'string', 'max:255'],
+            'address.street' => ['required', 'string', 'max:255'],
+            'address.house_number' => ['required', 'string', 'max:50'],
+
+            // Source of Income
+            'source_of_income.profession' => ['required', 'string', 'in:employed,self-employed,unemployed'],
+            'source_of_income.company_name' => ['nullable', 'required_unless:source_of_income.profession,unemployed', 'string', 'max:255'],
+            'source_of_income.city' => ['nullable', 'required_unless:source_of_income.profession,unemployed', 'string', 'max:255'],
+            'source_of_income.country' => ['nullable', 'required_unless:source_of_income.profession,unemployed', 'string', 'max:255'],
+        ]);
+
+        return DB::transaction(function () use ($validated, $request) {
+            // Generate unique referral code for the new user
+            $referralCode = $this->generateUniqueCode();
+
+            // Create user
+            $user = User::create([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'national_id' => $validated['national_id'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'date_of_birth' => $validated['date_of_birth'],
+                'password' => $validated['password'],
+                'referral_code' => $referralCode,
+                'referred_by' => null,
+                'trust_score' => 50.00,
+                'status' => $validated['status'] ?? 'pending',
+            ]);
+
+            // Create address
+            $user->address()->create([
+                'country' => $validated['address']['country'],
+                'city' => $validated['address']['city'],
+                'suburb' => $validated['address']['suburb'] ?? null,
+                'street' => $validated['address']['street'],
+                'house_number' => $validated['address']['house_number'],
+            ]);
+
+            // Create source of income
+            $user->sourceOfIncome()->create([
+                'profession' => $validated['source_of_income']['profession'],
+                'company_name' => $validated['source_of_income']['company_name'] ?? null,
+                'city' => $validated['source_of_income']['city'] ?? null,
+                'country' => $validated['source_of_income']['country'] ?? null,
+            ]);
+
+            // Generate referral code record
+            $user->referralCode()->create([
+                'code' => $referralCode,
+                'is_active' => true,
+            ]);
+
+            // Assign client role
+            $user->assignRole('client');
+
+            // Send email verification notification
+            $user->sendEmailVerificationNotification();
+
+            // Send phone OTP for verification
+            $otpService = app(\App\Modules\Auth\Services\OtpService::class);
+            $otpService->sendOtp($user->phone);
+
+            return redirect()->route('admin.users.show', $user)
+                ->with('success', 'Client created successfully. Email verification and phone OTP have been sent.');
+        });
+    }
+
     public function show(User $user)
     {
         $user->load(['address', 'sourceOfIncome', 'kycSubmission', 'loans', 'fundingTransactions']);
@@ -65,5 +159,14 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.show', $user)
             ->with('success', "User status updated to {$validated['status']}.");
+    }
+
+    protected function generateUniqueCode(): string
+    {
+        do {
+            $code = strtoupper(Str::random(8));
+        } while (User::where('referral_code', $code)->exists());
+
+        return $code;
     }
 }

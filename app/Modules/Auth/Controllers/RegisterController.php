@@ -32,6 +32,9 @@ class RegisterController extends Controller
         // Trigger Laravel's built-in email verification
         event(new Registered($user));
 
+        // Send phone OTP for verification
+        $this->otpService->sendOtp($user->phone);
+
         // Generate Sanctum token
         $token = $user->createToken('auth_token')->plainTextToken;
 
