@@ -19,26 +19,136 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script: |
             set -e
-            cd /var/www/html/quickshare
             
-            echo "Fetching latest code..."
-            git fetch origin master
-            echo "Resetting to origin/master..."
-            git reset --hard origin/master
-            echo "Installing dependencies..."
-            composer install --no-dev --optimize-autoloader --no-interaction
+            # Configuration
+            DEPLOY_PATH="/var/www/html/quickshare"
+            RELEASES_PATH="$DEPLOY_PATH/releases"
+            CURRENT_LINK="$DEPLOY_PATH/current"
+            SHARED_PATH="$DEPLOY_PATH/shared"
+            LOG_PATH="$DEPLOY_PATH/logs"
+            BACKUP_PATH="$DEPLOY_PATH/backups"
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            RELEASE_PATH="$RELEASES_PATH/$TIMESTAMP"
+            
+            echo "=========================================="
+            echo "Starting deployment at $(date)"
+            echo "Release: $TIMESTAMP"
+            echo "=========================================="
+            
+            # Create directory structure if not exists
+            mkdir -p "$RELEASES_PATH" "$SHARED_PATH/storage" "$SHARED_PATH/bootstrap/cache" "$LOG_PATH" "$BACKUP_PATH"
+            
+            # Backup current release if exists
+            if [ -L "$CURRENT_LINK" ]; then
+              echo "Backing up current release..."
+              CURRENT_PATH=$(readlink -f "$CURRENT_LINK")
+              if [ -d "$CURRENT_PATH" ]; then
+                cp -r "$CURRENT_PATH" "$BACKUP_PATH/backup-$TIMESTAMP" || true
+              fi
+            fi
+            
+            # Clone or fetch latest code
+            if [ -d "$DEPLOY_PATH/.git" ]; then
+              echo "Fetching latest code..."
+              cd "$DEPLOY_PATH"
+              git fetch origin master
+              git reset --hard origin/master
+            else
+              echo "Cloning repository..."
+              git clone --branch master https://github.com/ndeyataapopi/quickshare.git "$DEPLOY_PATH"
+            fi
+            
+            # Create new release directory
+            echo "Creating new release directory..."
+            cp -r "$DEPLOY_PATH" "$RELEASE_PATH"
+            
+            # Link shared storage
+            echo "Linking shared storage..."
+            rm -rf "$RELEASE_PATH/storage"
+            ln -s "$SHARED_PATH/storage" "$RELEASE_PATH/storage"
+            
+            # Install dependencies
+            echo "Installing PHP dependencies..."
+            cd "$RELEASE_PATH"
+            composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+            
+            # Install node dependencies
+            echo "Installing Node dependencies..."
+            npm ci
+            
+            # Build assets
+            echo "Building assets..."
+            npm run build
+            
+            # Copy environment file if not exists
+            if [ ! -f "$RELEASE_PATH/.env" ]; then
+              if [ -f "$SHARED_PATH/.env" ]; then
+                cp "$SHARED_PATH/.env" "$RELEASE_PATH/.env"
+              else
+                echo "Error: .env file not found in shared path"
+                exit 1
+              fi
+            fi
+            
+            # Generate application key if not set
+            if ! grep -q "APP_KEY=base64:" "$RELEASE_PATH/.env"; then
+              php artisan key:generate
+            fi
+            
+            # Put application in maintenance mode
+            echo "Enabling maintenance mode..."
+            php artisan down --render="errors::503"
+            
+            # Clear all caches
             echo "Clearing caches..."
             php artisan optimize:clear
-            echo "Running migrations..."
+            
+            # Run database migrations
+            echo "Running database migrations..."
             php artisan migrate --force
-            echo "Building assets..."
-            npm ci
-            npm run build
-            echo "Caching..."
+            
+            # Create storage link
+            echo "Creating storage link..."
+            php artisan storage:link
+            
+            # Cache configuration
+            echo "Caching configuration..."
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-            echo "Restarting queues..."
+            
+            # Set permissions
+            echo "Setting permissions..."
+            chmod -R 775 "$SHARED_PATH/storage" "$SHARED_PATH/bootstrap/cache"
+            chown -R www-data:www-data "$SHARED_PATH/storage" "$SHARED_PATH/bootstrap/cache"
+            
+            # Update current symlink
+            echo "Updating current symlink..."
+            ln -sfn "$RELEASE_PATH" "$CURRENT_LINK"
+            
+            # Restart queue workers
+            echo "Restarting queue workers..."
             php artisan queue:restart
-            echo "Deployment completed"
+            
+            # Bring application out of maintenance mode
+            echo "Disabling maintenance mode..."
+            php artisan up
+            
+            # Health check
+            echo "Running health check..."
+            curl -f http://localhost/health || exit 1
+            
+            # Cleanup old releases (keep last 5)
+            echo "Cleaning up old releases..."
+            cd "$RELEASES_PATH"
+            ls -t | tail -n +6 | xargs -r rm -rf
+            
+            echo "=========================================="
+            echo "Deployment completed successfully at $(date)"
+            echo "Release: $TIMESTAMP"
+            echo "=========================================="
+            
+            # Log deployment
+            echo "$(date): Deployed release $TIMESTAMP" >> "$LOG_PATH/deployments.log"
+            
             php artisan about
