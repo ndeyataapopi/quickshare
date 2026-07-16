@@ -70,7 +70,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Portfolio Performance</h6>
-                    <canvas id="portfolioChart" height="100"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="portfolioChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -78,7 +80,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Investment Distribution</h6>
-                    <canvas id="distributionChart" height="150"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

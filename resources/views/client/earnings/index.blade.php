@@ -77,7 +77,9 @@
                             <button class="btn btn-outline-primary" data-period="year">Yearly</button>
                         </div>
                     </div>
-                    <canvas id="earningsChart" height="100"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="earningsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -85,7 +87,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Earnings by Type</h6>
-                    <canvas id="earningsTypeChart" height="150"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="earningsTypeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

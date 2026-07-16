@@ -95,7 +95,9 @@
                             <button class="btn btn-outline-primary" data-chart="overview" data-period="year">Year</button>
                         </div>
                     </div>
-                    <canvas id="overviewChart" height="100"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="overviewChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -103,7 +105,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Loan Status Distribution</h6>
-                    <canvas id="loanStatusChart" height="150"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="loanStatusChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,7 +123,9 @@
                             <i class="mdi mdi-refresh"></i>
                         </button>
                     </div>
-                    <canvas id="trustScoreChart" height="120"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="trustScoreChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -127,7 +133,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Investment Performance</h6>
-                    <canvas id="investmentChart" height="120"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="investmentChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
