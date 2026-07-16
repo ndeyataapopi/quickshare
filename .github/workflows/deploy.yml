@@ -30,9 +30,11 @@ jobs:
             # Navigate to deployment directory
             cd "$DEPLOY_PATH"
             
-            # Cleanup log files to save space
-            echo "Cleaning up log files..."
+            # Cleanup to save space
+            echo "Cleaning up to save space..."
             find storage/logs -name "*.log" -type f -mtime +3 -delete 2>/dev/null || true
+            npm cache clean --force 2>/dev/null || true
+            rm -rf node_modules/.cache 2>/dev/null || true
             
             # Pull latest code from git
             echo "Pulling latest code..."
