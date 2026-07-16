@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Modules\KYC\Models\KYCSubmission;
+use App\Modules\KYC\Models\KycSubmission;
 use App\Modules\KYC\Services\KycService;
 use Illuminate\Http\Request;
 
@@ -15,7 +15,7 @@ class KYCController extends Controller
 
     public function index(\Illuminate\Http\Request $request)
     {
-        $query = KYCSubmission::with('user')->latest();
+        $query = KycSubmission::with('user')->latest();
 
         if ($search = $request->input('search')) {
             $query->whereHas('user', fn($u) => $u->where('first_name', 'like', "%{$search}%")
@@ -31,7 +31,7 @@ class KYCController extends Controller
         return view('admin.kyc.index', compact('submissions'));
     }
 
-    public function show(KYCSubmission $submission)
+    public function show(KycSubmission $submission)
     {
         $submission->load('documents');
         return view('admin.kyc.show', compact('submission'));
@@ -40,13 +40,13 @@ class KYCController extends Controller
     public function viewDocument(\App\Modules\KYC\Models\KycDocument $document)
     {
         $fileContent = $this->kycService->getDecryptedDocument($document);
-        
+
         return response($fileContent)
             ->header('Content-Type', $document->mime_type)
             ->header('Content-Disposition', 'inline; filename="' . $document->original_filename . '"');
     }
 
-    public function update(Request $request, KYCSubmission $submission)
+    public function update(Request $request, KycSubmission $submission)
     {
         $validated = $request->validate([
             'decision' => 'required|in:approve,reject,resubmit',
