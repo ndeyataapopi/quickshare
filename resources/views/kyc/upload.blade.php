@@ -107,7 +107,7 @@
                         </div>
                         
                         <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Payslip (3 months) <span class="text-danger">*</span></label>
+                            <label class="col-sm-4 col-form-label">Payslip <span class="text-danger">*</span></label>
                             <div class="col-sm-8">
                                 <div class="custom-file-upload">
                                     <input type="file" name="payslip" id="payslip" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
