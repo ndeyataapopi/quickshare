@@ -20,7 +20,7 @@ class KYCServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Event::listen(KycSubmitted::class, LogKycSubmission::class);
+        Event::listen(KycSubmitted::class, [LogKycSubmission::class, NotifyAdminOfKycSubmission::class]);
         Event::listen(KycApproved::class, [NotifyKycStatus::class, UpdateUserVerificationStatus::class]);
         Event::listen(KycRejected::class, NotifyKycStatus::class);
     }

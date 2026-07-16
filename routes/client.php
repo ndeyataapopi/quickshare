@@ -20,8 +20,14 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     // ─── Dashboard ────────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // ─── KYC ──────────────────────────────────────────────────────────
+    Route::prefix('kyc')->name('kyc.')->group(function () {
+        Route::get('/', [KYCController::class, 'upload'])->name('upload');
+        Route::post('/', [KYCController::class, 'store'])->name('store');
+    });
+
     // ─── Loans (Borrower) ─────────────────────────────────────────────
-    Route::prefix('loans')->name('loans.')->group(function () {
+    Route::middleware(['kyc_verified'])->prefix('loans')->name('loans.')->group(function () {
         Route::get('/', [LoanController::class, 'index'])->name('index');
         Route::get('/create', [LoanController::class, 'create'])->name('create');
         Route::post('/', [LoanController::class, 'store'])->name('store');
@@ -30,43 +36,37 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     });
 
     // ─── Repayments (Borrower) ────────────────────────────────────────
-    Route::prefix('repayments')->name('repayments.')->group(function () {
+    Route::middleware(['kyc_verified'])->prefix('repayments')->name('repayments.')->group(function () {
         Route::get('/', [RepaymentController::class, 'index'])->name('index');
         Route::get('/{repayment}', [RepaymentController::class, 'show'])->name('show');
     });
 
     // ─── Marketplace (Lender) ─────────────────────────────────────────
-    Route::prefix('marketplace')->name('marketplace.')->group(function () {
+    Route::middleware(['kyc_verified'])->prefix('marketplace')->name('marketplace.')->group(function () {
         Route::get('/', [MarketplaceController::class, 'index'])->name('index');
         Route::post('/{loan}/fund', [MarketplaceController::class, 'fund'])->name('fund');
     });
 
     // ─── Funding / Escrow (Lender) ────────────────────────────────────
-    Route::prefix('funding')->name('funding.')->group(function () {
+    Route::middleware(['kyc_verified'])->prefix('funding')->name('funding.')->group(function () {
         Route::get('/{transaction}', [FundingController::class, 'show'])->name('show');
         Route::get('/{transaction}/payment', [FundingController::class, 'payment'])->name('payment');
         Route::post('/{transaction}/payment', [FundingController::class, 'submitPayment'])->name('payment.submit');
     });
 
     // ─── Investments (Lender) ─────────────────────────────────────────
-    Route::prefix('investments')->name('investments.')->group(function () {
+    Route::middleware(['kyc_verified'])->prefix('investments')->name('investments.')->group(function () {
         Route::get('/', [InvestmentController::class, 'index'])->name('index');
         Route::get('/{investment}', [InvestmentController::class, 'show'])->name('show');
     });
 
     // ─── Earnings (Lender) ────────────────────────────────────────────
-    Route::prefix('earnings')->name('earnings.')->group(function () {
+    Route::middleware(['kyc_verified'])->prefix('earnings')->name('earnings.')->group(function () {
         Route::get('/', [EarningsController::class, 'index'])->name('index');
     });
 
     // ─── Analytics ────────────────────────────────────────────────────
-    Route::get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
-
-    // ─── KYC ──────────────────────────────────────────────────────────
-    Route::prefix('kyc')->name('kyc.')->group(function () {
-        Route::get('/', [KYCController::class, 'upload'])->name('upload');
-        Route::post('/', [KYCController::class, 'store'])->name('store');
-    });
+    Route::middleware(['kyc_verified'])->get('/analytics', [AnalyticsController::class, 'index'])->name('analytics');
 
     // ─── Trust Score ──────────────────────────────────────────────────
     Route::get('/trust-score', [TrustScoreController::class, 'index'])->name('trust-score.index');
