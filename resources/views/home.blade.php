@@ -639,6 +639,32 @@
             color:var(--dark);
         }
 
+        .mobile-menu{
+            display:none;
+            position:absolute;
+            top:100%;
+            left:0;
+            width:100%;
+            background:white;
+            padding:20px;
+            box-shadow:0 10px 30px rgba(0,0,0,.1);
+        }
+
+        .mobile-menu.active{
+            display:block;
+        }
+
+        .mobile-menu a{
+            display:block;
+            padding:12px 0;
+            color:var(--dark);
+            border-bottom:1px solid var(--border);
+        }
+
+        .mobile-menu a:last-child{
+            border-bottom:none;
+        }
+
         @media(max-width:992px){
 
             .hero-grid,
@@ -737,8 +763,23 @@
             @endauth
         </div>
 
-        <div class="menu-toggle">
+        <div class="menu-toggle" id="menuToggle">
             <i class="fa-solid fa-bars"></i>
+        </div>
+
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="#features">Features</a>
+            <a href="#how">How It Works</a>
+            <a href="#trust">Trust & Security</a>
+            <a href="#faq">FAQ</a>
+            <a href="#contact">Contact</a>
+
+            @auth
+            <a href="/register" style="color:var(--primary);font-weight:600;">Dashboard</a>
+            @else
+            <a href="/login" style="color:var(--primary);font-weight:600;">Login</a>
+            <a href="/register" style="color:var(--primary);font-weight:600;">Get Started</a>
+            @endauth
         </div>
 
     </div>
@@ -1263,6 +1304,23 @@
             navbar.classList.remove('scrolled');
         }
     });
+
+    // Mobile Menu Toggle
+    const menuToggle = document.getElementById('menuToggle');
+    const mobileMenu = document.getElementById('mobileMenu');
+
+    if(menuToggle && mobileMenu){
+        menuToggle.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+        });
+
+        // Close menu when clicking on a link
+        mobileMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+            });
+        });
+    }
 
     // FAQ Accordion
     const faqItems = document.querySelectorAll('.faq-item');
