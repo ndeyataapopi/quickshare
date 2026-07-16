@@ -229,17 +229,17 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(portfolioCtx, {
         type: 'line',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            labels: @json($portfolioData['labels']),
             datasets: [{
                 label: 'Portfolio Value',
-                data: [10000, 12000, 11500, 13500, 14000, 15000],
+                data: @json($portfolioData['portfolio_value']),
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.1)',
                 tension: 0.4,
                 fill: true
             }, {
                 label: 'Total Invested',
-                data: [10000, 11000, 11000, 12000, 12000, 13000],
+                data: @json($portfolioData['total_invested']),
                 borderColor: 'rgb(255, 99, 132)',
                 backgroundColor: 'rgba(255, 99, 132, 0.1)',
                 tension: 0.4,
@@ -271,14 +271,16 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(distributionCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Business Loans', 'Personal Loans', 'Medical Loans', 'Education Loans'],
+            labels: @json($distributionData['labels']),
             datasets: [{
-                data: [35, 25, 20, 20],
+                data: @json($distributionData['data']),
                 backgroundColor: [
                     'rgba(54, 162, 235, 0.8)',
                     'rgba(255, 99, 132, 0.8)',
                     'rgba(255, 206, 86, 0.8)',
-                    'rgba(75, 192, 192, 0.8)'
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)'
                 ],
                 borderWidth: 2
             }]
