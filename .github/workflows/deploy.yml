@@ -74,6 +74,8 @@ jobs:
             php artisan view:cache
             php artisan event:cache || true
 
+            php artisan cache:clear
+
             ####################################
             # Restart queues
             ####################################
