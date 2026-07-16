@@ -143,6 +143,11 @@ jobs:
             cd "$RELEASES_PATH"
             ls -t | tail -n +6 | xargs -r rm -rf
             
+            # Cleanup old log files (keep last 7 days)
+            echo "Cleaning up old log files..."
+            find "$SHARED_PATH/storage/logs" -name "*.log" -type f -mtime +7 -delete
+            find "$SHARED_PATH/storage/logs" -name "laravel-*.log" -type f -mtime +7 -delete
+            
             echo "=========================================="
             echo "Deployment completed successfully at $(date)"
             echo "Release: $TIMESTAMP"
