@@ -7,6 +7,17 @@
         <!-- Sidebar navigation-->
         <nav class="sidebar-nav">
             <ul id="sidebarnav">
+            @if(auth()->check() && auth()->user()->hasRole('client'))
+            @php $kyc = auth()->user()->kycSubmission; $kycApproved = $kyc && $kyc->isApproved(); @endphp
+            @if(!$kycApproved)
+            <script>
+                function showKycRequiredAlert() {
+                    alert('KYC Verification Required\n\nTo access this feature, you must complete your KYC verification. Please upload your KYC documents to proceed.');
+                    window.location.href = '{{ route('client.kyc.upload') }}';
+                }
+            </script>
+            @endif
+            @endif
                 @auth
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark profile-dd" href="javascript:void(0)" aria-expanded="false">
@@ -119,37 +130,37 @@
                 </li>
                 @endif
                 <li class="sidebar-item @if(!$kycApproved) disabled @endif">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.loans.*')) active @endif" @if($kycApproved) href="{{ route('client.loans.index') }}" @else href="javascript:void(0)" @endif>
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.loans.*')) active @endif" @if($kycApproved) href="{{ route('client.loans.index') }}" @else href="javascript:void(0)" onclick="showKycRequiredAlert()" @endif title="@if(!$kycApproved) KYC verification required @endif">
                         <i class="mdi mdi-cash"></i>
                         <span class="hide-menu">My Loans</span>
                     </a>
                 </li>
                 <li class="sidebar-item @if(!$kycApproved) disabled @endif">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.repayments.*')) active @endif" @if($kycApproved) href="{{ route('client.repayments.index') }}" @else href="javascript:void(0)" @endif>
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.repayments.*')) active @endif" @if($kycApproved) href="{{ route('client.repayments.index') }}" @else href="javascript:void(0)" onclick="showKycRequiredAlert()" @endif title="@if(!$kycApproved) KYC verification required @endif">
                         <i class="mdi mdi-cash-usd"></i>
                         <span class="hide-menu">Repayments</span>
                     </a>
                 </li>
                 <li class="sidebar-item @if(!$kycApproved) disabled @endif">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.marketplace.*')) active @endif" @if($kycApproved) href="{{ route('client.marketplace.index') }}" @else href="javascript:void(0)" @endif>
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.marketplace.*')) active @endif" @if($kycApproved) href="{{ route('client.marketplace.index') }}" @else href="javascript:void(0)" onclick="showKycRequiredAlert()" @endif title="@if(!$kycApproved) KYC verification required @endif">
                         <i class="mdi mdi-tune"></i>
                         <span class="hide-menu">Marketplace</span>
                     </a>
                 </li>
                 <li class="sidebar-item @if(!$kycApproved) disabled @endif">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.investments.*') || request()->routeIs('client.funding.*')) active @endif" @if($kycApproved) href="{{ route('client.investments.index') }}" @else href="javascript:void(0)" @endif>
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.investments.*') || request()->routeIs('client.funding.*')) active @endif" @if($kycApproved) href="{{ route('client.investments.index') }}" @else href="javascript:void(0)" onclick="showKycRequiredAlert()" @endif title="@if(!$kycApproved) KYC verification required @endif">
                         <i class="mdi mdi-trending-up"></i>
                         <span class="hide-menu">Investments</span>
                     </a>
                 </li>
                 <li class="sidebar-item @if(!$kycApproved) disabled @endif">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.earnings.*')) active @endif" @if($kycApproved) href="{{ route('client.earnings.index') }}" @else href="javascript:void(0)" @endif>
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.earnings.*')) active @endif" @if($kycApproved) href="{{ route('client.earnings.index') }}" @else href="javascript:void(0)" onclick="showKycRequiredAlert()" @endif title="@if(!$kycApproved) KYC verification required @endif">
                         <i class="mdi mdi-cash-multiple"></i>
                         <span class="hide-menu">Earnings</span>
                     </a>
                 </li>
                 <li class="sidebar-item @if(!$kycApproved) disabled @endif">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.analytics')) active @endif" @if($kycApproved) href="{{ route('client.analytics') }}" @else href="javascript:void(0)" @endif>
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('client.analytics')) active @endif" @if($kycApproved) href="{{ route('client.analytics') }}" @else href="javascript:void(0)" onclick="showKycRequiredAlert()" @endif title="@if(!$kycApproved) KYC verification required @endif">
                         <i class="mdi mdi-chart-bar"></i>
                         <span class="hide-menu">Analytics</span>
                     </a>

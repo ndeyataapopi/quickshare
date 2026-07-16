@@ -1,5 +1,14 @@
 @extends('layouts.app')
 @section('content')
+@php $kyc = auth()->user()->kycSubmission; $kycApproved = $kyc && $kyc->isApproved(); @endphp
+@if(!$kycApproved)
+<script>
+    function showKycRequiredAlert() {
+        alert('KYC Verification Required\n\nTo access this feature, you must complete your KYC verification. Please upload your KYC documents to proceed.');
+        window.location.href = '{{ route('client.kyc.upload') }}';
+    }
+</script>
+@endif
 <!-- ============================================================== -->
 <!-- Bread crumb and right sidebar toggle -->
 <!-- ============================================================== -->
@@ -152,7 +161,12 @@
                         <div class="text-center py-4">
                             <i class="mdi mdi-cash text-muted" style="font-size: 48px;"></i>
                             <p class="text-muted mt-2">No loans yet</p>
+                            @if($kycApproved)
                             <a href="{{ route('client.loans.create') }}" class="btn btn-sm btn-primary">Apply for a Loan</a>
+                            @else
+                            <button onclick="showKycRequiredAlert()" class="btn btn-sm btn-primary" disabled>Apply for a Loan</button>
+                            <small class="text-muted d-block mt-2">KYC verification required</small>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -242,7 +256,12 @@
                         <div class="text-center py-4">
                             <i class="mdi mdi-trending-up text-muted" style="font-size: 48px;"></i>
                             <p class="text-muted mt-2">No investments yet</p>
+                            @if($kycApproved)
                             <a href="{{ route('client.marketplace.index') }}" class="btn btn-sm btn-primary">Browse Marketplace</a>
+                            @else
+                            <button onclick="showKycRequiredAlert()" class="btn btn-sm btn-primary" disabled>Browse Marketplace</button>
+                            <small class="text-muted d-block mt-2">KYC verification required</small>
+                            @endif
                         </div>
                     @endif
                 </div>
