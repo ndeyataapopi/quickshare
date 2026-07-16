@@ -21,9 +21,29 @@
         $tierColor  = $tierColors[$tier] ?? 'secondary';
         $canBorrow  = \App\Modules\TrustScore\Services\TrustScoreService::canBorrow(auth()->user());
         $user = auth()->user();
-        $scoreHistory = []; // Mock data - would come from database
         $nextTierScore = $tier === 'bronze' ? 50 : ($tier === 'silver' ? 70 : ($tier === 'gold' ? 85 : 100));
         $pointsToNext = max(0, $nextTierScore - $score);
+        
+        // Format score history for chart
+        $historyLabels = $scoreHistory->map(fn($h) => $h->created_at->format('M j'))->toArray();
+        $historyData = $scoreHistory->map(fn($h) => (float)$h->new_score)->toArray();
+        
+        // If no history, use initial score
+        if (empty($historyData)) {
+            $historyLabels = ['Now'];
+            $historyData = [$score];
+        }
+        
+        // Format score factors for chart
+        $factorLabels = ['Repayments', 'KYC Status', 'Account Age', 'Referrals', 'Loan History', 'Activity'];
+        $factorData = [
+            round($scoreFactors['repayments']),
+            round($scoreFactors['kyc_status']),
+            round($scoreFactors['account_age']),
+            round($scoreFactors['referrals']),
+            round($scoreFactors['loan_history']),
+            round($scoreFactors['activity']),
+        ];
     @endphp
 
     <!-- Enhanced Score Display -->
@@ -68,10 +88,13 @@
             <div class="card text-center border-info">
                 <div class="card-body py-4">
                     <i class="mdi mdi-trending-up text-info" style="font-size: 48px;"></i>
-                    <h4 class="mt-2 text-info">+12.5</h4>
+                    <h4 class="mt-2 text-info">{{ $scoreChange >= 0 ? '+' : '' }}{{ number_format($scoreChange, 1) }}</h4>
                     <small class="text-muted">Score Change (30 days)</small>
                     <div class="mt-2">
-                        <small class="text-success"><i class="mdi mdi-arrow-up"></i> Improving</small>
+                        <small class="{{ $scoreChange >= 0 ? 'text-success' : 'text-danger' }}">
+                            <i class="mdi mdi-{{ $scoreChange >= 0 ? 'arrow-up' : 'arrow-down' }}"></i> 
+                            {{ $scoreChange >= 0 ? 'Improving' : 'Declining' }}
+                        </small>
                     </div>
                 </div>
             </div>
@@ -132,41 +155,21 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                @forelse($scoreHistory->reverse()->take(5) as $history)
                                 <tr>
-                                    <td>Jun 15, 2024</td>
-                                    <td>Loan repayment completed</td>
-                                    <td class="text-success">+5</td>
-                                    <td>72.5</td>
-                                    <td class="font-weight-bold">77.5</td>
+                                    <td>{{ $history->created_at->format('M j, Y') }}</td>
+                                    <td>{{ $history->reason ?? $history->event_type }}</td>
+                                    <td class="{{ $history->isPositive() ? 'text-success' : ($history->isNegative() ? 'text-danger' : 'text-info') }}">
+                                        {{ $history->change >= 0 ? '+' : '' }}{{ number_format($history->change, 1) }}
+                                    </td>
+                                    <td>{{ number_format($history->previous_score, 1) }}</td>
+                                    <td class="font-weight-bold">{{ number_format($history->new_score, 1) }}</td>
                                 </tr>
+                                @empty
                                 <tr>
-                                    <td>Jun 10, 2024</td>
-                                    <td>On-time repayment</td>
-                                    <td class="text-success">+3</td>
-                                    <td>69.5</td>
-                                    <td class="font-weight-bold">72.5</td>
+                                    <td colspan="5" class="text-center text-muted">No score history available</td>
                                 </tr>
-                                <tr>
-                                    <td>May 28, 2024</td>
-                                    <td>Referral completed</td>
-                                    <td class="text-success">+2</td>
-                                    <td>67.5</td>
-                                    <td class="font-weight-bold">69.5</td>
-                                </tr>
-                                <tr>
-                                    <td>May 15, 2024</td>
-                                    <td>KYC verification completed</td>
-                                    <td class="text-success">+10</td>
-                                    <td>57.5</td>
-                                    <td class="font-weight-bold">67.5</td>
-                                </tr>
-                                <tr>
-                                    <td>May 1, 2024</td>
-                                    <td>Account created</td>
-                                    <td class="text-info">+50</td>
-                                    <td>0</td>
-                                    <td class="font-weight-bold">50.0</td>
-                                </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
@@ -301,10 +304,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const scoreHistoryChart = new Chart(scoreHistoryCtx, {
         type: 'line',
         data: {
-            labels: ['May 1', 'May 5', 'May 10', 'May 15', 'May 20', 'May 25', 'May 30', 'Jun 5', 'Jun 10', 'Jun 15'],
+            labels: @json($historyLabels),
             datasets: [{
                 label: 'Trust Score',
-                data: [50, 50, 57.5, 67.5, 69.5, 69.5, 69.5, 72.5, 72.5, 77.5],
+                data: @json($historyData),
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.1)',
                 tension: 0.4,
@@ -342,10 +345,10 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(scoreFactorsCtx, {
         type: 'radar',
         data: {
-            labels: ['Repayments', 'KYC Status', 'Account Age', 'Referrals', 'Loan History', 'Activity'],
+            labels: @json($factorLabels),
             datasets: [{
                 label: 'Current Score',
-                data: [85, 100, 60, 40, 90, 70],
+                data: @json($factorData),
                 borderColor: 'rgb(54, 162, 235)',
                 backgroundColor: 'rgba(54, 162, 235, 0.2)',
                 pointBackgroundColor: 'rgb(54, 162, 235)',
