@@ -46,28 +46,6 @@
                     <h5 class="card-title text-uppercase mb-1">Submit KYC Documents</h5>
                     <p class="text-muted mb-4">All documents are encrypted and stored securely. Max file size: 10MB. Accepted: PDF, JPG, PNG.</p>
                     
-                    <!-- Progress Steps -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="text-center flex-fill">
-                                    <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;">1</div>
-                                    <small class="d-block mt-1">Identity Info</small>
-                                </div>
-                                <div class="flex-fill border-top pt-3"></div>
-                                <div class="text-center flex-fill">
-                                    <div class="rounded-circle bg-light text-muted d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;">2</div>
-                                    <small class="d-block mt-1">Documents</small>
-                                </div>
-                                <div class="flex-fill border-top pt-3"></div>
-                                <div class="text-center flex-fill">
-                                    <div class="rounded-circle bg-light text-muted d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;">3</div>
-                                    <small class="d-block mt-1">Review</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <form action="{{ route('client.kyc.store') }}" method="POST" enctype="multipart/form-data" id="kycForm">
                         @csrf
                         <h6 class="text-uppercase font-weight-bold mt-3 mb-3 text-primary"><i class="mdi mdi-card-text-outline mr-2"></i>Identity Document</h6>
