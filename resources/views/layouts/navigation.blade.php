@@ -21,7 +21,11 @@
                 @auth
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark profile-dd" href="javascript:void(0)" aria-expanded="false">
+                        @if(auth()->user()->profile_picture)
+                        <img src="{{ asset('storage/' . auth()->user()->profile_picture) }}" class="rounded-circle ml-2" width="30" style="object-fit:cover;">
+                        @else
                         <img src="{{ asset('assets/images/users/1.jpg') }}" class="rounded-circle ml-2" width="30">
+                        @endif
                         <span class="hide-menu">{{ auth()->user()->first_name }} {{ auth()->user()->last_name }}</span>
                     </a>
                     <ul aria-expanded="false" class="collapse first-level">

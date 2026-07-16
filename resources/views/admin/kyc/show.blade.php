@@ -42,16 +42,20 @@
                     <div class="row mb-3"><div class="col-sm-4 text-muted">Submitted</div><div class="col-sm-8">{{ optional($submission->submitted_at)->format('M j, Y g:i A') ?? $submission->created_at->format('M j, Y') }}</div></div>
                     @if($submission->documents && $submission->documents->count() > 0)
                     <h6 class="text-uppercase text-muted mt-4 mb-3">Documents</h6>
-                    <div class="row">
-                        @foreach($submission->documents as $document)
-                        <div class="col-md-6 mb-3">
-                            <p class="small font-weight-bold mb-1">{{ $document->getDocumentLabel() }}</p>
-                            <a href="{{ route('admin.kyc.document', $document) }}" target="_blank">
-                                <img src="{{ route('admin.kyc.document', $document) }}" class="img-fluid rounded border" alt="KYC Document">
-                            </a>
+                    @foreach($submission->documents as $document)
+                    <div class="mb-4">
+                        <p class="small font-weight-bold mb-2">{{ $document->getDocumentLabel() }}</p>
+                        @if(in_array($document->mime_type, ['application/pdf']))
+                        <div class="embed-responsive embed-responsive-4by3 border rounded">
+                            <iframe class="embed-responsive-item" src="{{ route('admin.kyc.document', $document) }}" style="height: 600px;"></iframe>
                         </div>
-                        @endforeach
+                        @else
+                        <a href="{{ route('admin.kyc.document', $document) }}" target="_blank">
+                            <img src="{{ route('admin.kyc.document', $document) }}" class="img-fluid rounded border" style="max-height: 600px;" alt="KYC Document">
+                        </a>
+                        @endif
                     </div>
+                    @endforeach
                     @endif
                 </div>
             </div>

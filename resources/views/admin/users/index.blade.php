@@ -62,9 +62,13 @@
                                 <tr class="cursor-pointer" onclick="window.location='{{ route('admin.users.show', $user) }}'">
                                     <td>
                                         <div class="d-flex align-items-center">
+                                            @if($user->profile_picture)
+                                            <img src="{{ asset('storage/' . $user->profile_picture) }}" class="rounded-circle mr-2" style="width:36px;height:36px;object-fit:cover;" alt="{{ $user->first_name }}">
+                                            @else
                                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-2" style="width:36px;height:36px;font-size:13px;font-weight:600;flex-shrink:0;">
                                                 {{ strtoupper(substr($user->first_name,0,1)) }}{{ strtoupper(substr($user->last_name,0,1)) }}
                                             </div>
+                                            @endif
                                             <div>
                                                 <div class="font-weight-bold">{{ $user->first_name }} {{ $user->last_name }}</div>
                                                 <small class="text-muted">{{ $user->phone }}</small>
