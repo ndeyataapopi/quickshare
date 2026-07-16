@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Modules\KYC\Models\KYCSubmission;
+use App\Modules\KYC\Models\KycSubmission;
 use App\Modules\KYC\Services\KycService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
