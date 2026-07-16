@@ -6,6 +6,7 @@ use App\Modules\KYC\Events\KycSubmitted;
 use App\Modules\KYC\Events\KycApproved;
 use App\Modules\KYC\Events\KycRejected;
 use App\Modules\KYC\Listeners\LogKycSubmission;
+use App\Modules\KYC\Listeners\NotifyAdminOfKycSubmission;
 use App\Modules\KYC\Listeners\NotifyKycStatus;
 use App\Modules\KYC\Listeners\UpdateUserVerificationStatus;
 use Illuminate\Support\Facades\Event;
