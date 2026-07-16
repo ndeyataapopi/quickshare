@@ -36,6 +36,11 @@ class CheckKYCStatus
             return $next($request);
         }
         
+        // Allow access if user is admin-approved (active status without KYC)
+        if ($user->status === 'active') {
+            return $next($request);
+        }
+        
         // Check if user has approved KYC
         $kyc = $user->kycSubmission;
         
