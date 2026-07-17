@@ -27,8 +27,8 @@ class KYCController extends Controller
             'issuing_country' => 'required|string|size:2',
             'expiry_date'     => 'required|date|after:today',
             'national_id'     => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'payslip'         => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
-            'bank_statement'  => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'payslip'         => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'bank_statement'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'selfie'          => 'required|file|mimes:jpg,jpeg,png|max:10240',
             'terms'           => 'required|accepted',
         ]);
