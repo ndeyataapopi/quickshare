@@ -17,7 +17,22 @@ class RegisterRequest extends FormRequest
             'referral_code' => ['required', 'string', 'size:8'],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'national_id' => ['required', 'string', 'max:20', 'unique:users,national_id'],
+            'national_id' => ['required', 'numeric', 'digits:11', 'unique:users,national_id', function ($attribute, $value, $fail) {
+                // Validate that first 6 digits (YYMMDD) match date of birth
+                $dateOfBirth = $this->input('date_of_birth');
+                if ($dateOfBirth) {
+                    $dob = \Carbon\Carbon::parse($dateOfBirth);
+                    $yy = $dob->format('y');
+                    $mm = $dob->format('m');
+                    $dd = $dob->format('d');
+                    $expectedPrefix = $yy . $mm . $dd;
+                    $actualPrefix = substr($value, 0, 6);
+                    
+                    if ($actualPrefix !== $expectedPrefix) {
+                        $fail('The first 6 digits of your National ID must match your date of birth in YYMMDD format.');
+                    }
+                }
+            }],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
             'date_of_birth' => ['required', 'date', 'before:-18 years'],
@@ -46,6 +61,8 @@ class RegisterRequest extends FormRequest
         return [
             'referral_code.required' => 'A referral code is required to register.',
             'referral_code.size' => 'Referral code must be exactly 8 characters.',
+            'national_id.digits' => 'National ID must be exactly 11 digits.',
+            'national_id.numeric' => 'National ID must contain only numbers.',
             'national_id.unique' => 'This national ID is already registered.',
             'email.unique' => 'This email address is already registered.',
             'phone.unique' => 'This phone number is already registered.',
