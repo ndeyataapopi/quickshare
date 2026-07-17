@@ -2,12 +2,15 @@
 
 namespace App\Modules\Admin\Controllers;
 
+use App\Enums\UserRole;
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Modules\Admin\Services\FraudDetectionService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AdminUserController extends Controller
 {
@@ -23,7 +26,7 @@ class AdminUserController extends Controller
     {
         $request->validate([
             'status' => ['sometimes', 'string', 'in:active,pending,suspended,inactive'],
-            'role' => ['sometimes', 'string', 'in:borrower,lender,admin'],
+            'role' => ['sometimes', Rule::enum(UserRole::class)],
             'search' => ['sometimes', 'string', 'min:2'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
@@ -121,11 +124,23 @@ class AdminUserController extends Controller
     public function updateRole(Request $request, User $user): JsonResponse
     {
         $validated = $request->validate([
-            'role' => ['required', 'string', 'in:borrower,lender,admin'],
+            'role' => ['required', Rule::enum(UserRole::class)],
         ]);
 
+        $role = UserRole::from($validated['role']);
+
+        if ($request->user()->is($user) && $role !== UserRole::ADMIN) {
+            throw new ApiException('You cannot remove your own administrator role.', 422);
+        }
+
+        if ($user->hasRole(UserRole::ADMIN->value)
+            && $role !== UserRole::ADMIN
+            && User::role(UserRole::ADMIN->value)->count() === 1) {
+            throw new ApiException('The last administrator cannot be demoted.', 422);
+        }
+
         // Remove existing roles and assign new one
-        $user->syncRoles([$validated['role']]);
+        $user->syncRoles([$role->value]);
 
         return $this->success(['user' => $user->fresh()], 'User role updated.');
     }

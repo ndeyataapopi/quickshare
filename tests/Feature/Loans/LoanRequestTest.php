@@ -3,12 +3,17 @@
 namespace Tests\Feature\Loans;
 
 use App\Models\User;
-use App\Modules\Loans\DTOs\LoanCalculation;
+use App\Modules\KYC\Models\KycSubmission;
 use App\Modules\Loans\DTOs\LoanRequestData;
+use App\Modules\Loans\Mail\LoanAgreementMail;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\LoanAgreementService;
 use App\Modules\Loans\Services\LoanService;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -17,20 +22,25 @@ class LoanRequestTest extends TestCase
     use RefreshDatabase;
 
     protected User $borrower;
+
     protected User $admin;
+
     protected LoanService $loanService;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->seed(RoleSeeder::class);
+        Storage::fake((string) config('loan.agreement.disk'));
+        Mail::fake();
         $this->loanService = app(LoanService::class);
 
         $this->borrower = User::factory()->active()->create(['trust_score' => 55.00]);
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
+        KycSubmission::factory()->approved()->create(['user_id' => $this->borrower->id]);
 
         $this->admin = User::factory()->active()->create(['trust_score' => 90.00]);
-        $this->admin->assignRole('admin');
+        $this->assignAdminRole($this->admin);
     }
 
     // ─── Loan Calculation Tests ──────────────────────────────────────
@@ -40,7 +50,7 @@ class LoanRequestTest extends TestCase
         $calc = $this->loanService->calculate($this->borrower, 10000.00, 90);
 
         $this->assertEquals(10000.00, $calc->principal);
-        $this->assertEquals(15.00, $calc->interestRate);
+        $this->assertEquals((float) config('loan.trust_tiers.silver.interest_percent'), $calc->interestRate);
         $this->assertEquals(90, $calc->termDays);
         $this->assertGreaterThan(0, $calc->interestAmount);
         $this->assertGreaterThan(0, $calc->platformFee);
@@ -62,9 +72,26 @@ class LoanRequestTest extends TestCase
     public function test_platform_fee_is_percentage_of_principal(): void
     {
         $calc = $this->loanService->calculate($this->borrower, 10000.00, 30);
-        $expectedFee = round(10000 * (config('loans.platform_fee_percent') / 100), 2);
+        $expectedFee = round(10000 * (config('loan.trust_tiers.silver.platform_fee_percent') / 100), 2);
 
         $this->assertEquals($expectedFee, $calc->platformFee);
+    }
+
+    public function test_loan_calculation_uses_configured_tier_rules(): void
+    {
+        config([
+            'loan.trust_tiers.silver.name' => 'custom-silver',
+            'loan.trust_tiers.silver.maximum_loan' => 4321.00,
+            'loan.trust_tiers.silver.interest_percent' => 12.50,
+            'loan.trust_tiers.silver.platform_fee_percent' => 2.25,
+        ]);
+
+        $calculation = $this->loanService->calculate($this->borrower, 1000.00, 30);
+
+        $this->assertEquals('custom-silver', $calculation->trustTier);
+        $this->assertEquals(4321.00, $calculation->maxAllowedAmount);
+        $this->assertEquals(12.50, $calculation->interestRate);
+        $this->assertEquals(22.50, $calculation->platformFee);
     }
 
     public function test_total_repayment_equals_principal_plus_interest_plus_fee(): void
@@ -98,8 +125,9 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $response = $this->postJson('/api/loans/request', [
-            'requested_amount' => 5000.00,
-            'loan_term_days' => 60,
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
+            ...$this->validAgreementConsent(),
         ]);
 
         $response->assertStatus(201)
@@ -126,8 +154,9 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => 5000.00,
-            'loan_term_days' => 60,
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
+            ...$this->validAgreementConsent(),
         ]);
 
         $loan = Loan::first();
@@ -135,13 +164,78 @@ class LoanRequestTest extends TestCase
         $this->assertEquals(15, strlen($loan->reference)); // QS- + 12 hex chars
     }
 
+    public function test_loan_request_generates_and_stores_complete_pdf_agreement(): void
+    {
+        Sanctum::actingAs($this->borrower);
+        $amount = (float) config('loans.min_amount');
+        $termDays = max(config('loan.trust_tiers.silver.allowed_durations'));
+
+        $this->withHeader('User-Agent', 'QuickShare-Test')->postJson('/api/loans/request', [
+            'requested_amount' => $amount,
+            'loan_term_days' => $termDays,
+            ...$this->validAgreementConsent(),
+        ])->assertCreated();
+
+        $loan = Loan::firstOrFail();
+        $calculation = $this->loanService->calculate($this->borrower, $amount, $termDays);
+        $agreementData = app(LoanAgreementService::class)->data($loan, $calculation, $loan->repayment_date);
+        $html = view('pdf.loan-agreement', $agreementData)->render();
+
+        Storage::disk((string) config('loan.agreement.disk'))->assertExists($loan->agreement_path);
+        $this->assertStringStartsWith('%PDF', Storage::disk((string) config('loan.agreement.disk'))->get($loan->agreement_path));
+        $this->assertEquals(config('loan.agreement.version'), $loan->agreement_version);
+        $this->assertNotNull($loan->agreement_generated_at);
+        $this->assertNotNull($loan->repayment_date);
+        $this->assertNotNull($loan->configuration_snapshot);
+        $this->assertSame('silver', $loan->configuration_snapshot['trust_tier']['name']);
+        $this->assertEquals($calculation->totalRepayment, $loan->configuration_snapshot['calculation']['total_repayment']);
+        $this->assertSame([
+            'agreement_read' => true,
+            'agreement_terms_accepted' => true,
+            'electronic_documents_consented' => true,
+        ], $loan->agreement_consent);
+        $this->assertSame('127.0.0.1', $loan->agreement_ip_address);
+        $this->assertSame('QuickShare-Test', $loan->agreement_user_agent);
+        $this->assertNotNull($loan->agreement_consented_at);
+        $this->assertStringContainsString($this->borrower->full_name, $html);
+        $this->assertStringContainsString($loan->reference, $html);
+        $this->assertStringContainsString('Trust Tier', $html);
+        $this->assertStringContainsString('Trust Score', $html);
+        $this->assertStringContainsString('Loan Amount', $html);
+        $this->assertStringContainsString('Interest', $html);
+        $this->assertStringContainsString('Platform Fee', $html);
+        $this->assertStringContainsString('Lender Return', $html);
+        $this->assertStringContainsString('Repayment', $html);
+        $this->assertStringContainsString('Repayment Date', $html);
+        $this->assertStringContainsString(config('loan.agreement.terms'), $html);
+        $this->assertStringContainsString(config('loan.agreement.conditions'), $html);
+        $this->assertStringContainsString('Agreement Version '.config('loan.agreement.version'), $html);
+        $this->assertStringContainsString(number_format($calculation->totalRepayment, 2), $html);
+        Mail::assertQueued(LoanAgreementMail::class, function (LoanAgreementMail $mail) use ($loan): bool {
+            $mail->assertTo($this->borrower->email);
+            $mail->assertSeeInHtml('Loan Summary');
+            $mail->assertSeeInHtml($loan->reference);
+            $mail->assertSeeInHtml(number_format((float) $loan->total_repayment, 2));
+            $mail->assertSeeInHtml($loan->repayment_date->format('d F Y'));
+            $mail->assertHasAttachment(
+                Attachment::fromStorageDisk(
+                    (string) config('loan.agreement.disk'),
+                    $loan->agreement_path,
+                )->as("loan-agreement-{$loan->reference}.pdf")
+                    ->withMime('application/pdf'),
+            );
+
+            return $mail->loan->is($loan) && $mail->queue === 'notifications';
+        });
+    }
+
     public function test_loan_request_fails_below_minimum_amount(): void
     {
         Sanctum::actingAs($this->borrower);
 
         $response = $this->postJson('/api/loans/request', [
-            'requested_amount' => 100.00,
-            'loan_term_days' => 60,
+            'requested_amount' => (float) config('loans.min_amount') - 1,
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]);
 
         $response->assertStatus(422);
@@ -153,8 +247,8 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $response = $this->postJson('/api/loans/request', [
-            'requested_amount' => 20000.00,
-            'loan_term_days' => 60,
+            'requested_amount' => (float) config('loan.trust_tiers.silver.maximum_loan') + 1,
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]);
 
         $response->assertStatus(422);
@@ -165,20 +259,32 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => 5000.00,
-            'loan_term_days' => 10, // below 30 min
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => min(config('loan.trust_tiers.silver.allowed_durations')) - 1, // below 30 min
         ])->assertStatus(422);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => 5000.00,
-            'loan_term_days' => 500, // above 365 max
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')) + 1, // above 365 max
+        ])->assertStatus(422);
+    }
+
+    public function test_loan_request_rejects_duration_not_allowed_for_tier(): void
+    {
+        config(['loan.trust_tiers.silver.allowed_durations' => [14, 28]]);
+        Sanctum::actingAs($this->borrower);
+
+        $this->postJson('/api/loans/request', [
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => 21,
         ])->assertStatus(422);
     }
 
     public function test_loan_request_fails_for_low_trust_score(): void
     {
         $lowTrustUser = User::factory()->active()->create(['trust_score' => 20.00]);
-        $lowTrustUser->assignRole('borrower');
+        $this->assignClientRole($lowTrustUser);
+        KycSubmission::factory()->approved()->create(['user_id' => $lowTrustUser->id]);
 
         Sanctum::actingAs($lowTrustUser);
 
@@ -193,13 +299,13 @@ class LoanRequestTest extends TestCase
     public function test_loan_request_fails_for_inactive_user(): void
     {
         $inactive = User::factory()->create(['trust_score' => 60.00, 'status' => 'suspended']);
-        $inactive->assignRole('borrower');
+        $this->assignClientRole($inactive);
 
         Sanctum::actingAs($inactive);
 
         $response = $this->postJson('/api/loans/request', [
-            'requested_amount' => 5000.00,
-            'loan_term_days' => 60,
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]);
 
         $response->assertStatus(422);
@@ -231,6 +337,55 @@ class LoanRequestTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_loan_request_requires_current_agreement_acceptance(): void
+    {
+        Sanctum::actingAs($this->borrower);
+
+        $this->postJson('/api/loans/request', [
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
+            'agreement_version' => 'outdated',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'agreement_read',
+                'agreement_terms',
+                'electronic_documents',
+                'agreement_version',
+            ]);
+
+        $this->assertDatabaseCount('loans', 0);
+    }
+
+    public function test_invalid_loan_configuration_prevents_creation(): void
+    {
+        config(['loan.agreement.terms' => '']);
+        $data = LoanRequestData::fromArray([
+            'borrower_id' => $this->borrower->id,
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
+            ...$this->validAgreementConsent(),
+        ]);
+
+        try {
+            $this->loanService->requestLoan($data);
+            $this->fail('Invalid loan configuration should prevent creation.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Loan configuration is invalid.', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('loans', 0);
+    }
+
+    protected function validAgreementConsent(): array
+    {
+        return [
+            'agreement_read' => true,
+            'agreement_terms' => true,
+            'electronic_documents' => true,
+            'agreement_version' => (string) config('loan.agreement.version'),
+        ];
+    }
+
     // ─── Calculation API Tests ───────────────────────────────────────
 
     public function test_borrower_can_calculate_loan(): void
@@ -238,8 +393,8 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $response = $this->postJson('/api/loans/calculate', [
-            'amount' => 10000.00,
-            'term_days' => 90,
+            'amount' => (float) config('loan.trust_tiers.silver.maximum_loan'),
+            'term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]);
 
         $response->assertStatus(200)
@@ -279,7 +434,7 @@ class LoanRequestTest extends TestCase
     public function test_borrower_cannot_view_other_users_loan(): void
     {
         $otherBorrower = User::factory()->active()->create(['trust_score' => 55.00]);
-        $otherBorrower->assignRole('borrower');
+        $this->assignClientRole($otherBorrower);
 
         $loan = Loan::create([
             'borrower_id' => $otherBorrower->id,
@@ -396,8 +551,17 @@ class LoanRequestTest extends TestCase
         $response->assertStatus(200);
 
         $approvedLoan = Loan::find($loan->id);
+        $calculation = $this->loanService->calculate($this->borrower, 8000.00, 60);
+        $agreementData = app(LoanAgreementService::class)->data($approvedLoan, $calculation, $approvedLoan->repayment_date);
+        $html = view('pdf.loan-agreement', $agreementData)->render();
+
         $this->assertEquals(8000.00, (float) $approvedLoan->approved_amount);
         $this->assertNotNull($approvedLoan->repayment_date);
+        Storage::disk((string) config('loan.agreement.disk'))->assertExists($approvedLoan->agreement_path);
+        $this->assertStringContainsString(number_format($calculation->principal, 2), $html);
+        $this->assertStringContainsString(number_format($calculation->interestAmount, 2), $html);
+        $this->assertStringContainsString(number_format($calculation->platformFee, 2), $html);
+        $this->assertStringContainsString(number_format($calculation->totalRepayment, 2), $html);
     }
 
     public function test_admin_can_reject_loan(): void
@@ -499,16 +663,16 @@ class LoanRequestTest extends TestCase
         $this->getJson('/api/loans/admin/pending')->assertStatus(403);
     }
 
-    public function test_lender_cannot_request_loans(): void
+    public function test_compliance_officer_cannot_request_loans(): void
     {
-        $lender = User::factory()->active()->create(['trust_score' => 60.00]);
-        $lender->assignRole('lender');
+        $officer = User::factory()->active()->create(['trust_score' => 60.00]);
+        $this->assignComplianceOfficerRole($officer);
 
-        Sanctum::actingAs($lender);
+        Sanctum::actingAs($officer);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => 5000,
-            'loan_term_days' => 60,
+            'requested_amount' => (float) config('loans.min_amount'),
+            'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ])->assertStatus(403);
     }
 
@@ -528,12 +692,24 @@ class LoanRequestTest extends TestCase
             'requested_amount' => 5000,
             'loan_term_days' => 60,
             'purpose' => 'Home repairs',
+            'agreement_read' => true,
+            'agreement_terms' => true,
+            'electronic_documents' => true,
+            'agreement_version' => '1.0',
+            'ip_address' => '203.0.113.20',
+            'user_agent' => 'QuickShare-API',
         ]);
 
         $this->assertEquals(1, $dto->borrowerId);
         $this->assertEquals(5000.00, $dto->requestedAmount);
         $this->assertEquals(60, $dto->loanTermDays);
         $this->assertEquals('Home repairs', $dto->purpose);
+        $this->assertTrue($dto->agreementRead);
+        $this->assertTrue($dto->agreementTermsAccepted);
+        $this->assertTrue($dto->electronicDocumentsConsented);
+        $this->assertSame('1.0', $dto->agreementVersion);
+        $this->assertSame('203.0.113.20', $dto->ipAddress);
+        $this->assertSame('QuickShare-API', $dto->userAgent);
     }
 
     public function test_loan_request_data_to_array(): void
@@ -542,6 +718,12 @@ class LoanRequestTest extends TestCase
             borrowerId: 1,
             requestedAmount: 5000.00,
             loanTermDays: 60,
+            agreementRead: true,
+            agreementTermsAccepted: true,
+            electronicDocumentsConsented: true,
+            agreementVersion: '1.0',
+            ipAddress: '203.0.113.20',
+            userAgent: 'QuickShare-API',
         );
 
         $arr = $dto->toArray();
@@ -550,6 +732,12 @@ class LoanRequestTest extends TestCase
         $this->assertEquals(5000.00, $arr['requested_amount']);
         $this->assertEquals(60, $arr['loan_term_days']);
         $this->assertNull($arr['purpose']);
+        $this->assertTrue($arr['agreement_read']);
+        $this->assertTrue($arr['agreement_terms']);
+        $this->assertTrue($arr['electronic_documents']);
+        $this->assertSame('1.0', $arr['agreement_version']);
+        $this->assertSame('203.0.113.20', $arr['ip_address']);
+        $this->assertSame('QuickShare-API', $arr['user_agent']);
     }
 
     // ─── Model Tests ─────────────────────────────────────────────────

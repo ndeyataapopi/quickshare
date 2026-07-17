@@ -2,6 +2,7 @@
 
 namespace App\Modules\Auth\Services;
 
+use App\Enums\UserRole;
 use App\Exceptions\ApiException;
 use App\Models\Address;
 use App\Models\Referral;
@@ -26,14 +27,9 @@ class RegistrationService
             $this->trackReferral($referralCode, $user);
 
             // Assign role - client gets both borrower and lender roles
-            $role = $data['role'] ?? 'client';
-            if ($role === 'client') {
-                // $user->assignRole('borrower');
-                // $user->assignRole('lender');
-                $user->assignRole('client');
-            } else {
-                $user->assignRole($role);
-            }
+            // $user->assignRole('borrower');
+            // $user->assignRole('lender');
+            $user->assignRole(UserRole::CLIENT->value);
 
             event(new UserRegistered($user));
 

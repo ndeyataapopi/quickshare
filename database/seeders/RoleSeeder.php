@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -31,6 +32,7 @@ class RoleSeeder extends Seeder
             'fund_loan',
             'view_marketplace',
             'view_own_portfolio',
+            'view_lender_earnings',
             'submit_kyc',
             'view_own_profile',
             'manage_referrals',
@@ -41,7 +43,7 @@ class RoleSeeder extends Seeder
         }
 
         // Create roles and assign permissions
-        $admin = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = Role::firstOrCreate(['name' => UserRole::ADMIN->value, 'guard_name' => 'web']);
         $admin->syncPermissions([
             'approve_kyc',
             'reject_kyc',
@@ -50,10 +52,11 @@ class RoleSeeder extends Seeder
             'manage_repayments',
             'view_reports',
             'view_marketplace',
+            'view_lender_earnings',
             'manage_referrals',
         ]);
 
-        $complianceOfficer = Role::firstOrCreate(['name' => 'compliance_officer', 'guard_name' => 'web']);
+        $complianceOfficer = Role::firstOrCreate(['name' => UserRole::COMPLIANCE_OFFICER->value, 'guard_name' => 'web']);
         $complianceOfficer->syncPermissions([
             'approve_kyc',
             'reject_kyc',
@@ -62,7 +65,7 @@ class RoleSeeder extends Seeder
         ]);
 
         // Client role - both borrower and lender
-        $client = Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+        $client = Role::firstOrCreate(['name' => UserRole::CLIENT->value, 'guard_name' => 'web']);
         $client->syncPermissions([
             'request_loan',
             'view_own_loans',
@@ -70,6 +73,7 @@ class RoleSeeder extends Seeder
             'fund_loan',
             'view_marketplace',
             'view_own_portfolio',
+            'view_lender_earnings',
             'view_own_profile',
             'submit_kyc',
             'manage_referrals',

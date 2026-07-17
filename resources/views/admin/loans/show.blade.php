@@ -86,6 +86,9 @@
                         </button>
                     </form>
                     @endif
+                    <a href="{{ route('admin.loans.agreement', $loan) }}" class="btn btn-outline-info btn-block mt-2" @if(! $loan->agreement_path) disabled @endif>
+                        <i class="mdi mdi-file-document-outline mr-1"></i> View Agreement
+                    </a>
                     <a href="{{ route('admin.loans.index') }}" class="btn btn-outline-secondary btn-block mt-2">
                         <i class="mdi mdi-arrow-left mr-1"></i> Back to Loans
                     </a>

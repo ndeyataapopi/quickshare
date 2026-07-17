@@ -28,17 +28,17 @@ class KycSubmissionTest extends TestCase
         Queue::fake();
 
         $this->borrower = User::factory()->active()->create();
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
 
         $this->admin = User::factory()->active()->create();
-        $this->admin->assignRole('admin');
+        $this->assignAdminRole($this->admin);
     }
 
     protected function kycFiles(): array
     {
         return [
-            'national_id_front' => UploadedFile::fake()->image('id_front.jpg', 800, 600)->size(500),
-            'national_id_back' => UploadedFile::fake()->image('id_back.jpg', 800, 600)->size(500),
+            'national_id' => UploadedFile::fake()->image('national_id.jpg', 800, 600)->size(500),
+            'selfie' => UploadedFile::fake()->image('selfie.jpg', 800, 600)->size(500),
             'payslip' => UploadedFile::fake()->create('payslip.pdf', 1024, 'application/pdf'),
             'bank_statement' => UploadedFile::fake()->create('statement.pdf', 2048, 'application/pdf'),
         ];
@@ -79,7 +79,7 @@ class KycSubmissionTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $response = $this->postJson('/api/kyc/submit', [
-            'national_id_front' => UploadedFile::fake()->image('id_front.jpg'),
+            'national_id' => UploadedFile::fake()->image('national_id.jpg'),
         ]);
 
         $response->assertStatus(422);
@@ -90,7 +90,7 @@ class KycSubmissionTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $files = $this->kycFiles();
-        $files['national_id_front'] = UploadedFile::fake()->create('malware.exe', 500, 'application/x-msdownload');
+        $files['national_id'] = UploadedFile::fake()->create('malware.exe', 500, 'application/x-msdownload');
 
         $response = $this->postJson('/api/kyc/submit', $files);
 
@@ -305,7 +305,7 @@ class KycSubmissionTest extends TestCase
     public function test_compliance_officer_can_review_kyc(): void
     {
         $officer = User::factory()->active()->create();
-        $officer->assignRole('compliance_officer');
+        $this->assignComplianceOfficerRole($officer);
 
         $submission = KycSubmission::create([
             'user_id' => $this->borrower->id,

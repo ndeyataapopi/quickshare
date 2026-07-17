@@ -52,11 +52,17 @@ class KycService
                 ],
             ]);
 
-            // Store all required documents
+            // Store required documents
             $this->storeDocument($submission, $user, 'national_id', $data['national_id']);
-            $this->storeDocument($submission, $user, 'payslip', $data['payslip']);
-            $this->storeDocument($submission, $user, 'bank_statement', $data['bank_statement']);
             $this->storeDocument($submission, $user, 'selfie', $data['selfie']);
+            
+            // Store optional documents if provided
+            if (isset($data['payslip']) && $data['payslip']) {
+                $this->storeDocument($submission, $user, 'payslip', $data['payslip']);
+            }
+            if (isset($data['bank_statement']) && $data['bank_statement']) {
+                $this->storeDocument($submission, $user, 'bank_statement', $data['bank_statement']);
+            }
 
             event(new KycSubmitted($user, 'full_submission'));
 

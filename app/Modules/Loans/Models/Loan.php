@@ -3,8 +3,12 @@
 namespace App\Modules\Loans\Models;
 
 use App\Models\User;
+use App\Modules\Collections\Models\CollectionLog;
+use App\Modules\Funding\Models\FundingTransaction;
+use App\Modules\Repayments\Models\Repayment;
 use App\Traits\Auditable;
 use App\Traits\HasActivityLog;
+use Database\Factories\LoanFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,7 +20,7 @@ class Loan extends Model
 
     protected static function newFactory()
     {
-        return \Database\Factories\LoanFactory::new();
+        return LoanFactory::new();
     }
 
     protected $fillable = [
@@ -29,6 +33,14 @@ class Loan extends Model
         'total_repayment',
         'funded_amount',
         'repayment_date',
+        'agreement_path',
+        'agreement_version',
+        'agreement_generated_at',
+        'configuration_snapshot',
+        'agreement_consent',
+        'agreement_ip_address',
+        'agreement_user_agent',
+        'agreement_consented_at',
         'loan_term_days',
         'status',
         'risk_score',
@@ -57,6 +69,10 @@ class Loan extends Model
             'funded_amount' => 'decimal:2',
             'risk_score' => 'decimal:2',
             'repayment_date' => 'date',
+            'agreement_generated_at' => 'datetime',
+            'configuration_snapshot' => 'array',
+            'agreement_consent' => 'array',
+            'agreement_consented_at' => 'datetime',
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
             'disbursed_at' => 'datetime',
@@ -81,7 +97,7 @@ class Loan extends Model
 
     public function fundingTransactions(): HasMany
     {
-        return $this->hasMany(\App\Modules\Funding\Models\FundingTransaction::class);
+        return $this->hasMany(FundingTransaction::class);
     }
 
     public function disbursements(): HasMany
@@ -91,12 +107,12 @@ class Loan extends Model
 
     public function repayments(): HasMany
     {
-        return $this->hasMany(\App\Modules\Repayments\Models\Repayment::class);
+        return $this->hasMany(Repayment::class);
     }
 
     public function collectionLogs(): HasMany
     {
-        return $this->hasMany(\App\Modules\Collections\Models\CollectionLog::class);
+        return $this->hasMany(CollectionLog::class);
     }
 
     // ─── Status Helpers ──────────────────────────────────────────────
@@ -185,7 +201,7 @@ class Loan extends Model
         }
 
         $repaidAmount = (float) $this->repayments()->where('status', 'completed')->sum('amount');
-        
+
         return round(($repaidAmount / $totalRepayment) * 100, 2);
     }
 
@@ -221,7 +237,7 @@ class Loan extends Model
     public static function generateReference(): string
     {
         do {
-            $reference = 'QS-' . strtoupper(bin2hex(random_bytes(6)));
+            $reference = 'QS-'.strtoupper(bin2hex(random_bytes(6)));
         } while (static::where('reference', $reference)->exists());
 
         return $reference;

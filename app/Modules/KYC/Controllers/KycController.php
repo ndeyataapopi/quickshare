@@ -23,8 +23,8 @@ class KycController extends Controller
     public function submit(SubmitKycRequest $request): JsonResponse
     {
         $documents = [
-            'national_id_front' => $request->file('national_id_front'),
-            'national_id_back' => $request->file('national_id_back'),
+            'national_id' => $request->file('national_id'),
+            'selfie' => $request->file('selfie'),
             'payslip' => $request->file('payslip'),
             'bank_statement' => $request->file('bank_statement'),
         ];
@@ -39,7 +39,7 @@ class KycController extends Controller
     public function resubmit(ResubmitKycRequest $request, KycSubmission $submission): JsonResponse
     {
         $documents = [];
-        foreach (['national_id_front', 'national_id_back', 'payslip', 'bank_statement'] as $type) {
+        foreach (['national_id', 'selfie', 'payslip', 'bank_statement'] as $type) {
             if ($request->hasFile($type)) {
                 $documents[$type] = $request->file($type);
             }

@@ -107,10 +107,10 @@
                         </div>
                         
                         <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Payslip <span class="text-danger">*</span></label>
+                            <label class="col-sm-4 col-form-label">Payslip</label>
                             <div class="col-sm-8">
                                 <div class="custom-file-upload">
-                                    <input type="file" name="payslip" id="payslip" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    <input type="file" name="payslip" id="payslip" class="file-input" accept=".pdf,.jpg,.jpeg,.png">
                                     <label for="payslip" class="file-label">
                                         <i class="mdi mdi-cloud-upload mr-2"></i>
                                         <span class="file-text">Choose file or drag here</span>
@@ -122,10 +122,10 @@
                         </div>
                         
                         <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Bank Statement (3 months) <span class="text-danger">*</span></label>
+                            <label class="col-sm-4 col-form-label">Bank Statement (3 months)</label>
                             <div class="col-sm-8">
                                 <div class="custom-file-upload">
-                                    <input type="file" name="bank_statement" id="bank_statement" class="file-input" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    <input type="file" name="bank_statement" id="bank_statement" class="file-input" accept=".pdf,.jpg,.jpeg,.png">
                                     <label for="bank_statement" class="file-label">
                                         <i class="mdi mdi-cloud-upload mr-2"></i>
                                         <span class="file-text">Choose file or drag here</span>

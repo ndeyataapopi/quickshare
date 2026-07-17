@@ -26,10 +26,10 @@ class MarketplaceTest extends TestCase
         $this->service = app(MarketplaceService::class);
 
         $this->lender = User::factory()->active()->create(['trust_score' => 70.00]);
-        $this->lender->assignRole('lender');
+        $this->assignClientRole($this->lender);
 
         $this->borrower = User::factory()->active()->create(['trust_score' => 65.00]);
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
     }
 
     protected function createMarketplaceLoan(array $overrides = []): Loan
@@ -112,9 +112,9 @@ class MarketplaceTest extends TestCase
     public function test_filter_by_risk_level(): void
     {
         $highTrust = User::factory()->active()->create(['trust_score' => 80.00]);
-        $highTrust->assignRole('borrower');
+        $this->assignClientRole($highTrust);
         $lowTrust = User::factory()->active()->create(['trust_score' => 35.00]);
-        $lowTrust->assignRole('borrower');
+        $this->assignClientRole($lowTrust);
 
         $this->createMarketplaceLoan(['borrower' => $highTrust]);
         $this->createMarketplaceLoan(['borrower' => $lowTrust]);
@@ -129,9 +129,9 @@ class MarketplaceTest extends TestCase
     public function test_filter_by_trust_tier(): void
     {
         $goldUser = User::factory()->active()->create(['trust_score' => 75.00]);
-        $goldUser->assignRole('borrower');
+        $this->assignClientRole($goldUser);
         $silverUser = User::factory()->active()->create(['trust_score' => 55.00]);
-        $silverUser->assignRole('borrower');
+        $this->assignClientRole($silverUser);
 
         $this->createMarketplaceLoan(['borrower' => $goldUser]);
         $this->createMarketplaceLoan(['borrower' => $silverUser]);
@@ -170,9 +170,9 @@ class MarketplaceTest extends TestCase
     public function test_sort_by_trust_score_descending(): void
     {
         $low = User::factory()->active()->create(['trust_score' => 40.00]);
-        $low->assignRole('borrower');
+        $this->assignClientRole($low);
         $high = User::factory()->active()->create(['trust_score' => 80.00]);
-        $high->assignRole('borrower');
+        $this->assignClientRole($high);
 
         $this->createMarketplaceLoan(['borrower' => $low]);
         $this->createMarketplaceLoan(['borrower' => $high]);
@@ -314,9 +314,9 @@ class MarketplaceTest extends TestCase
     public function test_higher_trust_score_gives_higher_probability(): void
     {
         $highTrust = User::factory()->active()->create(['trust_score' => 90.00]);
-        $highTrust->assignRole('borrower');
+        $this->assignClientRole($highTrust);
         $lowTrust = User::factory()->active()->create(['trust_score' => 35.00]);
-        $lowTrust->assignRole('borrower');
+        $this->assignClientRole($lowTrust);
 
         $loan1 = $this->createMarketplaceLoan(['borrower' => $highTrust]);
         $loan2 = $this->createMarketplaceLoan(['borrower' => $lowTrust]);
@@ -535,17 +535,17 @@ class MarketplaceTest extends TestCase
 
     // ─── RBAC Tests ──────────────────────────────────────────────────
 
-    public function test_borrower_cannot_access_marketplace(): void
+    public function test_client_can_access_marketplace(): void
     {
         Sanctum::actingAs($this->borrower);
 
-        $this->getJson('/api/marketplace')->assertStatus(403);
+        $this->getJson('/api/marketplace')->assertStatus(200);
     }
 
     public function test_admin_can_access_marketplace(): void
     {
         $admin = User::factory()->active()->create();
-        $admin->assignRole('admin');
+        $this->assignAdminRole($admin);
 
         Sanctum::actingAs($admin);
 

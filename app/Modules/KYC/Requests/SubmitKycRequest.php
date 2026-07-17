@@ -16,8 +16,8 @@ class SubmitKycRequest extends FormRequest
         $maxSize = 10 * 1024; // 10MB in kilobytes
 
         return [
-            'national_id_front' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
-            'national_id_back' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
+            'national_id' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
+            'selfie' => ['required', 'file', 'mimes:jpg,jpeg,png,webp', "max:{$maxSize}"],
             'payslip' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
             'bank_statement' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
         ];
@@ -26,8 +26,8 @@ class SubmitKycRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'national_id_front.required' => 'National ID front image is required.',
-            'national_id_back.required' => 'National ID back image is required.',
+            'national_id.required' => 'National ID document is required.',
+            'selfie.required' => 'Selfie image is required.',
             'payslip.required' => 'Payslip document is required.',
             'bank_statement.required' => '3-month bank statement is required.',
             '*.mimes' => 'Only JPG, PNG, WebP, and PDF files are allowed.',

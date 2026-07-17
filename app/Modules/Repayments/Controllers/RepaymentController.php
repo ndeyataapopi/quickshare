@@ -135,8 +135,8 @@ class RepaymentController extends Controller
         $user = $request->user();
 
         // Only lenders can view earnings
-        if (! $user->hasRole('lender') && ! $user->hasRole('admin')) {
-            return $this->forbidden('Only lenders can view earnings.');
+        if (! $user->can('view_lender_earnings')) {
+            return $this->forbidden('You are not authorized to view lender earnings.');
         }
 
         $summary = $this->repaymentService->getLenderEarningsSummary($user->id);
@@ -160,8 +160,8 @@ class RepaymentController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->hasRole('lender') && ! $user->hasRole('admin')) {
-            return $this->forbidden('Only lenders can view earnings.');
+        if (! $user->can('view_lender_earnings')) {
+            return $this->forbidden('You are not authorized to view lender earnings.');
         }
 
         $summary = $this->repaymentService->getLenderEarningsSummary($user->id);

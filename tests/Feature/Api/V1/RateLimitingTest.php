@@ -43,7 +43,7 @@ class RateLimitingTest extends TestCase
     public function test_api_responses_include_rate_limit_headers(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/auth/me');
@@ -120,7 +120,7 @@ class RateLimitingTest extends TestCase
     {
         // User without admin permission tries admin endpoint
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/loans/admin/pending');

@@ -26,10 +26,10 @@ class AffordabilityTest extends TestCase
         $this->service = app(AffordabilityService::class);
 
         $this->borrower = User::factory()->active()->create(['trust_score' => 65.00]);
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
 
         $this->admin = User::factory()->active()->create(['trust_score' => 90.00]);
-        $this->admin->assignRole('admin');
+        $this->assignAdminRole($this->admin);
     }
 
     protected function healthyInput(): AffordabilityInput
@@ -251,7 +251,7 @@ class AffordabilityTest extends TestCase
         $maxLoan = $this->service->calculateMaxLoan($this->borrower);
 
         // Silver tier (score 65) = 15000 max
-        $this->assertEquals(15000.00, $maxLoan);
+        $this->assertEquals((float) config('loan.trust_tiers.silver.maximum_loan'), $maxLoan);
     }
 
     public function test_max_loan_limited_by_income(): void
@@ -507,12 +507,12 @@ class AffordabilityTest extends TestCase
 
     // ─── RBAC Tests ──────────────────────────────────────────────────
 
-    public function test_lender_cannot_access_affordability(): void
+    public function test_compliance_officer_cannot_access_affordability(): void
     {
-        $lender = User::factory()->active()->create();
-        $lender->assignRole('lender');
+        $officer = User::factory()->active()->create();
+        $this->assignComplianceOfficerRole($officer);
 
-        Sanctum::actingAs($lender);
+        Sanctum::actingAs($officer);
 
         $this->postJson('/api/loans/affordability/assess', [
             'monthly_income' => 20000,

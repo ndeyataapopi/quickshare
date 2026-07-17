@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Address;
 use App\Models\ReferralCode;
@@ -144,7 +145,7 @@ class UserController extends Controller
             ]);
 
             // Assign client role
-            $user->assignRole('client');
+            $user->assignRole(UserRole::CLIENT->value);
 
             // Send email verification notification
             $user->sendEmailVerificationNotification();

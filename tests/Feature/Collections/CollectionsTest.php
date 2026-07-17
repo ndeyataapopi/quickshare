@@ -29,16 +29,16 @@ class CollectionsTest extends TestCase
         $this->service = app(CollectionService::class);
 
         $this->referrer = User::factory()->active()->create(['trust_score' => 70.00]);
-        $this->referrer->assignRole('lender');
+        $this->assignClientRole($this->referrer);
 
         $this->borrower = User::factory()->active()->create([
             'trust_score' => 65.00,
             'referred_by' => $this->referrer->id,
         ]);
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
 
         $this->admin = User::factory()->active()->create(['trust_score' => 90.00]);
-        $this->admin->assignRole('admin');
+        $this->assignAdminRole($this->admin);
         $this->admin = $this->admin->fresh();
     }
 

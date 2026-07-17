@@ -26,14 +26,14 @@ class FraudDetectionTest extends TestCase
         $this->service = app(FraudDetectionService::class);
 
         $this->admin = User::factory()->active()->create();
-        $this->admin->assignRole('admin');
+        $this->assignAdminRole($this->admin);
         $this->admin = $this->admin->fresh();
 
         $this->user = User::factory()->active()->create([
             'national_id' => '123456789',
             'trust_score' => 70.00,
         ]);
-        $this->user->assignRole('borrower');
+        $this->assignClientRole($this->user);
     }
 
     // ─── Duplicate Identity Detection ────────────────────────────────────

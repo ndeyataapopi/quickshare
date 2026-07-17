@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserRole;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,7 @@ class CheckKYCStatus
         $user = Auth::user();
         
         // Skip KYC check for non-client users
-        if (!$user || !$user->hasRole('client')) {
+        if (!$user || !$user->hasRole(UserRole::CLIENT->value)) {
             return $next($request);
         }
         

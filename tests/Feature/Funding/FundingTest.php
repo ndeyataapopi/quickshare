@@ -27,10 +27,10 @@ class FundingTest extends TestCase
         $this->service = app(FundingService::class);
 
         $this->lender = User::factory()->active()->create(['trust_score' => 80.00]);
-        $this->lender->assignRole('lender');
+        $this->assignClientRole($this->lender);
 
         $this->borrower = User::factory()->active()->create(['trust_score' => 65.00]);
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
     }
 
     protected function createMarketplaceLoan(array $overrides = []): Loan
@@ -105,7 +105,7 @@ class FundingTest extends TestCase
         $loan = $this->createMarketplaceLoan();
 
         $lender2 = User::factory()->active()->create();
-        $lender2->assignRole('lender');
+        $this->assignClientRole($lender2);
 
         Sanctum::actingAs($this->lender);
         $this->postJson("/api/funding/{$loan->id}", ['amount' => 3000])->assertOk();
@@ -348,7 +348,7 @@ class FundingTest extends TestCase
     {
         $loan = $this->createMarketplaceLoan();
         $lender2 = User::factory()->active()->create();
-        $lender2->assignRole('lender');
+        $this->assignClientRole($lender2);
 
         $transaction = FundingTransaction::create([
             'loan_id' => $loan->id,
@@ -373,9 +373,9 @@ class FundingTest extends TestCase
         $loan = $this->createMarketplaceLoan(['funded_amount' => 6000]);
 
         $lender2 = User::factory()->active()->create();
-        $lender2->assignRole('lender');
+        $this->assignClientRole($lender2);
         $lender3 = User::factory()->active()->create();
-        $lender3->assignRole('lender');
+        $this->assignClientRole($lender3);
 
         FundingTransaction::create([
             'loan_id' => $loan->id,
@@ -455,10 +455,11 @@ class FundingTest extends TestCase
 
     public function test_expected_return_calculation(): void
     {
+        config(['loan.trust_tiers.silver.lender_return_percent' => 8.00]);
         $loan = $this->createMarketplaceLoan([
             'approved_amount' => 10000,
             'interest_rate' => 15.00,
-            'loan_term_days' => 60,
+            'loan_term_days' => 30,
         ]);
 
         Sanctum::actingAs($this->lender);
@@ -467,16 +468,14 @@ class FundingTest extends TestCase
             'amount' => 5000,
         ]);
 
-        $response->assertOk();
-        $expectedReturn = $response->json('data.transaction.expected_return');
-        
-        // 5000 + (5000 * 0.15 * 60/365) = 5000 + 123.29 ≈ 5123.29
-        $this->assertGreaterThan(5000, $expectedReturn);
+        $response->assertOk()
+            ->assertJsonPath('data.transaction.interest_rate', '8.00')
+            ->assertJsonPath('data.transaction.expected_return', '5032.88');
     }
 
     // ─── RBAC Tests ──────────────────────────────────────────────────
 
-    public function test_borrower_cannot_fund_loan(): void
+    public function test_client_can_fund_loan(): void
     {
         $loan = $this->createMarketplaceLoan();
 
@@ -486,7 +485,7 @@ class FundingTest extends TestCase
             'amount' => 5000,
         ]);
 
-        $response->assertStatus(403);
+        $response->assertStatus(200);
     }
 
     public function test_unauthenticated_cannot_fund(): void

@@ -30,13 +30,13 @@ class RepaymentTest extends TestCase
         $this->service = app(RepaymentService::class);
 
         $this->borrower = User::factory()->active()->create(['trust_score' => 65.00]);
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
 
         $this->lender = User::factory()->active()->create(['trust_score' => 80.00]);
-        $this->lender->assignRole('lender');
+        $this->assignClientRole($this->lender);
 
         $this->admin = User::factory()->active()->create(['trust_score' => 90.00, 'email' => 'admin@quickshare.com']);
-        $this->admin->assignRole('admin');
+        $this->assignAdminRole($this->admin);
         $this->admin = $this->admin->fresh(); // Reload to get proper permissions
         $this->assertTrue($this->admin->hasRole('admin'));
     }
@@ -145,7 +145,7 @@ class RepaymentTest extends TestCase
         ]);
 
         $lender2 = User::factory()->active()->create();
-        $lender2->assignRole('lender');
+        $this->assignClientRole($lender2);
         
         $funding2 = FundingTransaction::create([
             'loan_id' => $loan->id,
@@ -309,7 +309,7 @@ class RepaymentTest extends TestCase
     public function test_borrower_cannot_view_other_borrower_schedule(): void
     {
         $otherBorrower = User::factory()->active()->create();
-        $otherBorrower->assignRole('borrower');
+        $this->assignClientRole($otherBorrower);
 
         $loan = $this->createActiveLoan(['borrower_id' => $otherBorrower->id]);
 
@@ -482,13 +482,13 @@ class RepaymentTest extends TestCase
 
     // ─── RBAC Tests ────────────────────────────────────────────────────
 
-    public function test_borrower_cannot_view_lender_earnings(): void
+    public function test_client_can_view_lender_earnings(): void
     {
         Sanctum::actingAs($this->borrower);
 
         $response = $this->getJson('/api/repayments/lender/earnings');
 
-        $response->assertStatus(403);
+        $response->assertStatus(200);
     }
 
     public function test_lender_cannot_view_all_repayments(): void

@@ -9,29 +9,35 @@ use App\Modules\Loans\DTOs\LoanRequestData;
 use App\Modules\Loans\Events\LoanApproved;
 use App\Modules\Loans\Events\LoanRejected;
 use App\Modules\Loans\Events\LoanRequested;
+use App\Modules\Loans\Mail\LoanAgreementMail;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\TrustScore\Services\TrustScoreService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use RuntimeException;
 
 class LoanService
 {
-    public function __construct(protected TrustScoreService $trustScoreService)
-    {
-    }
+    public function __construct(
+        protected TrustScoreService $trustScoreService,
+        protected TrustTierService $trustTierService,
+        protected LoanAgreementService $loanAgreementService,
+    ) {}
 
     // ─── Loan Calculation ────────────────────────────────────────────
 
     public function calculate(User $borrower, float $amount, int $termDays): LoanCalculation
     {
-        $interestRate = (float) config('loans.interest_rate');
-        $platformFeePercent = (float) config('loans.platform_fee_percent');
         $riskScore = (float) $borrower->trust_score;
+        $tier = $this->trustTierService->forScore($riskScore);
+        $interestRate = $tier['interest_percent'];
+        $platformFeePercent = $tier['platform_fee_percent'];
         $riskLevel = $borrower->riskLevel();
-        $trustTier = $borrower->trust_tier;
-        $maxAllowed = TrustScoreService::maxLoanAmount($borrower);
+        $trustTier = $tier['name'];
+        $maxAllowed = $tier['maximum_loan'];
 
         // Calculate interest as flat percentage of loan amount
-        $interestAmount = round($amount * ($interestRate / 100), 2);
+        $interestAmount = round($amount * ($interestRate / 100) * ($termDays / 365), 2);
         $platformFee = round($amount * ($platformFeePercent / 100), 2);
         $totalRepayment = round($amount + $interestAmount + $platformFee, 2);
         $dailyRate = $totalRepayment / $termDays;
@@ -57,13 +63,25 @@ class LoanService
     public function createLoan(User $borrower, array $data): Loan
     {
         $this->validateEligibility($borrower, $data['amount']);
-        $this->validateTermDays($data['repayment_period']);
+        $this->validateTermDays($data['repayment_period'], $borrower);
         $this->validateAmount($data['amount'], $borrower);
         $this->validateActiveLoansLimit($borrower);
+        $tier = $this->trustTierService->forScore((float) $borrower->trust_score);
+        $this->validateConfiguration($tier);
+        $this->validateAgreement(
+            (bool) ($data['agreement_read'] ?? false),
+            (bool) ($data['agreement_terms'] ?? false),
+            (bool) ($data['electronic_documents'] ?? false),
+            (string) ($data['agreement_version'] ?? ''),
+        );
 
         $calculation = $this->calculate($borrower, $data['amount'], $data['repayment_period']);
+        $submittedAt = now();
+        $repaymentDate = $submittedAt->copy()->addDays($data['repayment_period']);
+        $configurationSnapshot = $this->configurationSnapshot($tier, $calculation);
+        $consent = $this->agreementConsent();
 
-        return DB::transaction(function () use ($borrower, $data, $calculation) {
+        $loan = DB::transaction(function () use ($borrower, $data, $calculation, $submittedAt, $repaymentDate, $configurationSnapshot, $consent) {
             $loan = Loan::create([
                 'borrower_id' => $borrower->id,
                 'reference' => Loan::generateReference(),
@@ -76,14 +94,27 @@ class LoanService
                 'purpose' => $data['purpose'],
                 'description' => $data['description'] ?? null,
                 'risk_score' => $calculation->riskScore,
+                'repayment_date' => $repaymentDate->toDateString(),
+                'agreement_version' => config('loan.agreement.version'),
+                'configuration_snapshot' => $configurationSnapshot,
+                'agreement_consent' => $consent,
+                'agreement_ip_address' => $data['ip_address'] ?? null,
+                'agreement_user_agent' => $data['user_agent'] ?? null,
+                'agreement_consented_at' => $submittedAt,
                 'status' => 'pending_review',
-                'submitted_at' => now(),
+                'submitted_at' => $submittedAt,
             ]);
+
+            $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
 
             event(new LoanRequested($borrower, $data['amount'], $data['repayment_period']));
 
             return $loan;
         });
+
+        $this->queueLoanAgreementEmail($loan);
+
+        return $loan;
     }
 
     public function requestLoan(LoanRequestData $data): Loan
@@ -91,13 +122,25 @@ class LoanService
         $borrower = User::findOrFail($data->borrowerId);
 
         $this->validateEligibility($borrower, $data->requestedAmount);
-        $this->validateTermDays($data->loanTermDays);
+        $this->validateTermDays($data->loanTermDays, $borrower);
         $this->validateAmount($data->requestedAmount, $borrower);
         $this->validateActiveLoansLimit($borrower);
+        $tier = $this->trustTierService->forScore((float) $borrower->trust_score);
+        $this->validateConfiguration($tier);
+        $this->validateAgreement(
+            $data->agreementRead,
+            $data->agreementTermsAccepted,
+            $data->electronicDocumentsConsented,
+            $data->agreementVersion,
+        );
 
         $calculation = $this->calculate($borrower, $data->requestedAmount, $data->loanTermDays);
+        $submittedAt = now();
+        $repaymentDate = $submittedAt->copy()->addDays($data->loanTermDays);
+        $configurationSnapshot = $this->configurationSnapshot($tier, $calculation);
+        $consent = $this->agreementConsent();
 
-        return DB::transaction(function () use ($borrower, $data, $calculation) {
+        $loan = DB::transaction(function () use ($borrower, $data, $calculation, $submittedAt, $repaymentDate, $configurationSnapshot, $consent) {
             $loan = Loan::create([
                 'borrower_id' => $borrower->id,
                 'reference' => Loan::generateReference(),
@@ -107,14 +150,27 @@ class LoanService
                 'total_repayment' => $calculation->totalRepayment,
                 'loan_term_days' => $data->loanTermDays,
                 'risk_score' => $calculation->riskScore,
+                'repayment_date' => $repaymentDate->toDateString(),
+                'agreement_version' => config('loan.agreement.version'),
+                'configuration_snapshot' => $configurationSnapshot,
+                'agreement_consent' => $consent,
+                'agreement_ip_address' => $data->ipAddress,
+                'agreement_user_agent' => $data->userAgent,
+                'agreement_consented_at' => $submittedAt,
                 'status' => 'pending_review',
-                'submitted_at' => now(),
+                'submitted_at' => $submittedAt,
             ]);
+
+            $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
 
             event(new LoanRequested($borrower, $data->requestedAmount, $data->loanTermDays));
 
             return $loan;
         });
+
+        $this->queueLoanAgreementEmail($loan);
+
+        return $loan;
     }
 
     // ─── Admin: Approve ──────────────────────────────────────────────
@@ -132,7 +188,7 @@ class LoanService
         $calculation = $this->calculate($borrower, $amount, $loan->loan_term_days);
 
         return DB::transaction(function () use ($loan, $reviewer, $amount, $calculation, $notes) {
-            $repaymentDate = now()->addDays($loan->loan_term_days)->toDateString();
+            $repaymentDate = now()->addDays($loan->loan_term_days);
 
             $loan->update([
                 'approved_amount' => $amount,
@@ -140,12 +196,16 @@ class LoanService
                 'platform_fee' => $calculation->platformFee,
                 'total_repayment' => $calculation->totalRepayment,
                 'risk_score' => $calculation->riskScore,
-                'repayment_date' => $repaymentDate,
+                'repayment_date' => $repaymentDate->toDateString(),
                 'status' => 'marketplace',
                 'reviewed_by' => $reviewer->id,
                 'admin_notes' => $notes,
                 'approved_at' => now(),
             ]);
+
+            if ($loan->agreement_path === null) {
+                $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
+            }
 
             event(new LoanApproved($loan->id, $loan->borrower));
 
@@ -218,15 +278,25 @@ class LoanService
 
     // ─── Validation ──────────────────────────────────────────────────
 
+    protected function queueLoanAgreementEmail(Loan $loan): void
+    {
+        Mail::to($loan->borrower->email)->queue(new LoanAgreementMail($loan));
+    }
+
     protected function validateEligibility(User $borrower, float $amount): void
     {
         if (! $borrower->isActive()) {
             throw new ApiException('Your account is not active.', 422);
         }
 
+        $kycSubmission = $borrower->kycSubmission;
+        if (! $kycSubmission || ! $kycSubmission->isApproved()) {
+            throw new ApiException('You must complete KYC verification before requesting a loan.', 422);
+        }
+
         if (! $borrower->canBorrow()) {
             throw new ApiException(
-                'Your trust score is too low to borrow. Minimum required: ' . TrustScoreService::MIN_BORROW_SCORE,
+                'Your trust score is too low to borrow. Minimum required: '.$this->trustTierService->minimumBorrowScore(),
                 422,
             );
         }
@@ -235,9 +305,7 @@ class LoanService
     protected function validateAmount(float $amount, User $borrower): void
     {
         $min = (float) config('loans.min_amount');
-        $globalMax = (float) config('loans.max_amount');
-        $trustMax = TrustScoreService::maxLoanAmount($borrower);
-        $effectiveMax = min($globalMax, $trustMax);
+        $effectiveMax = TrustScoreService::maxLoanAmount($borrower);
 
         if ($amount < $min) {
             throw new ApiException("Minimum loan amount is {$min}.", 422);
@@ -251,14 +319,74 @@ class LoanService
         }
     }
 
-    protected function validateTermDays(int $days): void
+    protected function validateTermDays(int $days, User $borrower): void
     {
-        $min = (int) config('loans.min_term_days');
-        $max = (int) config('loans.max_term_days');
+        $durations = $this->trustTierService->forScore((float) $borrower->trust_score)['allowed_durations'];
 
-        if ($days < $min || $days > $max) {
-            throw new ApiException("Loan term must be between {$min} and {$max} days.", 422);
+        if (! in_array($days, $durations, true)) {
+            throw new ApiException(
+                'Loan term must be one of: '.implode(', ', $durations).' days.',
+                422,
+            );
         }
+    }
+
+    protected function validateAgreement(
+        bool $agreementRead,
+        bool $agreementTermsAccepted,
+        bool $electronicDocumentsConsented,
+        string $agreementVersion,
+    ): void {
+        if (! $agreementRead || ! $agreementTermsAccepted || ! $electronicDocumentsConsented) {
+            throw new ApiException('You must read and accept the loan agreement and consent to electronic documents.', 422);
+        }
+
+        if (! hash_equals((string) config('loan.agreement.version'), $agreementVersion)) {
+            throw new ApiException('The loan agreement has changed. Please review the current agreement before submitting.', 422);
+        }
+    }
+
+    protected function validateConfiguration(array $tier): void
+    {
+        if (
+            $tier['maximum_loan'] <= 0
+            || $tier['interest_percent'] < 0
+            || $tier['platform_fee_percent'] < 0
+            || $tier['lender_return_percent'] < 0
+            || (float) config('loans.min_amount') <= 0
+            || (string) config('loan.agreement.version') === ''
+            || (string) config('loan.agreement.terms') === ''
+            || (string) config('loan.agreement.conditions') === ''
+        ) {
+            throw new RuntimeException('Loan configuration is invalid.');
+        }
+    }
+
+    protected function configurationSnapshot(array $tier, LoanCalculation $calculation): array
+    {
+        return [
+            'currency' => config('loans.currency'),
+            'currency_symbol' => config('loans.currency_symbol'),
+            'minimum_amount' => (float) config('loans.min_amount'),
+            'maximum_active_loans' => (int) config('loans.max_active_loans'),
+            'minimum_borrow_score' => $this->trustTierService->minimumBorrowScore(),
+            'trust_tier' => $tier,
+            'calculation' => $calculation->toArray(),
+            'agreement' => [
+                'version' => (string) config('loan.agreement.version'),
+                'terms' => (string) config('loan.agreement.terms'),
+                'conditions' => (string) config('loan.agreement.conditions'),
+            ],
+        ];
+    }
+
+    protected function agreementConsent(): array
+    {
+        return [
+            'agreement_read' => true,
+            'agreement_terms_accepted' => true,
+            'electronic_documents_consented' => true,
+        ];
     }
 
     protected function validateActiveLoansLimit(User $borrower): void

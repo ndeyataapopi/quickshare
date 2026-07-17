@@ -10,6 +10,10 @@ use App\Modules\TrustScore\Services\TrustScoreService;
 
 class AffordabilityService
 {
+    public function __construct(protected TrustTierService $trustTierService)
+    {
+    }
+
     // ─── Run Full Assessment ─────────────────────────────────────────
 
     public function assess(User $user, AffordabilityInput $input, ?Loan $loan = null): AffordabilityAssessment
@@ -79,9 +83,10 @@ class AffordabilityService
 
         // Calculate max principal that produces a monthly repayment ≤ maxMonthlyRepayment
         // Using max term for most favourable calculation
-        $maxTermDays = (int) config('loans.max_term_days');
-        $interestRate = (float) config('loans.interest_rate');
-        $platformFeePercent = (float) config('loans.platform_fee_percent');
+        $tier = $this->trustTierService->forScore((float) $user->trust_score);
+        $maxTermDays = max($tier['allowed_durations']);
+        $interestRate = $tier['interest_percent'];
+        $platformFeePercent = $tier['platform_fee_percent'];
         $dailyRate = $interestRate / 365 / 100;
         $termMonths = $maxTermDays / 30;
 
@@ -94,9 +99,7 @@ class AffordabilityService
         $incomeBasedMax = ($maxMonthlyRepayment * $termMonths) / $multiplier;
         $incomeBasedMax = round($incomeBasedMax, 2);
 
-        $globalMax = (float) config('loans.max_amount');
-
-        return min($trustMax, $incomeBasedMax, $globalMax);
+        return min($trustMax, $incomeBasedMax);
     }
 
     // ─── DTI Ratio ───────────────────────────────────────────────────
@@ -233,7 +236,7 @@ class AffordabilityService
             $reasons[] = "DTI ratio ({$dti}%) exceeds maximum threshold ({$cfg['dti_fair_max']}%)";
         }
 
-        if ($trustScore < TrustScoreService::MIN_BORROW_SCORE) {
+        if ($trustScore < $this->trustTierService->minimumBorrowScore()) {
             $reasons[] = "Trust score ({$trustScore}) below minimum borrowing threshold";
         }
 
@@ -245,8 +248,9 @@ class AffordabilityService
         if ($loan !== null) {
             $requestedAmount = (float) $loan->requested_amount;
             $loanTermDays = $loan->loan_term_days;
-            $interestRate = (float) config('loans.interest_rate');
-            $platformFeePercent = (float) config('loans.platform_fee_percent');
+            $tier = $this->trustTierService->forScore((float) $loan->borrower->trust_score);
+            $interestRate = $tier['interest_percent'];
+            $platformFeePercent = $tier['platform_fee_percent'];
             $dailyRate = $interestRate / 365 / 100;
             $totalRepayment = $requestedAmount * (1 + ($dailyRate * $loanTermDays) + ($platformFeePercent / 100));
             $termMonths = max(1, $loanTermDays / 30);

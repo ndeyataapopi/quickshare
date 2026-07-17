@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Loans\Mail\LoanAgreementMail;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\LoanService;
+use App\Modules\Loans\Services\TrustTierService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class LoanController extends Controller
 {
     public function __construct(
-        private LoanService $loanService
+        private LoanService $loanService,
+        private TrustTierService $trustTierService,
     ) {}
 
     public function index(Request $request)
@@ -71,5 +76,57 @@ class LoanController extends Controller
         }
 
         return redirect()->route('admin.loans.index')->with('success', 'Loan review completed.');
+    }
+
+    public function agreement(Loan $loan)
+    {
+        $loan->load('borrower');
+
+        $trustScore = (float) ($loan->risk_score ?? 0);
+        $tier = $loan->configuration_snapshot['trust_tier']['name']
+            ?? $this->trustTierService->forScore($trustScore)['name']
+            ?? 'unknown';
+
+        return view('admin.loans.agreement', compact('loan', 'trustScore', 'tier'));
+    }
+
+    public function pdf(Loan $loan)
+    {
+        return $this->serveAgreement($loan, 'inline');
+    }
+
+    public function download(Loan $loan)
+    {
+        return $this->serveAgreement($loan, 'attachment');
+    }
+
+    protected function serveAgreement(Loan $loan, string $disposition)
+    {
+        $path = $loan->agreement_path;
+        $disk = (string) config('loan.agreement.disk');
+
+        if (! $path || ! Storage::disk($disk)->exists($path)) {
+            abort(404, 'Loan agreement PDF not found.');
+        }
+
+        $filename = "loan-agreement-{$loan->reference}.pdf";
+
+        return response(Storage::disk($disk)->get($path), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => "{$disposition}; filename=\"{$filename}\"",
+        ]);
+    }
+
+    public function resend(Request $request, Loan $loan)
+    {
+        $loan->load('borrower');
+
+        if (! $loan->agreement_path) {
+            return redirect()->back()->with('error', 'No agreement has been generated for this loan.');
+        }
+
+        Mail::to($loan->borrower->email)->queue(new LoanAgreementMail($loan));
+
+        return redirect()->back()->with('success', 'Loan agreement email resent to '.$loan->borrower->email);
     }
 }

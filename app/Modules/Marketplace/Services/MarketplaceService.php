@@ -3,6 +3,7 @@
 namespace App\Modules\Marketplace\Services;
 
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\TrustTierService;
 use App\Modules\TrustScore\Services\TrustScoreService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
@@ -13,6 +14,10 @@ class MarketplaceService
     const CACHE_PREFIX = 'marketplace:';
     const PER_PAGE_DEFAULT = 15;
     const PER_PAGE_MAX = 50;
+
+    public function __construct(protected TrustTierService $trustTierService)
+    {
+    }
 
     // ─── Listing Query ───────────────────────────────────────────────
 
@@ -149,13 +154,16 @@ class MarketplaceService
 
     protected function applyRiskFilter($query, string $risk)
     {
+        $silver = $this->trustTierService->forName('silver');
+        $gold = $this->trustTierService->forName('gold');
+
         return match ($risk) {
-            'low' => $query->where('users.trust_score', '>=', TrustScoreService::TIER_GOLD_MIN),
+            'low' => $query->where('users.trust_score', '>=', $gold['trust_score']['min']),
             'moderate' => $query->whereBetween('users.trust_score', [
-                TrustScoreService::TIER_SILVER_MIN,
-                TrustScoreService::TIER_GOLD_MIN - 0.01,
+                $silver['trust_score']['min'],
+                $silver['trust_score']['max'],
             ]),
-            'high' => $query->where('users.trust_score', '<', TrustScoreService::TIER_SILVER_MIN),
+            'high' => $query->where('users.trust_score', '<', $silver['trust_score']['min']),
             default => $query,
         };
     }
@@ -164,19 +172,12 @@ class MarketplaceService
 
     protected function applyTrustTierFilter($query, string $tier)
     {
-        return match ($tier) {
-            'platinum' => $query->where('users.trust_score', '>=', TrustScoreService::TIER_PLATINUM_MIN),
-            'gold' => $query->whereBetween('users.trust_score', [
-                TrustScoreService::TIER_GOLD_MIN,
-                TrustScoreService::TIER_PLATINUM_MIN - 0.01,
-            ]),
-            'silver' => $query->whereBetween('users.trust_score', [
-                TrustScoreService::TIER_SILVER_MIN,
-                TrustScoreService::TIER_GOLD_MIN - 0.01,
-            ]),
-            'bronze' => $query->where('users.trust_score', '<', TrustScoreService::TIER_SILVER_MIN),
-            default => $query,
-        };
+        $rule = $this->trustTierService->forName($tier);
+
+        return $query->whereBetween('users.trust_score', [
+            $rule['trust_score']['min'],
+            $rule['trust_score']['max'],
+        ]);
     }
 
     // ─── Transform for Lender View ───────────────────────────────────

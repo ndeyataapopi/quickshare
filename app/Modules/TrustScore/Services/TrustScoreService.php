@@ -3,6 +3,7 @@
 namespace App\Modules\TrustScore\Services;
 
 use App\Models\User;
+use App\Modules\Loans\Services\TrustTierService;
 use App\Modules\TrustScore\Events\TrustScoreCalculated;
 use App\Modules\TrustScore\Models\TrustScoreHistory;
 use Illuminate\Support\Facades\DB;
@@ -22,22 +23,6 @@ class TrustScoreService
     const MIN_SCORE = 0.00;
     const MAX_SCORE = 100.00;
     const DEFAULT_SCORE = 50.00;
-
-    // ─── Tier Thresholds ─────────────────────────────────────────────
-
-    const TIER_PLATINUM_MIN = 85.00;
-    const TIER_GOLD_MIN = 70.00;
-    const TIER_SILVER_MIN = 50.00;
-    // Below SILVER_MIN = bronze
-
-    // ─── Loan Limits Per Tier (fallback — driven by config/loans.php tier_limits) ─
-
-    const LOAN_LIMIT_BRONZE   = 500.00;
-    const LOAN_LIMIT_SILVER   = 1000.00;
-    const LOAN_LIMIT_GOLD     = 1500.00;
-    const LOAN_LIMIT_PLATINUM = 1500.00;
-
-    const MIN_BORROW_SCORE = 30.00;
 
     // ─── Core Adjustment ─────────────────────────────────────────────
 
@@ -158,16 +143,7 @@ class TrustScoreService
 
     public static function getTier(float $score): string
     {
-        $platinumMin = (float) config('loans.trust_score.tier_platinum_min', self::TIER_PLATINUM_MIN);
-        $goldMin     = (float) config('loans.trust_score.tier_gold_min',     self::TIER_GOLD_MIN);
-        $silverMin   = (float) config('loans.trust_score.tier_silver_min',   self::TIER_SILVER_MIN);
-
-        return match (true) {
-            $score >= $platinumMin => 'platinum',
-            $score >= $goldMin    => 'gold',
-            $score >= $silverMin  => 'silver',
-            default               => 'bronze',
-        };
+        return self::tierService()->forScore($score)['name'];
     }
 
     public static function canBorrow(User $user): bool
@@ -176,8 +152,7 @@ class TrustScoreService
             return false;
         }
 
-        $minScore = (float) config('loans.trust_score.min_borrow_score', self::MIN_BORROW_SCORE);
-        return (float) $user->trust_score >= $minScore;
+        return (float) $user->trust_score >= self::tierService()->minimumBorrowScore();
     }
 
     public static function maxLoanAmount(User $user): float
@@ -186,15 +161,7 @@ class TrustScoreService
             return 0.00;
         }
 
-        $tier   = self::getTier((float) $user->trust_score);
-        $limits = config('loans.tier_limits', [
-            'bronze'   => self::LOAN_LIMIT_BRONZE,
-            'silver'   => self::LOAN_LIMIT_SILVER,
-            'gold'     => self::LOAN_LIMIT_GOLD,
-            'platinum' => self::LOAN_LIMIT_PLATINUM,
-        ]);
-
-        return (float) ($limits[$tier] ?? self::LOAN_LIMIT_BRONZE);
+        return self::tierService()->forScore((float) $user->trust_score)['maximum_loan'];
     }
 
     public static function riskLevel(User $user): string
@@ -236,6 +203,11 @@ class TrustScoreService
     }
 
     // ─── Internal ────────────────────────────────────────────────────
+
+    protected static function tierService(): TrustTierService
+    {
+        return app(TrustTierService::class);
+    }
 
     protected function clamp(float $score): float
     {
