@@ -5,6 +5,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -12,33 +16,97 @@ jobs:
     steps:
       - name: Deploy to Production
         uses: appleboy/ssh-action@v1.2.0
+
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
+
           script: |
             set -e
-            cd /var/www/html/quickshare
-            
-            echo "Fetching latest code..."
-            git fetch origin master
-            echo "Resetting to origin/master..."
+
+            APP_PATH="/var/www/html/quickshare"
+
+            echo "========================================"
+            echo "Deploy started: $(date)"
+            echo "========================================"
+
+            cd "$APP_PATH"
+
+            ####################################
+            # Clean temporary files
+            ####################################
+            echo "Cleaning temporary files..."
+
+            find storage/logs -type f -name "*.log" -mtime +7 -delete || true
+            rm -rf node_modules/.cache || true
+            npm cache clean --force || true
+
+            ####################################
+            # Update source
+            ####################################
+            echo "Updating source..."
+
+            git fetch origin
             git reset --hard origin/master
-            echo "Installing dependencies..."
-            composer install --no-dev --optimize-autoloader --no-interaction
-            echo "Clearing caches..."
-            php artisan optimize:clear
-            echo "Running migrations..."
+
+            ####################################
+            # PHP dependencies
+            ####################################
+            composer install \
+                --no-dev \
+                --prefer-dist \
+                --no-interaction \
+                --optimize-autoloader
+
+            ####################################
+            # Laravel
+            ####################################
             php artisan migrate --force
-            echo "Building assets..."
-            npm ci
-            npm run build
-            echo "Caching..."
+
+            php artisan storage:link || true
+
+            php artisan optimize:clear
+
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
-            echo "Restarting queues..."
-            php artisan queue:restart
-            echo "Deployment completed"
+            php artisan event:cache || true
+
+            php artisan cache:clear
+
+            ####################################
+            # Restart queues
+            ####################################
+            php artisan queue:restart || true
+
+            ####################################
+            # Permissions
+            ####################################
+            sudo chown -R www-data:www-data storage bootstrap/cache
+
+            sudo chmod -R 775 storage bootstrap/cache
+
+            ####################################
+            # PHP Opcache
+            ####################################
+            sudo systemctl reload php8.3-fpm || true
+
+            ####################################
+            # Show disk usage
+            ####################################
+            echo
+            echo "Disk usage:"
+            df -h
+
+            echo
+            echo "Application size:"
+            du -sh .
+
+            echo
+            echo "========================================"
+            echo "Deployment finished successfully"
+            echo "========================================"
+
             php artisan about

@@ -2,15 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Modules\KYC\Models\KYCSubmission;
-use App\Modules\KYC\Services\KYCService;
+use App\Modules\KYC\Models\KycSubmission;
+use App\Modules\KYC\Services\KycService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class KYCController extends Controller
 {
     public function __construct(
-        private KYCService $kycService
+        private KycService $kycService
     ) {}
 
     public function upload()

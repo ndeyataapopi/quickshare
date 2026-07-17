@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Disabled navigation links for KYC verification */
+.sidebar-item.disabled .sidebar-link {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.sidebar-item.disabled .sidebar-link:hover {
+    background-color: transparent !important;
+}

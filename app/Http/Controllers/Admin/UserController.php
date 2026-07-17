@@ -64,7 +64,22 @@ class UserController extends Controller
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'national_id' => ['required', 'string', 'max:20', 'unique:users,national_id'],
+            'national_id' => ['required', 'numeric', 'digits:11', 'unique:users,national_id', function ($attribute, $value, $fail) use ($request) {
+                // Validate that first 6 digits (YYMMDD) match date of birth
+                $dateOfBirth = $request->input('date_of_birth');
+                if ($dateOfBirth) {
+                    $dob = \Carbon\Carbon::parse($dateOfBirth);
+                    $yy = $dob->format('y');
+                    $mm = $dob->format('m');
+                    $dd = $dob->format('d');
+                    $expectedPrefix = $yy . $mm . $dd;
+                    $actualPrefix = substr($value, 0, 6);
+                    
+                    if ($actualPrefix !== $expectedPrefix) {
+                        $fail('The first 6 digits of the National ID must match the date of birth in YYMMDD format.');
+                    }
+                }
+            }],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
             'date_of_birth' => ['required', 'date', 'before:-18 years'],

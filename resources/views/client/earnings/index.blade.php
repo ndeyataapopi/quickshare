@@ -77,7 +77,9 @@
                             <button class="btn btn-outline-primary" data-period="year">Yearly</button>
                         </div>
                     </div>
-                    <canvas id="earningsChart" height="100"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="earningsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -85,7 +87,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Earnings by Type</h6>
-                    <canvas id="earningsTypeChart" height="150"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="earningsTypeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -226,10 +230,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const earningsChart = new Chart(earningsCtx, {
         type: 'bar',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            labels: @json($earningsData['labels']),
             datasets: [{
                 label: 'Earnings',
-                data: [1200, 1500, 1800, 1400, 2000, 2200],
+                data: @json($earningsData['data']),
                 backgroundColor: 'rgba(40, 167, 69, 0.8)',
                 borderColor: 'rgba(40, 167, 69, 1)',
                 borderWidth: 2
@@ -260,14 +264,16 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(earningsTypeCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Business Loans', 'Personal Loans', 'Medical Loans', 'Education Loans'],
+            labels: @json($earningsTypeData['labels']),
             datasets: [{
-                data: [45, 25, 20, 10],
+                data: @json($earningsTypeData['data']),
                 backgroundColor: [
                     'rgba(40, 167, 69, 0.8)',
                     'rgba(23, 162, 184, 0.8)',
                     'rgba(255, 193, 7, 0.8)',
-                    'rgba(102, 16, 242, 0.8)'
+                    'rgba(102, 16, 242, 0.8)',
+                    'rgba(220, 53, 69, 0.8)',
+                    'rgba(108, 117, 125, 0.8)'
                 ],
                 borderWidth: 2
             }]

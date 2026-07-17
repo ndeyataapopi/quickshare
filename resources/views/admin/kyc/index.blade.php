@@ -17,10 +17,10 @@
 </div>
 <div class="page-content container-fluid">
     <div class="row mb-4">
-        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Pending</h6><h3 class="text-warning">{{ App\Modules\KYC\Models\KYCSubmission::where('status','pending')->count() }}</h3></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Approved Today</h6><h3 class="text-success">{{ App\Modules\KYC\Models\KYCSubmission::where('status','approved')->whereDate('updated_at',today())->count() }}</h3></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Rejected Today</h6><h3 class="text-danger">{{ App\Modules\KYC\Models\KYCSubmission::where('status','rejected')->whereDate('updated_at',today())->count() }}</h3></div></div></div>
-        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Total Processed</h6><h3 class="text-primary">{{ App\Modules\KYC\Models\KYCSubmission::whereIn('status',['approved','rejected'])->count() }}</h3></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Pending</h6><h3 class="text-warning">{{ App\Modules\KYC\Models\KycSubmission::where('status','pending')->count() }}</h3></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Approved Today</h6><h3 class="text-success">{{ App\Modules\KYC\Models\KycSubmission::where('status','approved')->whereDate('updated_at',today())->count() }}</h3></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Rejected Today</h6><h3 class="text-danger">{{ App\Modules\KYC\Models\KycSubmission::where('status','rejected')->whereDate('updated_at',today())->count() }}</h3></div></div></div>
+        <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-uppercase text-muted">Total Processed</h6><h3 class="text-primary">{{ App\Modules\KYC\Models\KycSubmission::whereIn('status',['approved','rejected'])->count() }}</h3></div></div></div>
     </div>
     <div class="row">
         <div class="col-12">

@@ -143,6 +143,7 @@ class NotificationService
     protected function getNotificationClass(string $type): string
     {
         $classes = [
+            'kyc_submitted' => \App\Modules\Notifications\Notifications\KycSubmittedNotification::class,
             'kyc_approved' => \App\Modules\Notifications\Notifications\KycApprovedNotification::class,
             'kyc_rejected' => \App\Modules\Notifications\Notifications\KycRejectedNotification::class,
             'loan_approved' => \App\Modules\Notifications\Notifications\LoanApprovedNotification::class,

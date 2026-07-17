@@ -95,7 +95,9 @@
                             <button class="btn btn-outline-primary" data-chart="overview" data-period="year">Year</button>
                         </div>
                     </div>
-                    <canvas id="overviewChart" height="100"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="overviewChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -103,7 +105,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Loan Status Distribution</h6>
-                    <canvas id="loanStatusChart" height="150"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="loanStatusChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,7 +123,9 @@
                             <i class="mdi mdi-refresh"></i>
                         </button>
                     </div>
-                    <canvas id="trustScoreChart" height="120"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="trustScoreChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -127,7 +133,9 @@
             <div class="card">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase mb-3">Investment Performance</h6>
-                    <canvas id="investmentChart" height="120"></canvas>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="investmentChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -315,24 +323,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const overviewChart = new Chart(overviewCtx, {
         type: 'line',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            labels: @json($financialData['labels']),
             datasets: [{
                 label: 'Borrowed',
-                data: [5000, 8000, 12000, 10000, 15000, 18000],
+                data: @json($financialData['borrowed']),
                 borderColor: 'rgb(54, 162, 235)',
                 backgroundColor: 'rgba(54, 162, 235, 0.1)',
                 tension: 0.4,
                 fill: true
             }, {
                 label: 'Invested',
-                data: [3000, 5000, 7000, 9000, 12000, 14000],
+                data: @json($financialData['invested']),
                 borderColor: 'rgb(255, 99, 132)',
                 backgroundColor: 'rgba(255, 99, 132, 0.1)',
                 tension: 0.4,
                 fill: true
             }, {
                 label: 'Earnings',
-                data: [200, 350, 500, 800, 1200, 1500],
+                data: @json($financialData['earnings']),
                 borderColor: 'rgb(75, 192, 192)',
                 backgroundColor: 'rgba(75, 192, 192, 0.1)',
                 tension: 0.4,
@@ -364,9 +372,9 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(loanStatusCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Active', 'Completed', 'Pending', 'Defaulted'],
+            labels: @json($loanStatusData['labels']),
             datasets: [{
-                data: [{{ $activeLoans }}, {{ $completedLoans }}, 2, {{ $defaultedLoans }}],
+                data: @json($loanStatusData['data']),
                 backgroundColor: [
                     'rgba(54, 162, 235, 0.8)',
                     'rgba(75, 192, 192, 0.8)',
@@ -391,10 +399,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const trustScoreChart = new Chart(trustScoreCtx, {
         type: 'line',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            labels: @json($trustScoreData['labels']),
             datasets: [{
                 label: 'Trust Score',
-                data: [65, 68, 72, 75, 78, {{ $score }}],
+                data: @json($trustScoreData['data']),
                 borderColor: 'rgb(153, 102, 255)',
                 backgroundColor: 'rgba(153, 102, 255, 0.1)',
                 tension: 0.4,
@@ -428,16 +436,16 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(investmentCtx, {
         type: 'bar',
         data: {
-            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+            labels: @json($investmentData['labels']),
             datasets: [{
                 label: 'Invested',
-                data: [3000, 4000, 3500, 5000],
+                data: @json($investmentData['invested']),
                 backgroundColor: 'rgba(255, 159, 64, 0.8)',
                 borderColor: 'rgba(255, 159, 64, 1)',
                 borderWidth: 2
             }, {
                 label: 'Returns',
-                data: [3200, 4400, 3850, 5500],
+                data: @json($investmentData['returns']),
                 backgroundColor: 'rgba(75, 192, 192, 0.8)',
                 borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 2
