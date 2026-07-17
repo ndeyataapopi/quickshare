@@ -19,7 +19,7 @@ class NotificationsApiTest extends TestCase
         parent::setUp();
         $this->seed(RoleSeeder::class);
         $this->user = User::factory()->active()->create();
-        $this->user->assignRole('borrower');
+        $this->assignClientRole($this->user);
     }
 
     // ─── List Notifications ───────────────────────────────────────────

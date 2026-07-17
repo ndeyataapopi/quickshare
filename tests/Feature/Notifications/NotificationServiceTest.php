@@ -30,13 +30,14 @@ class NotificationServiceTest extends TestCase
     {
         parent::setUp();
         $this->seed(RoleSeeder::class);
+        config(['notifications.sms.provider' => 'log']);
         $this->service = app(NotificationService::class);
 
         $this->user = User::factory()->active()->create([
             'email' => 'testuser@quickshare.com',
             'phone' => '+27821234567',
         ]);
-        $this->user->assignRole('borrower');
+        $this->assignClientRole($this->user);
     }
 
     // ─── Service Resolution ────────────────────────────────────────────
@@ -271,7 +272,7 @@ class NotificationServiceTest extends TestCase
 
         $users = User::factory()->active()->count(3)->create();
         foreach ($users as $u) {
-            $u->assignRole('borrower');
+            $this->assignClientRole($u);
         }
 
         $results = $this->service->sendBulk(

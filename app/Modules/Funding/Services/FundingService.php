@@ -9,6 +9,7 @@ use App\Modules\Funding\Events\LoanFunded;
 use App\Modules\Funding\Jobs\ProcessFundingJob;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\TrustTierService;
 use App\Modules\Marketplace\Services\MarketplaceService;
 use Illuminate\Support\Facades\DB;
 
@@ -16,6 +17,7 @@ class FundingService
 {
     public function __construct(
         protected MarketplaceService $marketplaceService,
+        protected TrustTierService $trustTierService,
     ) {
     }
 
@@ -49,12 +51,13 @@ class FundingService
             }
 
             // Create funding transaction
+            $lenderReturnPercent = $this->lenderReturnPercent($lockedLoan);
             $transaction = FundingTransaction::create([
                 'loan_id' => $lockedLoan->id,
                 'lender_id' => $lender->id,
                 'amount' => $amount,
-                'interest_rate' => $lockedLoan->interest_rate,
-                'expected_return' => $this->calculateExpectedReturn($amount, $lockedLoan),
+                'interest_rate' => $lenderReturnPercent,
+                'expected_return' => $this->calculateExpectedReturn($amount, $lockedLoan, $lenderReturnPercent),
                 'status' => 'pending',
                 'transaction_reference' => FundingTransaction::generateReference(),
             ]);
@@ -143,16 +146,22 @@ class FundingService
 
     // ─── Expected Return Calculation ─────────────────────────────────
 
-    protected function calculateExpectedReturn(float $amount, Loan $loan): float
+    protected function calculateExpectedReturn(float $amount, Loan $loan, float $lenderReturnPercent): float
     {
-        $interestRate = (float) $loan->interest_rate;
         $termDays = $loan->loan_term_days;
-        $dailyRate = $interestRate / 365 / 100;
+        $dailyRate = $lenderReturnPercent / 365 / 100;
 
         // Simple interest calculation for lender's portion
         $interest = round($amount * $dailyRate * $termDays, 2);
 
         return round($amount + $interest, 2);
+    }
+
+    protected function lenderReturnPercent(Loan $loan): float
+    {
+        $score = (float) $loan->risk_score;
+
+        return $this->trustTierService->forScore($score)['lender_return_percent'];
     }
 
     // ─── Remaining Funding ───────────────────────────────────────────

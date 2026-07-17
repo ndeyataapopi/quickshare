@@ -34,13 +34,12 @@ class ApiRegistrationTest extends TestCase
             'referral_code' => $this->referralCode->code,
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'national_id' => '9501015800081',
+            'national_id' => '95010158000',
             'email' => 'john@example.com',
             'phone' => '+27821234567',
             'date_of_birth' => '1995-01-01',
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-            'role' => 'borrower',
             'address' => [
                 'country' => 'South Africa',
                 'city' => 'Johannesburg',
@@ -86,7 +85,7 @@ class ApiRegistrationTest extends TestCase
             'email' => 'john@example.com',
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'national_id' => '9501015800081',
+            'national_id' => '95010158000',
         ]);
 
         $this->assertDatabaseHas('addresses', [
@@ -123,7 +122,7 @@ class ApiRegistrationTest extends TestCase
 
     public function test_registration_fails_with_duplicate_national_id(): void
     {
-        User::factory()->create(['national_id' => '9501015800081']);
+        User::factory()->create(['national_id' => '95010158000']);
 
         $response = $this->postJson('/api/auth/register', $this->validRegistrationData());
 
@@ -200,27 +199,25 @@ class ApiRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_registration_assigns_borrower_role_by_default(): void
+    public function test_registration_assigns_client_role_by_default(): void
     {
-        $data = $this->validRegistrationData();
-        unset($data['role']);
-
-        $response = $this->postJson('/api/auth/register', $data);
+        $response = $this->postJson('/api/auth/register', $this->validRegistrationData());
         $response->assertStatus(201);
 
         $newUser = User::where('email', 'john@example.com')->first();
-        $this->assertTrue($newUser->hasRole('borrower'));
+        $this->assertTrue($newUser->hasRole('client'));
     }
 
-    public function test_registration_can_assign_lender_role(): void
+    public function test_registration_cannot_assign_a_privileged_role(): void
     {
-        $data = $this->validRegistrationData(['role' => 'lender']);
+        $data = $this->validRegistrationData(['role' => 'compliance_officer']);
 
         $response = $this->postJson('/api/auth/register', $data);
         $response->assertStatus(201);
 
         $newUser = User::where('email', 'john@example.com')->first();
-        $this->assertTrue($newUser->hasRole('lender'));
+        $this->assertTrue($newUser->hasRole('client'));
+        $this->assertFalse($newUser->hasRole('compliance_officer'));
     }
 
     public function test_inactive_referral_code_cannot_be_used(): void

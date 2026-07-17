@@ -26,7 +26,7 @@ class TrustScoreTest extends TestCase
     protected function createUser(float $score = 50.00): User
     {
         $user = User::factory()->active()->create(['trust_score' => $score]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         return $user;
     }
@@ -171,6 +171,17 @@ class TrustScoreTest extends TestCase
         $this->assertEquals('platinum', TrustScoreService::getTier(100.00));
     }
 
+    public function test_tier_name_and_score_range_are_configurable(): void
+    {
+        config([
+            'loan.trust_tiers.bronze.trust_score.max' => 39.99,
+            'loan.trust_tiers.silver.trust_score.min' => 40.00,
+            'loan.trust_tiers.silver.name' => 'trusted',
+        ]);
+
+        $this->assertEquals('trusted', TrustScoreService::getTier(45.00));
+    }
+
     // ─── Helper Method Tests ─────────────────────────────────────────
 
     public function test_can_borrow_returns_true_above_threshold(): void
@@ -199,16 +210,16 @@ class TrustScoreTest extends TestCase
 
     public function test_max_loan_amount_matches_tier(): void
     {
-        $this->assertEquals(5000.00, TrustScoreService::maxLoanAmount(
+        $this->assertEquals((float) config('loan.trust_tiers.bronze.maximum_loan'), TrustScoreService::maxLoanAmount(
             $this->createUser(35.00),
         ));
-        $this->assertEquals(15000.00, TrustScoreService::maxLoanAmount(
+        $this->assertEquals((float) config('loan.trust_tiers.silver.maximum_loan'), TrustScoreService::maxLoanAmount(
             $this->createUser(55.00),
         ));
-        $this->assertEquals(50000.00, TrustScoreService::maxLoanAmount(
+        $this->assertEquals((float) config('loan.trust_tiers.gold.maximum_loan'), TrustScoreService::maxLoanAmount(
             $this->createUser(75.00),
         ));
-        $this->assertEquals(100000.00, TrustScoreService::maxLoanAmount(
+        $this->assertEquals((float) config('loan.trust_tiers.platinum.maximum_loan'), TrustScoreService::maxLoanAmount(
             $this->createUser(90.00),
         ));
     }
@@ -249,7 +260,7 @@ class TrustScoreTest extends TestCase
     {
         $user = $this->createUser(90.00);
 
-        $this->assertEquals(100000.00, $user->max_loan_amount);
+        $this->assertEquals((float) config('loan.trust_tiers.platinum.maximum_loan'), $user->max_loan_amount);
     }
 
     // ─── History Tests ───────────────────────────────────────────────
@@ -345,7 +356,7 @@ class TrustScoreTest extends TestCase
     public function test_admin_can_view_any_user_score(): void
     {
         $admin = User::factory()->active()->create();
-        $admin->assignRole('admin');
+        $this->assignAdminRole($admin);
         $target = $this->createUser(80.00);
 
         Sanctum::actingAs($admin);

@@ -37,7 +37,6 @@ class RegisterRequest extends FormRequest
             'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
             'date_of_birth' => ['required', 'date', 'before:-18 years'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['sometimes', 'string', 'in:borrower,lender,client,compliance_officer'],
 
             // Address
             'address' => ['required', 'array'],

@@ -25,7 +25,7 @@ class AuthApiTest extends TestCase
     public function test_user_can_login_with_valid_credentials(): void
     {
         $user = User::factory()->active()->create(['password' => bcrypt('password123')]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => $user->email,
@@ -49,7 +49,7 @@ class AuthApiTest extends TestCase
     public function test_login_fails_with_wrong_password(): void
     {
         $user = User::factory()->active()->create(['password' => bcrypt('correct')]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => $user->email,
@@ -66,7 +66,7 @@ class AuthApiTest extends TestCase
             'status' => 'suspended',
             'password' => bcrypt('password123'),
         ]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => $user->email,
@@ -89,7 +89,7 @@ class AuthApiTest extends TestCase
     public function test_authenticated_user_can_get_profile(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $response = $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/auth/me');
@@ -118,7 +118,7 @@ class AuthApiTest extends TestCase
     public function test_user_can_update_profile(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $response = $this->actingAs($user, 'sanctum')
             ->putJson('/api/v1/auth/me', [
@@ -136,7 +136,7 @@ class AuthApiTest extends TestCase
     public function test_user_can_logout(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -152,7 +152,7 @@ class AuthApiTest extends TestCase
     public function test_user_can_logout_from_all_devices(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
         $user->createToken('device1');
         $user->createToken('device2');
         $token3 = $user->createToken('device3')->plainTextToken;
@@ -171,7 +171,7 @@ class AuthApiTest extends TestCase
     public function test_user_can_list_active_tokens(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
         $user->createToken('mobile');
         $user->createToken('web');
         $token = $user->createToken('api')->plainTextToken;
@@ -186,7 +186,7 @@ class AuthApiTest extends TestCase
     public function test_user_can_revoke_specific_token(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $tokenToRevoke = $user->createToken('to-revoke');
         $activeToken = $user->createToken('active')->plainTextToken;
@@ -205,7 +205,7 @@ class AuthApiTest extends TestCase
     public function test_user_can_change_password(): void
     {
         $user = User::factory()->active()->create(['password' => bcrypt('oldpassword')]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
         $token = $user->createToken('test')->plainTextToken;
 
         $response = $this->withToken($token)
@@ -221,7 +221,7 @@ class AuthApiTest extends TestCase
     public function test_change_password_fails_with_wrong_current_password(): void
     {
         $user = User::factory()->active()->create(['password' => bcrypt('correct')]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $this->actingAs($user, 'sanctum')
             ->postJson('/api/v1/auth/change-password', [
@@ -237,7 +237,7 @@ class AuthApiTest extends TestCase
     public function test_all_responses_are_json(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/auth/me')

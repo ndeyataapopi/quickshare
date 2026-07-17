@@ -7,17 +7,20 @@ use App\Modules\Loans\DTOs\LoanRequestData;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Requests\RequestLoanRequest;
 use App\Modules\Loans\Services\LoanService;
+use App\Modules\Loans\Services\TrustTierService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class LoanController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(protected LoanService $loanService)
-    {
-    }
+    public function __construct(
+        protected LoanService $loanService,
+        protected TrustTierService $trustTierService,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -42,6 +45,12 @@ class LoanController extends Controller
             'requested_amount' => $request->requested_amount,
             'loan_term_days' => $request->loan_term_days,
             'purpose' => $request->purpose,
+            'agreement_read' => $request->boolean('agreement_read'),
+            'agreement_terms' => $request->boolean('agreement_terms'),
+            'electronic_documents' => $request->boolean('electronic_documents'),
+            'agreement_version' => $request->agreement_version,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
         ]);
 
         $loan = $this->loanService->requestLoan($data);
@@ -58,9 +67,12 @@ class LoanController extends Controller
 
     public function calculate(Request $request): JsonResponse
     {
+        $tier = $this->trustTierService->forScore((float) $request->user()->trust_score);
+        $minimumAmount = (float) config('loans.min_amount');
+
         $request->validate([
-            'amount' => ['required', 'numeric', 'min:500'],
-            'term_days' => ['required', 'integer', 'min:30', 'max:365'],
+            'amount' => ['required', 'numeric', "min:{$minimumAmount}", "max:{$tier['maximum_loan']}"],
+            'term_days' => ['required', 'integer', Rule::in($tier['allowed_durations'])],
         ]);
 
         $calculation = $this->loanService->calculate(

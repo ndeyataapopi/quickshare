@@ -1,18 +1,18 @@
 <?php
 
-use App\Http\Controllers\Client\DashboardController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Borrower\LoanController;
 use App\Http\Controllers\Borrower\RepaymentController;
-use App\Http\Controllers\Lender\MarketplaceController;
-use App\Http\Controllers\Lender\InvestmentController;
-use App\Http\Controllers\Lender\EarningsController;
-use App\Http\Controllers\Lender\AnalyticsController;
-use App\Http\Controllers\KYCController;
-use App\Http\Controllers\TrustScoreController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\Client\DashboardController;
 use App\Http\Controllers\Client\FundingController;
+use App\Http\Controllers\KYCController;
+use App\Http\Controllers\Lender\AnalyticsController;
+use App\Http\Controllers\Lender\EarningsController;
+use App\Http\Controllers\Lender\InvestmentController;
+use App\Http\Controllers\Lender\MarketplaceController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\TrustScoreController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('client')->name('client.')->group(function () {
@@ -30,6 +30,7 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     Route::middleware(['kyc_verified'])->prefix('loans')->name('loans.')->group(function () {
         Route::get('/', [LoanController::class, 'index'])->name('index');
         Route::get('/create', [LoanController::class, 'create'])->name('create');
+        Route::get('/agreement-preview', [LoanController::class, 'agreementPreview'])->name('agreement-preview');
         Route::post('/', [LoanController::class, 'store'])->name('store');
         Route::get('/{loan}', [LoanController::class, 'show'])->name('show');
         Route::delete('/{loan}', [LoanController::class, 'cancel'])->name('cancel');

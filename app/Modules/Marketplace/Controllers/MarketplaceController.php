@@ -3,24 +3,28 @@
 namespace App\Modules\Marketplace\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Loans\Services\TrustTierService;
 use App\Modules\Marketplace\Services\MarketplaceService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MarketplaceController extends Controller
 {
     use ApiResponse;
 
-    public function __construct(protected MarketplaceService $marketplaceService)
-    {
+    public function __construct(
+        protected MarketplaceService $marketplaceService,
+        protected TrustTierService $trustTierService,
+    ) {
     }
 
     public function index(Request $request): JsonResponse
     {
         $request->validate([
             'risk' => ['sometimes', 'string', 'in:low,moderate,high'],
-            'trust_tier' => ['sometimes', 'string', 'in:bronze,silver,gold,platinum'],
+            'trust_tier' => ['sometimes', 'string', Rule::in($this->trustTierService->names())],
             'amount_min' => ['sometimes', 'numeric', 'min:0'],
             'amount_max' => ['sometimes', 'numeric', 'min:0'],
             'term_min' => ['sometimes', 'integer', 'min:1'],

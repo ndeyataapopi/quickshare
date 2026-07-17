@@ -41,6 +41,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
         Route::get('/', [LoanController::class, 'index'])->name('index');
         Route::get('/{loan}', [LoanController::class, 'show'])->name('show');
         Route::put('/{loan}', [LoanController::class, 'update'])->name('update');
+
+        Route::get('/{loan}/agreement', [LoanController::class, 'agreement'])->name('agreement');
+        Route::get('/{loan}/agreement/pdf', [LoanController::class, 'pdf'])->name('agreement.pdf');
+        Route::get('/{loan}/agreement/download', [LoanController::class, 'download'])->name('agreement.download');
+        Route::post('/{loan}/agreement/resend', [LoanController::class, 'resend'])->name('agreement.resend');
     });
 
     // ─── Funding (Escrow) ─────────────────────────────────────────────

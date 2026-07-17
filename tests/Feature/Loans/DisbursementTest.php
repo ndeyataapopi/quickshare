@@ -27,10 +27,10 @@ class DisbursementTest extends TestCase
         $this->service = app(DisbursementService::class);
 
         $this->borrower = User::factory()->active()->create(['trust_score' => 65.00]);
-        $this->borrower->assignRole('borrower');
+        $this->assignClientRole($this->borrower);
 
         $this->admin = User::factory()->active()->create(['trust_score' => 90.00]);
-        $this->admin->assignRole('admin');
+        $this->assignAdminRole($this->admin);
     }
 
     protected function createFundedLoan(array $overrides = []): Loan
@@ -282,7 +282,7 @@ class DisbursementTest extends TestCase
     public function test_borrower_cannot_view_other_loan_disbursements(): void
     {
         $otherBorrower = User::factory()->active()->create();
-        $otherBorrower->assignRole('borrower');
+        $this->assignClientRole($otherBorrower);
 
         $loan = $this->createFundedLoan(['borrower_id' => $otherBorrower->id]);
         $this->service->initiateDisbursement($loan);

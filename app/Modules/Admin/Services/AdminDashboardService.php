@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Services;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Modules\Collections\Models\CollectionLog;
 use App\Modules\Funding\Models\FundingTransaction;
@@ -219,9 +220,9 @@ class AdminDashboardService
                 'inactive' => User::where('status', 'inactive')->count(),
             ],
             'by_role' => [
-                'borrowers' => User::role('borrower')->count(),
-                'lenders' => User::role('lender')->count(),
-                'admins' => User::role('admin')->count(),
+                'clients' => User::role(UserRole::CLIENT->value)->count(),
+                'admins' => User::role(UserRole::ADMIN->value)->count(),
+                'compliance_officers' => User::role(UserRole::COMPLIANCE_OFFICER->value)->count(),
             ],
             'new_today' => User::whereDate('created_at', today())->count(),
             'new_this_week' => User::whereDate('created_at', '>=', now()->subDays(7))->count(),

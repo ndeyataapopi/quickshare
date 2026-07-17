@@ -25,7 +25,7 @@ class RbacTest extends TestCase
     public function test_admin_has_all_admin_permissions(): void
     {
         $admin = User::factory()->create();
-        $admin->assignRole('admin');
+        $this->assignAdminRole($admin);
 
         $this->assertTrue($admin->hasPermissionTo('approve_kyc'));
         $this->assertTrue($admin->hasPermissionTo('reject_kyc'));
@@ -38,7 +38,7 @@ class RbacTest extends TestCase
     public function test_compliance_officer_has_kyc_and_report_permissions(): void
     {
         $officer = User::factory()->create();
-        $officer->assignRole('compliance_officer');
+        $this->assignComplianceOfficerRole($officer);
 
         $this->assertTrue($officer->hasPermissionTo('approve_kyc'));
         $this->assertTrue($officer->hasPermissionTo('reject_kyc'));
@@ -48,68 +48,39 @@ class RbacTest extends TestCase
         $this->assertFalse($officer->hasPermissionTo('manage_repayments'));
     }
 
-    public function test_lender_has_correct_permissions(): void
+    public function test_client_has_borrowing_and_lending_permissions(): void
     {
-        $lender = User::factory()->create();
-        $lender->assignRole('lender');
+        $client = User::factory()->create();
+        $this->assignClientRole($client);
 
-        $this->assertTrue($lender->hasPermissionTo('fund_loan'));
-        $this->assertTrue($lender->hasPermissionTo('view_marketplace'));
-        $this->assertTrue($lender->hasPermissionTo('view_own_portfolio'));
-        $this->assertTrue($lender->hasPermissionTo('view_own_profile'));
-        $this->assertTrue($lender->hasPermissionTo('submit_kyc'));
-        $this->assertTrue($lender->hasPermissionTo('view_reports'));
-        $this->assertFalse($lender->hasPermissionTo('request_loan'));
-        $this->assertFalse($lender->hasPermissionTo('manage_loans'));
-    }
-
-    public function test_borrower_has_correct_permissions(): void
-    {
-        $borrower = User::factory()->create();
-        $borrower->assignRole('borrower');
-
-        $this->assertTrue($borrower->hasPermissionTo('request_loan'));
-        $this->assertTrue($borrower->hasPermissionTo('view_own_loans'));
-        $this->assertTrue($borrower->hasPermissionTo('make_repayment'));
-        $this->assertTrue($borrower->hasPermissionTo('view_own_profile'));
-        $this->assertTrue($borrower->hasPermissionTo('submit_kyc'));
-        $this->assertFalse($borrower->hasPermissionTo('fund_loan'));
-        $this->assertFalse($borrower->hasPermissionTo('manage_loans'));
-        $this->assertFalse($borrower->hasPermissionTo('view_reports'));
+        $this->assertTrue($client->hasPermissionTo('request_loan'));
+        $this->assertTrue($client->hasPermissionTo('view_own_loans'));
+        $this->assertTrue($client->hasPermissionTo('make_repayment'));
+        $this->assertTrue($client->hasPermissionTo('fund_loan'));
+        $this->assertTrue($client->hasPermissionTo('view_marketplace'));
+        $this->assertTrue($client->hasPermissionTo('view_own_portfolio'));
+        $this->assertTrue($client->hasPermissionTo('view_lender_earnings'));
+        $this->assertTrue($client->hasPermissionTo('view_own_profile'));
+        $this->assertTrue($client->hasPermissionTo('submit_kyc'));
+        $this->assertTrue($client->hasPermissionTo('view_reports'));
+        $this->assertFalse($client->hasPermissionTo('manage_loans'));
+        $this->assertFalse($client->hasPermissionTo('manage_users'));
     }
 
     // ─── Route Protection Tests ──────────────────────────────────────
 
-    public function test_borrower_cannot_access_admin_routes(): void
+    public function test_client_cannot_access_admin_routes(): void
     {
-        $borrower = User::factory()->create();
-        $borrower->assignRole('borrower');
+        $client = User::factory()->create();
+        $this->assignClientRole($client);
 
-        Sanctum::actingAs($borrower);
+        Sanctum::actingAs($client);
 
         // Admin dashboard should be forbidden
         // Note: these routes are commented out, so we test the middleware stack directly
-        $this->assertTrue($borrower->hasRole('borrower'));
-        $this->assertFalse($borrower->hasRole('admin'));
-        $this->assertFalse($borrower->hasPermissionTo('manage_loans'));
-    }
-
-    public function test_lender_cannot_request_loans(): void
-    {
-        $lender = User::factory()->create();
-        $lender->assignRole('lender');
-
-        $this->assertFalse($lender->hasPermissionTo('request_loan'));
-        $this->assertFalse($lender->hasPermissionTo('make_repayment'));
-    }
-
-    public function test_borrower_cannot_fund_loans(): void
-    {
-        $borrower = User::factory()->create();
-        $borrower->assignRole('borrower');
-
-        $this->assertFalse($borrower->hasPermissionTo('fund_loan'));
-        $this->assertFalse($borrower->hasPermissionTo('view_marketplace'));
+        $this->assertTrue($client->hasRole('client'));
+        $this->assertFalse($client->hasRole('admin'));
+        $this->assertFalse($client->hasPermissionTo('manage_loans'));
     }
 
     // ─── Active User Middleware Tests ────────────────────────────────
@@ -117,7 +88,7 @@ class RbacTest extends TestCase
     public function test_suspended_user_is_blocked_from_api(): void
     {
         $user = User::factory()->create(['status' => 'suspended']);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         Sanctum::actingAs($user);
 
@@ -133,7 +104,7 @@ class RbacTest extends TestCase
     public function test_pending_user_is_not_active(): void
     {
         $user = User::factory()->pending()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $this->assertFalse($user->isActive());
         $this->assertEquals('pending', $user->status);
@@ -156,6 +127,7 @@ class RbacTest extends TestCase
             'fund_loan',
             'view_marketplace',
             'view_own_portfolio',
+            'view_lender_earnings',
             'submit_kyc',
             'view_own_profile',
             'manage_referrals',
@@ -171,7 +143,7 @@ class RbacTest extends TestCase
 
     public function test_all_required_roles_exist(): void
     {
-        $requiredRoles = ['admin', 'borrower', 'lender', 'compliance_officer'];
+        $requiredRoles = ['admin', 'client', 'compliance_officer'];
 
         foreach ($requiredRoles as $role) {
             $this->assertTrue(
@@ -183,13 +155,12 @@ class RbacTest extends TestCase
 
     // ─── Multi-Role Tests ────────────────────────────────────────────
 
-    public function test_user_can_have_multiple_roles(): void
+    public function test_client_role_combines_borrowing_and_lending_capabilities(): void
     {
         $user = User::factory()->create();
-        $user->assignRole(['lender', 'borrower']);
+        $this->assignClientRole($user);
 
-        $this->assertTrue($user->hasRole('lender'));
-        $this->assertTrue($user->hasRole('borrower'));
+        $this->assertTrue($user->hasRole('client'));
         $this->assertTrue($user->hasPermissionTo('fund_loan'));
         $this->assertTrue($user->hasPermissionTo('request_loan'));
     }
@@ -197,7 +168,7 @@ class RbacTest extends TestCase
     public function test_compliance_officer_cannot_manage_loans(): void
     {
         $officer = User::factory()->create();
-        $officer->assignRole('compliance_officer');
+        $this->assignComplianceOfficerRole($officer);
 
         $this->assertFalse($officer->hasPermissionTo('manage_loans'));
         $this->assertFalse($officer->hasPermissionTo('manage_repayments'));

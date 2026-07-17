@@ -66,6 +66,7 @@
 
                     <form action="{{ route('client.loans.store') }}" method="POST" id="loanForm">
                         @csrf
+                        <input type="hidden" name="agreement_version" value="{{ config('loan.agreement.version') }}">
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="form-group row">
@@ -107,9 +108,9 @@
                                     <div class="col-sm-9">
                                         <select name="repayment_period" id="repayment_period" class="form-control @error('repayment_period') is-invalid @enderror" required>
                                             <option value="">Select term</option>
-                                            @for ($d = $minTermDays; $d <= $maxTermDays; $d += 7)
-                                                <option value="{{ $d }}" {{ old('repayment_period') == $d ? 'selected' : '' }}>{{ $d }} days</option>
-                                            @endfor
+                                            @foreach ($allowedDurations as $duration)
+                                                <option value="{{ $duration }}" {{ old('repayment_period') == $duration ? 'selected' : '' }}>{{ $duration }} days</option>
+                                            @endforeach
                                         </select>
                                         @error('repayment_period')<div class="invalid-feedback">{{ $message }}</div>@enderror>
                                     </div>
@@ -164,7 +165,10 @@
                         
                         <div class="form-group row mt-4">
                             <div class="col-sm-12 text-center">
-                                <button type="submit" class="btn btn-primary btn-lg">
+                                <button type="button" class="btn btn-outline-primary btn-lg" id="viewAgreementBtn">
+                                    <i class="mdi mdi-file-document-outline mr-2"></i> View Loan Agreement
+                                </button>
+                                <button type="submit" class="btn btn-primary btn-lg ml-2" id="submitApplicationBtn" disabled>
                                     <i class="mdi mdi-send mr-2"></i> Submit Application
                                 </button>
                                 <a href="{{ route('client.loans.index') }}" class="btn btn-secondary btn-lg ml-2">Cancel</a>
@@ -172,6 +176,44 @@
                         </div>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="agreementModal" tabindex="-1" role="dialog" aria-labelledby="agreementModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="agreementModalLabel">Loan Agreement</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="agreementLoading" class="text-center py-5">
+                    <i class="mdi mdi-loading mdi-spin text-primary" style="font-size: 48px;"></i>
+                    <p class="mt-2 mb-0">Loading loan agreement...</p>
+                </div>
+                <div id="agreementError" class="alert alert-danger d-none" role="alert"></div>
+                <iframe id="agreementPdf" title="Loan Agreement Preview" class="border w-100 d-none" style="height: 65vh;"></iframe>
+                <div class="mt-3 border-top pt-3">
+                    <div class="custom-control custom-checkbox mb-2">
+                        <input type="checkbox" name="agreement_read" value="1" form="loanForm" class="custom-control-input agreement-acceptance" id="agreementRead">
+                        <label class="custom-control-label" for="agreementRead">I have read the agreement.</label>
+                    </div>
+                    <div class="custom-control custom-checkbox mb-2">
+                        <input type="checkbox" name="agreement_terms" value="1" form="loanForm" class="custom-control-input agreement-acceptance" id="agreementTerms">
+                        <label class="custom-control-label" for="agreementTerms">I agree to the terms.</label>
+                    </div>
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" name="electronic_documents" value="1" form="loanForm" class="custom-control-input agreement-acceptance" id="agreementElectronicConsent">
+                        <label class="custom-control-label" for="agreementElectronicConsent">I consent to electronic documents.</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -186,6 +228,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const amountInput = document.getElementById('amount');
     const termSelect = document.getElementById('repayment_period');
     const purposeSelect = document.getElementById('purpose');
+    const viewAgreementBtn = document.getElementById('viewAgreementBtn');
+    const agreementPdf = document.getElementById('agreementPdf');
+    const agreementLoading = document.getElementById('agreementLoading');
+    const agreementError = document.getElementById('agreementError');
+    const acceptanceCheckboxes = Array.from(document.querySelectorAll('.agreement-acceptance'));
+    let agreementPreviewUrl = null;
     
     // Calculator elements
     const calcAmount = document.getElementById('calcAmount');
@@ -234,7 +282,72 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Form validation
     const form = document.getElementById('loanForm');
-    const submitBtn = form.querySelector('button[type="submit"]');
+    const submitBtn = document.getElementById('submitApplicationBtn');
+
+    function updateSubmitAvailability() {
+        submitBtn.disabled = !acceptanceCheckboxes.every(checkbox => checkbox.checked);
+    }
+
+    function resetAgreementAcceptance() {
+        acceptanceCheckboxes.forEach(checkbox => checkbox.checked = false);
+        updateSubmitAvailability();
+
+        if (agreementPreviewUrl) {
+            URL.revokeObjectURL(agreementPreviewUrl);
+            agreementPreviewUrl = null;
+        }
+
+        agreementPdf.src = 'about:blank';
+        agreementPdf.classList.add('d-none');
+    }
+
+    acceptanceCheckboxes.forEach(checkbox => checkbox.addEventListener('change', updateSubmitAvailability));
+    amountInput.addEventListener('input', resetAgreementAcceptance);
+    termSelect.addEventListener('change', resetAgreementAcceptance);
+
+    viewAgreementBtn.addEventListener('click', async function() {
+        if (!amountInput.checkValidity()) {
+            amountInput.reportValidity();
+            return;
+        }
+
+        if (!termSelect.checkValidity()) {
+            termSelect.reportValidity();
+            return;
+        }
+
+        agreementLoading.classList.remove('d-none');
+        agreementError.classList.add('d-none');
+        agreementPdf.classList.add('d-none');
+        $('#agreementModal').modal('show');
+
+        const previewUrl = new URL('{{ route('client.loans.agreement-preview') }}', window.location.origin);
+        previewUrl.searchParams.set('amount', amountInput.value);
+        previewUrl.searchParams.set('repayment_period', termSelect.value);
+
+        try {
+            const response = await fetch(previewUrl.toString(), {
+                headers: { 'Accept': 'application/pdf' }
+            });
+
+            if (!response.ok || !response.headers.get('content-type')?.includes('application/pdf')) {
+                throw new Error('Unable to load the loan agreement preview.');
+            }
+
+            if (agreementPreviewUrl) {
+                URL.revokeObjectURL(agreementPreviewUrl);
+            }
+
+            agreementPreviewUrl = URL.createObjectURL(await response.blob());
+            agreementPdf.src = agreementPreviewUrl;
+            agreementPdf.classList.remove('d-none');
+        } catch (error) {
+            agreementError.textContent = error.message;
+            agreementError.classList.remove('d-none');
+        } finally {
+            agreementLoading.classList.add('d-none');
+        }
+    });
     
     form.addEventListener('submit', function(e) {
         const amount = parseFloat(amountInput.value);

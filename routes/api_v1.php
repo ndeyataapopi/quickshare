@@ -145,7 +145,7 @@ Route::prefix('repayments')->name('repayments.')->middleware(['auth:sanctum', 'a
     });
 
     // Lender: view earnings
-    Route::middleware('permission:view_own_portfolio')->group(function () {
+    Route::middleware('permission:view_lender_earnings')->group(function () {
         Route::get('/lender/earnings', [RepaymentController::class, 'lenderEarnings'])->name('lender.earnings');
         Route::get('/lender/summary', [RepaymentController::class, 'lenderSummary'])->name('lender.summary');
     });

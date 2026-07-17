@@ -16,8 +16,8 @@ class ResubmitKycRequest extends FormRequest
         $maxSize = 10 * 1024;
 
         return [
-            'national_id_front' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
-            'national_id_back' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
+            'national_id' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
+            'selfie' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp', "max:{$maxSize}"],
             'payslip' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
             'bank_statement' => ['sometimes', 'file', 'mimes:jpg,jpeg,png,webp,pdf', "max:{$maxSize}"],
         ];

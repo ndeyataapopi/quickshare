@@ -33,7 +33,7 @@ class ApiResourcesTest extends TestCase
     public function test_user_resource_has_correct_structure(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $resource = (new UserResource($user))->toArray(new Request());
 
@@ -49,7 +49,7 @@ class ApiResourcesTest extends TestCase
     public function test_user_resource_includes_trust_score_tier(): void
     {
         $user = User::factory()->active()->create(['trust_score' => 75]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $resource = (new UserResource($user))->toArray(new Request());
 
@@ -61,7 +61,7 @@ class ApiResourcesTest extends TestCase
     public function test_user_resource_hides_national_id(): void
     {
         $user = User::factory()->active()->create(['national_id' => 'ZA1234567890']);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $resource = (new UserResource($user))->toArray(new Request());
 
@@ -75,7 +75,7 @@ class ApiResourcesTest extends TestCase
             'email_verified_at' => now(),
             'phone_verified_at' => null,
         ]);
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $resource = (new UserResource($user))->toArray(new Request());
 
@@ -88,7 +88,7 @@ class ApiResourcesTest extends TestCase
     public function test_loan_resource_has_correct_structure(): void
     {
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
 
@@ -106,7 +106,7 @@ class ApiResourcesTest extends TestCase
     public function test_loan_resource_calculates_funding_percentage(): void
     {
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create([
             'borrower_id' => $borrower->id,
@@ -123,7 +123,7 @@ class ApiResourcesTest extends TestCase
     public function test_loan_resource_marks_fully_funded(): void
     {
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create([
             'borrower_id' => $borrower->id,
@@ -140,7 +140,7 @@ class ApiResourcesTest extends TestCase
     public function test_loan_resource_omits_rejection_reason_when_null(): void
     {
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create([
             'borrower_id' => $borrower->id,
@@ -157,10 +157,10 @@ class ApiResourcesTest extends TestCase
     public function test_funding_transaction_resource_structure(): void
     {
         $lender = User::factory()->active()->create();
-        $lender->assignRole('lender');
+        $this->assignClientRole($lender);
 
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
 
@@ -187,7 +187,7 @@ class ApiResourcesTest extends TestCase
     public function test_repayment_resource_structure(): void
     {
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
 
@@ -215,7 +215,7 @@ class ApiResourcesTest extends TestCase
     public function test_kyc_submission_resource_structure(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $kyc = KycSubmission::factory()->create([
             'user_id' => $user->id,
@@ -234,7 +234,7 @@ class ApiResourcesTest extends TestCase
     public function test_kyc_submission_resource_hides_admin_notes_from_borrower(): void
     {
         $user = User::factory()->active()->create();
-        $user->assignRole('borrower');
+        $this->assignClientRole($user);
 
         $kyc = KycSubmission::factory()->create([
             'user_id' => $user->id,
@@ -254,7 +254,7 @@ class ApiResourcesTest extends TestCase
     public function test_marketplace_loan_resource_hides_borrower_identity(): void
     {
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create(['borrower_id' => $borrower->id]);
         $loan->load('borrower');
@@ -271,7 +271,7 @@ class ApiResourcesTest extends TestCase
     public function test_marketplace_loan_resource_calculates_remaining(): void
     {
         $borrower = User::factory()->active()->create();
-        $borrower->assignRole('borrower');
+        $this->assignClientRole($borrower);
 
         $loan = Loan::factory()->create([
             'borrower_id' => $borrower->id,
