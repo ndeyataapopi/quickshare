@@ -88,11 +88,6 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title text-uppercase mb-3">Update Status</h5>
-                    @if(!$user->kycSubmission || $user->kycSubmission->status !== 'approved')
-                    <div class="alert alert-info p-2 mb-3">
-                        <small><i class="mdi mdi-information mr-1"></i> Setting status to <strong>Active</strong> will allow this user to bypass KYC requirements.</small>
-                    </div>
-                    @endif
                     <form method="POST" action="{{ route('admin.users.status', $user) }}">
                         @csrf @method('PATCH')
                         <div class="form-group">
