@@ -233,10 +233,11 @@ class TrustScoreTest extends TestCase
 
     public function test_risk_level_matches_score_bands(): void
     {
-        $this->assertEquals('critical', TrustScoreService::riskLevel($this->createUser(10.00)));
+        $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(10.00)));
         $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(30.00)));
-        $this->assertEquals('elevated', TrustScoreService::riskLevel($this->createUser(45.00)));
-        $this->assertEquals('moderate', TrustScoreService::riskLevel($this->createUser(65.00)));
+        $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(45.00)));
+        $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(55.00)));
+        $this->assertEquals('medium', TrustScoreService::riskLevel($this->createUser(65.00)));
         $this->assertEquals('low', TrustScoreService::riskLevel($this->createUser(85.00)));
     }
 
@@ -253,7 +254,7 @@ class TrustScoreTest extends TestCase
     {
         $user = $this->createUser(65.00);
 
-        $this->assertEquals('moderate', $user->risk_level);
+        $this->assertEquals('medium', $user->risk_level);
     }
 
     public function test_user_has_max_loan_amount_accessor(): void

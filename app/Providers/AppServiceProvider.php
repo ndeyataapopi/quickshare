@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +26,11 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFour();
         $this->configureRateLimiting();
+
+        if ($this->app->isProduction()) {
+            URL::forceScheme('https');
+            URL::forceRootUrl(config('app.url'));
+        }
     }
 
     protected function configureRateLimiting(): void

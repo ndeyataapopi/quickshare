@@ -36,7 +36,7 @@
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-success mb-0">{{ formatKpi($loans->where('status', 'funding')->count()) }}</h4>
+                    <h4 class="font-weight-bold text-success mb-0">{{ formatKpi($loans->whereIn('status', ['marketplace', 'partially_funded'])->count()) }}</h4>
                     <small class="text-muted">Active Funding</small>
                 </div>
             </div>
@@ -69,9 +69,8 @@
                             <label class="form-label">Status</label>
                             <select class="form-control filter-select" data-filter="status">
                                 <option value="">All Status</option>
-                                <option value="funding">Funding</option>
-                                <option value="approved">Approved</option>
-                                <option value="active">Active</option>
+                                <option value="marketplace">Marketplace</option>
+                                <option value="partially_funded">Partially Funded</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -118,8 +117,10 @@
                         </div>
                         @php
                             $statusColors = [
-                                'funding' => 'primary',
-                                'approved' => 'success', 
+                                'marketplace' => 'primary',
+                                'partially_funded' => 'info',
+                                'funded' => 'success',
+                                'approved' => 'success',
                                 'active' => 'info',
                                 'completed' => 'secondary'
                             ];
@@ -135,9 +136,10 @@
                         $pct = $target > 0 ? min(100, round(($funded / $target) * 100)) : 0;
                         $minFund = config('loans.min_funding_amount', 500);
                         
-                        // Risk indicator (mock calculation)
-                        $riskScore = rand(60, 95);
-                        $riskLevel = $riskScore >= 85 ? 'low' : ($riskScore >= 70 ? 'medium' : 'high');
+                        // Risk is derived from the borrower's trust score
+                        $trustScore = (float) $loan->borrower->trust_score;
+                        $riskScore = max(0, 100 - $trustScore);
+                        $riskLevel = \App\Modules\TrustScore\Services\TrustScoreService::riskLevel($loan->borrower);
                         $riskColor = $riskLevel === 'low' ? 'success' : ($riskLevel === 'medium' ? 'warning' : 'danger');
                     @endphp
                     
@@ -181,7 +183,7 @@
                     </div>
                     
                     <!-- Funding Form -->
-                    @if($loan->status === 'funding' && $remaining > 0)
+                    @if($loan->isOnMarketplace() && $remaining > 0)
                     <form action="{{ route('client.marketplace.fund', $loan) }}" method="POST" class="funding-form mt-auto">
                         @csrf
                         <div class="input-group input-group-sm">
@@ -216,7 +218,9 @@
                     
                     <!-- Quick Actions -->
                     <div class="mt-2 text-center">
-                        <button class="btn btn-link btn-sm text-primary view-details" data-id="{{ $loan->id }}">
+                        <button class="btn btn-link btn-sm text-primary view-details"
+                                data-id="{{ $loan->id }}"
+                                data-url="{{ route('client.marketplace.show', $loan) }}">
                             <i class="mdi mdi-eye mr-1"></i>View Details
                         </button>
                     </div>
@@ -349,86 +353,143 @@ document.addEventListener('DOMContentLoaded', function() {
     const viewDetailsButtons = document.querySelectorAll('.view-details');
     const loanDetailsModal = document.getElementById('loanDetailsModal');
     const loanDetailsContent = document.getElementById('loanDetailsContent');
-    
+    const currencySymbol = {{ json_encode(config('loans.currency_symbol')) }};
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    function formatMoney(amount) {
+        return currencySymbol + ' ' + parseFloat(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function riskBadgeClass(level) {
+        return level === 'low' ? 'success' : (level === 'medium' ? 'warning' : 'danger');
+    }
+
     viewDetailsButtons.forEach(btn => {
         btn.addEventListener('click', function() {
-            const loanId = this.dataset.id;
-            
-            // Simulate loading loan details
+            const url = this.dataset.url;
+
             loanDetailsContent.innerHTML = `
                 <div class="text-center py-4">
                     <i class="mdi mdi-loading mdi-spin" style="font-size: 48px;"></i>
                     <p class="mt-2">Loading loan details...</p>
                 </div>
             `;
-            
-            setTimeout(() => {
+
+            fetch(url, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => {
+                if (! response.ok) throw new Error('Could not load loan details.');
+                return response.json();
+            })
+            .then(data => {
+                const l = data.listing || data;
+                const borrower = l.borrower || {};
+                const loan = l.loan || {};
+                const funding = l.funding || {};
+                const remaining = parseFloat(funding.remaining_amount || 0);
+                const progress = funding.progress_percent || 0;
+                const canFund = ['marketplace', 'partially_funded'].includes(funding.status) && remaining > 0;
+                const fundUrl = url + '/fund';
+                const minFund = {{ config('loans.min_funding_amount', 500) }};
+
+                const riskClass = riskBadgeClass(borrower.risk_level);
+
                 loanDetailsContent.innerHTML = `
                     <div class="row">
                         <div class="col-md-6">
                             <h6>Borrower Information</h6>
                             <table class="table table-sm">
-                                <tr><td>Name:</td><td>John Doe</td></tr>
-                                <tr><td>TrustScore:</td><td><span class="badge badge-success">85/100</span></td></tr>
-                                <tr><td>Loans Completed:</td><td>3</td></tr>
-                                <tr><td>On-time Payments:</td><td>100%</td></tr>
+                                <tr><td>Borrower ID:</td><td>${borrower.id_hash || '-'}</td></tr>
+                                <tr><td>Trust Score:</td><td><span class="badge badge-primary">${borrower.trust_score || 0}/100</span></td></tr>
+                                <tr><td>Trust Tier:</td><td>${ucfirst(borrower.trust_tier || '-')}</td></tr>
+                                <tr><td>Risk Level:</td><td><span class="badge badge-${riskClass}">${ucfirst(borrower.risk_level || 'high')}</span></td></tr>
+                                <tr><td>Repayment Probability:</td><td>${borrower.repayment_probability || 0}%</td></tr>
                             </table>
                         </div>
                         <div class="col-md-6">
                             <h6>Loan Details</h6>
                             <table class="table table-sm">
-                                <tr><td>Reference:</td><td>LOAN-${loanId}</td></tr>
-                                <tr><td>Amount:</td><td>N$ 5,000.00</td></tr>
-                                <tr><td>Term:</td><td>180 days</td></tr>
-                                <tr><td>Interest Rate:</td><td>12% p.a.</td></tr>
+                                <tr><td>Reference:</td><td>${l.reference || '-'}</td></tr>
+                                <tr><td>Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
+                                <tr><td>Term:</td><td>${loan.loan_term_days || 0} days</td></tr>
+                                <tr><td>Interest Rate:</td><td>${loan.interest_rate || 0}% p.a.</td></tr>
+                                <tr><td>Total Repayment:</td><td>${formatMoney(loan.total_repayment)}</td></tr>
                             </table>
                         </div>
                     </div>
                     <div class="mt-3">
-                        <h6>Purpose</h6>
-                        <p>Business expansion - purchasing new equipment for small bakery.</p>
-                    </div>
-                    <div class="mt-3">
                         <h6>Funding Progress</h6>
                         <div class="progress mb-2" style="height: 20px;">
-                            <div class="progress-bar bg-success" style="width: 65%;">65%</div>
+                            <div class="progress-bar bg-${progress >= 75 ? 'success' : (progress >= 50 ? 'warning' : 'info')}" style="width: ${progress}%;">${progress}%</div>
                         </div>
-                        <small class="text-muted">N$ 3,250 of N$ 5,000 funded</small>
+                        <small class="text-muted">${formatMoney(funding.funded_amount)} of ${formatMoney(loan.approved_amount)} funded &bull; ${formatMoney(remaining)} left</small>
                     </div>
+                    ${canFund ? `
+                    <div class="mt-4">
+                        <h6>Fund This Loan</h6>
+                        <form action="${fundUrl}" method="POST" class="funding-form">
+                            <input type="hidden" name="_token" value="${csrfToken}">
+                            <div class="input-group">
+                                <div class="input-group-prepend"><span class="input-group-text">${currencySymbol}</span></div>
+                                <input type="number" name="amount" class="form-control" placeholder="${minFund}" min="${minFund}" max="${remaining.toFixed(2)}" step="0.01" required>
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-primary"><i class="mdi mdi-plus"></i> Fund</button>
+                                </div>
+                            </div>
+                            <small class="text-muted">Min: ${currencySymbol}${minFund}</small>
+                        </form>
+                    </div>
+                    ` : ''}
                 `;
-            }, 1000);
-            
+
+                attachFundingValidation(loanDetailsContent);
+            })
+            .catch(error => {
+                loanDetailsContent.innerHTML = `
+                    <div class="alert alert-danger">${error.message || 'Unable to load loan details.'}</div>
+                `;
+            });
+
             loanDetailsModal.modal('show');
         });
     });
+
+    function ucfirst(string) {
+        return (string || '').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+    }
+
+    function attachFundingValidation(container) {
+        container.querySelectorAll('.funding-form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const input = this.querySelector('input[name="amount"]');
+                const amount = parseFloat(input.value);
+                const maxAmount = parseFloat(input.max);
+                const minAmount = parseFloat(input.min);
+
+                if (amount < minAmount) {
+                    e.preventDefault();
+                    alert(`Minimum investment is ${currencySymbol}${minAmount}`);
+                    return;
+                }
+
+                if (amount > maxAmount) {
+                    e.preventDefault();
+                    alert(`Maximum investment is ${currencySymbol}${maxAmount.toFixed(2)}`);
+                    return;
+                }
+
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i>';
+                }
+            });
+        });
+    }
     
     // Funding form validation
-    const fundingForms = document.querySelectorAll('.funding-form');
-    fundingForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            const amountInput = this.querySelector('input[name="amount"]');
-            const amount = parseFloat(amountInput.value);
-            const maxAmount = parseFloat(amountInput.max);
-            const minAmount = parseFloat(amountInput.min);
-            
-            if (amount < minAmount) {
-                e.preventDefault();
-                alert(`Minimum investment is {{ config('loans.currency_symbol') }}${minAmount}`);
-                return;
-            }
-            
-            if (amount > maxAmount) {
-                e.preventDefault();
-                alert(`Maximum investment is {{ config('loans.currency_symbol') }}${maxAmount.toFixed(2)}`);
-                return;
-            }
-            
-            // Show loading state
-            const submitBtn = this.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i>';
-        });
-    });
+    attachFundingValidation(document);
     
     // Auto-refresh funding progress every 30 seconds
     setInterval(() => {

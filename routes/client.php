@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     // ─── Marketplace (Lender) ─────────────────────────────────────────
     Route::middleware(['kyc_verified'])->prefix('marketplace')->name('marketplace.')->group(function () {
         Route::get('/', [MarketplaceController::class, 'index'])->name('index');
+        Route::get('/{loan}', [MarketplaceController::class, 'show'])->name('show');
         Route::post('/{loan}/fund', [MarketplaceController::class, 'fund'])->name('fund');
     });
 
