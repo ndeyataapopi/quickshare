@@ -31,6 +31,7 @@
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Date of Birth</div><div class="col-sm-8">{{ $user->date_of_birth ? $user->date_of_birth->format('M j, Y') : '—' }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Trust Score</div><div class="col-sm-8">{{ $user->trust_score }} <span class="badge badge-info">{{ ucfirst($user->trust_tier) }}</span></div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Roles</div><div class="col-sm-8">{{ $user->getRoleNames()->implode(', ') }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Permissions</div><div class="col-sm-8">{{ $user->getPermissionNames()->implode(', ') ?: '—' }}</div></div>
                     <div class="row mb-2">
                         <div class="col-sm-4 text-muted">Status</div>
                         <div class="col-sm-8">
@@ -102,6 +103,9 @@
                             Update Status
                         </button>
                     </form>
+                    <a href="{{ route('admin.users.roles', $user) }}" class="btn btn-outline-info btn-block mt-2">
+                        <i class="mdi mdi-account-check mr-1"></i> Manage Roles & Permissions
+                    </a>
                     <a href="{{ route('admin.users.index') }}" class="btn btn-outline-secondary btn-block mt-2">
                         <i class="mdi mdi-arrow-left mr-1"></i> Back to Users
                     </a>

@@ -11,6 +11,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -175,6 +177,43 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.show', $user)
             ->with('success', "User status updated to {$validated['status']}.");
+    }
+
+    public function manageRolesAndPermissions(User $user)
+    {
+        $user->load(['roles', 'permissions']);
+
+        return view('admin.users.roles', [
+            'user' => $user,
+            'roles' => Role::all(),
+            'permissions' => Permission::all(),
+        ]);
+    }
+
+    public function updateRoles(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'roles' => ['nullable', 'array'],
+            'roles.*' => ['string', 'exists:roles,name'],
+        ]);
+
+        $user->syncRoles($validated['roles'] ?? []);
+
+        return redirect()->route('admin.users.roles', $user)
+            ->with('success', 'User roles updated successfully.');
+    }
+
+    public function updatePermissions(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', 'exists:permissions,name'],
+        ]);
+
+        $user->syncPermissions($validated['permissions'] ?? []);
+
+        return redirect()->route('admin.users.roles', $user)
+            ->with('success', 'User permissions updated successfully.');
     }
 
     protected function generateUniqueCode(): string

@@ -33,6 +33,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
         Route::post('/', [UserController::class, 'store'])->name('store');
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
         Route::patch('/{user}/status', [UserController::class, 'updateStatus'])->name('status');
+        Route::get('/{user}/roles', [UserController::class, 'manageRolesAndPermissions'])->name('roles');
+        Route::patch('/{user}/roles', [UserController::class, 'updateRoles'])->name('roles.update');
+        Route::patch('/{user}/permissions', [UserController::class, 'updatePermissions'])->name('permissions.update');
     });
 
     // ─── KYC ──────────────────────────────────────────────────────────
