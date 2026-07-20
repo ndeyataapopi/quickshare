@@ -135,6 +135,12 @@
                         <span class="hide-menu">Settings</span>
                     </a>
                 </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.system-status.*')) active @endif" href="{{ route('admin.system-status.index') }}">
+                        <i class="mdi mdi-heart-pulse"></i>
+                        <span class="hide-menu">System Status</span>
+                    </a>
+                </li>
                 @endrole
                 @endhasanyrole
 

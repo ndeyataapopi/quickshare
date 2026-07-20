@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SystemStatusController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
@@ -112,4 +113,12 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
 
     // ─── Settings ─────────────────────────────────────────────────────
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+
+    // ─── System Status ────────────────────────────────────────────────
+    Route::prefix('system-status')->name('system-status.')->group(function () {
+        Route::get('/', [SystemStatusController::class, 'index'])->name('index');
+        Route::post('/restart-worker', [SystemStatusController::class, 'restartWorker'])->name('restart-worker');
+        Route::post('/retry-failed', [SystemStatusController::class, 'retryFailed'])->name('retry-failed');
+        Route::post('/clear-failed', [SystemStatusController::class, 'clearFailed'])->name('clear-failed');
+    });
 });
