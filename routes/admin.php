@@ -104,8 +104,5 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     });
 
     // ─── Settings ─────────────────────────────────────────────────────
-    Route::prefix('settings')->name('settings.')->group(function () {
-        Route::get('/', [SettingsController::class, 'index'])->name('index');
-        Route::post('/', [SettingsController::class, 'update'])->name('update');
-    });
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
 });
