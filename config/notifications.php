@@ -74,18 +74,20 @@ return [
     |--------------------------------------------------------------------------
     */
     'channels' => [
-        'welcome' => ['email'],
-        'kyc_approved' => ['email'],
-        'kyc_rejected' => ['email'],
-        'loan_approved' => ['email'],
-        'loan_rejected' => ['email'],
-        'loan_funded' => ['email', 'sms'],
-        'loan_disbursed' => ['email', 'sms', 'whatsapp'],
-        'repayment_reminder' => ['email', 'sms'],
-        'repayment_overdue' => ['email', 'sms', 'whatsapp'],
-        'repayment_received' => ['email'],
-        'password_reset' => ['email'],
+        'welcome' => ['email', 'database'],
+        'kyc_approved' => ['email', 'database'],
+        'kyc_rejected' => ['email', 'database'],
+        'loan_submitted' => ['email', 'database'],
+        'loan_approved' => ['email', 'database'],
+        'loan_rejected' => ['email', 'database'],
+        'loan_funded' => ['email', 'sms', 'database'],
+        'loan_disbursed' => ['email', 'sms', 'whatsapp', 'database'],
+        'repayment_reminder' => ['email', 'sms', 'database'],
+        'repayment_overdue' => ['email', 'sms', 'whatsapp', 'database'],
+        'repayment_received' => ['email', 'database'],
+        'password_reset' => ['email', 'database'],
         'fraud_alert' => ['email'],
+        'kyc_submitted' => ['email', 'database'],
     ],
 
 ];

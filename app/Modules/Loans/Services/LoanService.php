@@ -115,7 +115,7 @@ class LoanService
 
             $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
 
-            event(new LoanRequested($borrower, $data['amount'], $data['repayment_period']));
+            event(new LoanRequested($borrower, $data['amount'], $data['repayment_period'], $loan->id));
 
             return $loan;
         });
@@ -172,7 +172,7 @@ class LoanService
 
             $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
 
-            event(new LoanRequested($borrower, $data->requestedAmount, $data->loanTermDays));
+            event(new LoanRequested($borrower, $data->requestedAmount, $data->loanTermDays, $loan->id));
 
             return $loan;
         });

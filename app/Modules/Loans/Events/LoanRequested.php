@@ -15,6 +15,7 @@ class LoanRequested
         public User $borrower,
         public float $amount,
         public int $termMonths,
+        public ?int $loanId = null,
     ) {
     }
 }
