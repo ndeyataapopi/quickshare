@@ -20,12 +20,38 @@ class RoleSeeder extends Seeder
 
         // Create permissions
         $permissions = [
+            // KYC
             'approve_kyc',
             'reject_kyc',
-            'manage_loans',
+
+            // Users
             'manage_users',
+
+            // Loans
+            'manage_loans',
+            'approve_loans',
+            'reject_loans',
+
+            // Funding / Disbursements
+            'manage_funding',
+            'manage_disbursements',
+
+            // Repayments / Collections
             'manage_repayments',
+            'manage_collections',
+
+            // Reports / Audit
             'view_reports',
+            'view_audit_logs',
+
+            // Fraud / Referrals
+            'manage_fraud_alerts',
+            'manage_referrals',
+
+            // Impersonation
+            'impersonate_users',
+
+            // Client-only
             'view_own_loans',
             'request_loan',
             'make_repayment',
@@ -35,8 +61,6 @@ class RoleSeeder extends Seeder
             'view_lender_earnings',
             'submit_kyc',
             'view_own_profile',
-            'manage_referrals',
-            'impersonate_users',
         ];
 
         foreach ($permissions as $permission) {
@@ -48,13 +72,19 @@ class RoleSeeder extends Seeder
         $admin->syncPermissions([
             'approve_kyc',
             'reject_kyc',
-            'manage_loans',
             'manage_users',
+            'manage_loans',
+            'approve_loans',
+            'reject_loans',
+            'manage_funding',
+            'manage_disbursements',
             'manage_repayments',
+            'manage_collections',
             'view_reports',
-            'view_marketplace',
-            'view_lender_earnings',
+            'view_audit_logs',
+            'manage_fraud_alerts',
             'manage_referrals',
+            'view_marketplace',
         ]);
 
         $complianceOfficer = Role::firstOrCreate(['name' => UserRole::COMPLIANCE_OFFICER->value, 'guard_name' => 'web']);
@@ -63,6 +93,15 @@ class RoleSeeder extends Seeder
             'reject_kyc',
             'view_reports',
             'manage_users',
+        ]);
+
+        $financeOfficer = Role::firstOrCreate(['name' => UserRole::FINANCE_OFFICER->value, 'guard_name' => 'web']);
+        $financeOfficer->syncPermissions([
+            'manage_funding',
+            'manage_disbursements',
+            'manage_repayments',
+            'manage_collections',
+            'view_reports',
         ]);
 
         // Client role - both borrower and lender

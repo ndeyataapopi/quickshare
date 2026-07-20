@@ -25,15 +25,22 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="card-title text-uppercase mb-0">All Users</h5>
-                        <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Create Client
-                        </a>
+                        <div>
+                            <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Client
+                            </a>
+                            <a href="{{ route('admin.users.create-admin') }}" class="btn btn-info ml-2">
+                                <i class="fas fa-user-shield"></i> Create Admin
+                            </a>
+                        </div>
                     </div>
                     <form method="GET" class="form-inline mb-4">
                         <input type="text" name="search" class="form-control mr-2 mb-2" placeholder="Search users..." value="{{ request('search') }}">
                         <select name="role" class="form-control mr-2 mb-2">
                             <option value="">All Roles</option>
                             <option value="admin" {{ request('role') === 'admin' ? 'selected' : '' }}>Admin</option>
+                            <option value="compliance_officer" {{ request('role') === 'compliance_officer' ? 'selected' : '' }}>Compliance Officer</option>
+                            <option value="finance_officer" {{ request('role') === 'finance_officer' ? 'selected' : '' }}>Finance Officer</option>
                             <option value="client" {{ request('role') === 'client' ? 'selected' : '' }}>Client</option>
                         </select>
                         <select name="status" class="form-control mr-2 mb-2">

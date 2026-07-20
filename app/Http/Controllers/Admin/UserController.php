@@ -62,6 +62,20 @@ class UserController extends Controller
         return view('admin.users.create');
     }
 
+    public function createAdmin()
+    {
+        $roles = Role::whereIn('name', [
+            UserRole::ADMIN->value,
+            UserRole::COMPLIANCE_OFFICER->value,
+            UserRole::FINANCE_OFFICER->value,
+        ])->get();
+
+        return view('admin.users.create-admin', [
+            'roles' => $roles,
+            'permissions' => Permission::all(),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -159,6 +173,54 @@ class UserController extends Controller
             return redirect()->route('admin.users.show', $user)
                 ->with('success', 'Client created successfully. Email verification and phone OTP have been sent.');
         });
+    }
+
+    public function storeAdmin(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'national_id' => ['required', 'numeric', 'digits:11', 'unique:users,national_id', function ($attribute, $value, $fail) use ($request) {
+                $dateOfBirth = $request->input('date_of_birth');
+                if ($dateOfBirth) {
+                    $dob = \Carbon\Carbon::parse($dateOfBirth);
+                    $expectedPrefix = $dob->format('y') . $dob->format('m') . $dob->format('d');
+                    if (substr($value, 0, 6) !== $expectedPrefix) {
+                        $fail('The first 6 digits of the National ID must match the date of birth in YYMMDD format.');
+                    }
+                }
+            }],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
+            'date_of_birth' => ['required', 'date', 'before:-18 years'],
+            'password' => ['required', 'string', 'min:8'],
+            'status' => ['required', 'in:active,pending,suspended'],
+            'roles' => ['nullable', 'array'],
+            'roles.*' => ['string', 'exists:roles,name'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', 'exists:permissions,name'],
+        ]);
+
+        $user = User::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'national_id' => $validated['national_id'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'date_of_birth' => $validated['date_of_birth'],
+            'password' => $validated['password'],
+            'referral_code' => $this->generateUniqueCode(),
+            'trust_score' => 50.00,
+            'status' => $validated['status'],
+            'email_verified_at' => now(),
+            'phone_verified_at' => now(),
+        ]);
+
+        $user->syncRoles($validated['roles'] ?? []);
+        $user->syncPermissions($validated['permissions'] ?? []);
+
+        return redirect()->route('admin.users.show', $user)
+            ->with('success', 'Admin user created successfully.');
     }
 
     public function show(User $user)

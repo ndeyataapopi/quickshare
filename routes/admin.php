@@ -19,7 +19,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::post('/impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
 });
 
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_officer'])->prefix('admin')->name('admin.')->group(function () {
 
     // ─── Dashboard ────────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -31,6 +31,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/create', [UserController::class, 'create'])->name('create');
         Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::middleware('role:admin')->group(function () {
+            Route::get('/create-admin', [UserController::class, 'createAdmin'])->name('create-admin');
+            Route::post('/admin', [UserController::class, 'storeAdmin'])->name('store-admin');
+        });
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
         Route::patch('/{user}/status', [UserController::class, 'updateStatus'])->name('status');
         Route::get('/{user}/roles', [UserController::class, 'manageRolesAndPermissions'])->name('roles');
