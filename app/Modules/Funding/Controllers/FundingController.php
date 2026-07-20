@@ -77,7 +77,7 @@ class FundingController extends Controller
             'transaction' => $transaction,
             'loan_status' => $loan->fresh()->status,
             'remaining_funding' => $this->fundingService->getRemainingFunding($loan->fresh()),
-        ], 'Funding transaction initiated. Processing will complete shortly.');
+        ], 'Funding reservation created. Please complete payment and await admin verification.');
     }
 
     // ─── Lender: View Funding Transaction ─────────────────────────

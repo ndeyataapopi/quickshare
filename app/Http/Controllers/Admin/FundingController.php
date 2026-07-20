@@ -48,9 +48,25 @@ class FundingController extends Controller
 
     public function confirm(Request $request, FundingTransaction $transaction)
     {
-        $this->fundingService->confirmFunding($transaction);
+        $this->fundingService->confirmFunding($transaction, $request->user(), $request->input('admin_notes'));
         return redirect()->route('admin.funding.show', $transaction)
-            ->with('success', 'Funding transaction confirmed.');
+            ->with('success', 'Funding transaction confirmed and applied to the loan.');
+    }
+
+    public function reject(Request $request, FundingTransaction $transaction)
+    {
+        $request->validate(['reason' => ['required', 'string', 'max:2000']]);
+        $this->fundingService->rejectFunding($transaction, $request->user(), $request->input('reason'));
+        return redirect()->route('admin.funding.show', $transaction)
+            ->with('success', 'Funding transaction rejected and the lender has been notified.');
+    }
+
+    public function requestInfo(Request $request, FundingTransaction $transaction)
+    {
+        $request->validate(['message' => ['required', 'string', 'max:2000']]);
+        $this->fundingService->requestFundingInfo($transaction, $request->user(), $request->input('message'));
+        return redirect()->route('admin.funding.show', $transaction)
+            ->with('success', 'A request for more information has been sent to the lender.');
     }
 
     public function cancel(Request $request, FundingTransaction $transaction)

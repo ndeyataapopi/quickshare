@@ -191,10 +191,44 @@ class MarketplaceService
         $remaining = max(0, $approved - $funded);
         $fundingProgress = $approved > 0 ? round(($funded / $approved) * 100, 2) : 0;
 
+        $monthlyRate = (float) $loan->interest_rate / 12 / 100;
+        $monthlyRepayment = $approved > 0 && $monthlyRate > 0
+            ? round($approved * $monthlyRate / (1 - pow(1 + $monthlyRate, -ceil($loan->loan_term_days / 30))), 2)
+            : round($approved, 2);
+
+        $repaymentSchedule = [];
+        if ($loan->loan_term_days && $approved > 0) {
+            $months = max(1, (int) ceil($loan->loan_term_days / 30));
+            for ($i = 1; $i <= $months; $i++) {
+                $repaymentSchedule[] = [
+                    'installment' => $i,
+                    'due_date' => $loan->repayment_date
+                        ? $loan->repayment_date->copy()->subMonths($months - $i)->toDateString()
+                        : now()->addMonths($i)->toDateString(),
+                    'amount' => $i === $months
+                        ? round((float) $loan->total_repayment - ($monthlyRepayment * ($months - 1)), 2)
+                        : $monthlyRepayment,
+                ];
+            }
+        }
+
+        $fundingHistory = $loan->fundingTransactions()
+            ->confirmed()
+            ->latest('confirmed_at')
+            ->get()
+            ->map(function ($funding) {
+                return [
+                    'lender_hash' => substr(md5($funding->lender_id), 0, 8),
+                    'amount' => (float) $funding->amount,
+                    'confirmed_at' => $funding->confirmed_at?->toDateString(),
+                ];
+            });
+
         return [
             'id' => $loan->id,
             'reference' => $loan->reference,
             'borrower' => [
+                'name' => trim($borrower->first_name . ' ' . $borrower->last_name),
                 'id_hash' => substr(md5($borrower->id), 0, 8),
                 'trust_score' => $trustScore,
                 'trust_tier' => TrustScoreService::getTier($trustScore),
@@ -203,11 +237,13 @@ class MarketplaceService
             ],
             'loan' => [
                 'approved_amount' => $approved,
+                'purpose' => $loan->purpose,
                 'interest_rate' => (float) $loan->interest_rate,
                 'platform_fee' => (float) $loan->platform_fee,
                 'total_repayment' => (float) $loan->total_repayment,
                 'loan_term_days' => $loan->loan_term_days,
                 'repayment_date' => $loan->repayment_date?->toDateString(),
+                'repayment_schedule' => $repaymentSchedule,
                 'risk_score' => (float) $loan->risk_score,
             ],
             'funding' => [
@@ -216,6 +252,7 @@ class MarketplaceService
                 'progress_percent' => $fundingProgress,
                 'status' => $loan->status,
             ],
+            'funding_history' => $fundingHistory,
             'listed_at' => $loan->approved_at?->toIso8601String(),
         ];
     }

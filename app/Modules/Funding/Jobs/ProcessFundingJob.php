@@ -38,12 +38,10 @@ class ProcessFundingJob implements ShouldQueue
         }
 
         try {
-            // Simulate payment processing (integrate with payment gateway here)
-            // For now, we auto-confirm successful transactions
-            
-            $fundingService->confirmFunding($transaction);
+            // Funding is now verified manually by an admin after the lender uploads
+            // proof of payment. This job no longer auto-confirms transactions.
 
-            Log::info("ProcessFundingJob: Transaction {$transaction->transaction_reference} confirmed", [
+            Log::info("ProcessFundingJob: Transaction {$transaction->transaction_reference} is pending admin verification", [
                 'transaction_id' => $transaction->id,
                 'loan_id' => $transaction->loan_id,
                 'lender_id' => $transaction->lender_id,

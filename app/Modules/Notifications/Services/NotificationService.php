@@ -156,6 +156,10 @@ class NotificationService
             'repayment_received' => \App\Modules\Notifications\Notifications\RepaymentReceivedNotification::class,
             'welcome' => \App\Modules\Notifications\Notifications\WelcomeNotification::class,
             'password_reset' => \App\Modules\Notifications\Notifications\PasswordResetNotification::class,
+            'funding_payment_submitted' => \App\Modules\Notifications\Notifications\FundingPaymentSubmittedNotification::class,
+            'funding_payment_approved' => \App\Modules\Notifications\Notifications\FundingPaymentApprovedNotification::class,
+            'funding_payment_rejected' => \App\Modules\Notifications\Notifications\FundingPaymentRejectedNotification::class,
+            'funding_payment_info_requested' => \App\Modules\Notifications\Notifications\FundingPaymentInfoRequestedNotification::class,
         ];
 
         return $classes[$type] ?? \App\Modules\Notifications\Notifications\GenericNotification::class;

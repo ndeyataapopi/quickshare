@@ -144,25 +144,33 @@
                     @endphp
                     
                     <div class="mb-3">
-                        <h4 class="text-primary mb-1">{{ kpiMoney($target) }}</h4>
+                        <div class="d-flex justify-content-between align-items-end">
+                            <h4 class="text-primary mb-1">{{ kpiMoney($target) }}</h4>
+                            <span class="text-muted small">{{ $loan->loan_term_days }} days</span>
+                        </div>
                         <p class="text-muted small mb-2">{{ $loan->purpose }}</p>
-                        
-                        <!-- Risk Indicator -->
-                        <div class="d-flex align-items-center mb-2">
-                            <small class="text-muted mr-2">Risk:</small>
-                            <span class="badge badge-{{ $riskColor }} badge-sm">
-                                <i class="mdi mdi-shield-check mr-1"></i>{{ ucfirst($riskLevel) }}
-                            </span>
-                            <small class="text-muted ml-auto">{{ $riskScore }}/100</small>
+
+                        <!-- Trust Score & Risk -->
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div>
+                                <small class="text-muted d-block">Trust Score</small>
+                                <span class="badge badge-info badge-sm">{{ number_format($trustScore, 0) }}/100</span>
+                            </div>
+                            <div class="text-right">
+                                <small class="text-muted d-block">Risk</small>
+                                <span class="badge badge-{{ $riskColor }} badge-sm">
+                                    <i class="mdi mdi-shield-check mr-1"></i>{{ ucfirst($riskLevel) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="row small text-muted mb-3">
-                        <div class="col-6">
-                            <i class="mdi mdi-calendar mr-1"></i> {{ $loan->loan_term_days }} days
-                        </div>
+
+                    <div class="row small text-muted mb-2">
                         <div class="col-6">
                             <i class="mdi mdi-percent mr-1"></i> {{ $loan->interest_rate ?? '-' }}% p.a.
+                        </div>
+                        <div class="col-6">
+                            <i class="mdi mdi-cash-multiple mr-1"></i> Exp. Return {{ config('loans.currency_symbol') }}{{ number_format($target * ($loan->interest_rate / 100) * ($loan->loan_term_days / 365), 2) }}
                         </div>
                     </div>
                     
@@ -394,14 +402,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 const minFund = {{ config('loans.min_funding_amount', 500) }};
 
                 const riskClass = riskBadgeClass(borrower.risk_level);
+                const expectedReturn = (loan.approved_amount || 0) * (loan.interest_rate || 0) / 100 * (loan.loan_term_days || 0) / 365;
+                const scheduleRows = (loan.repayment_schedule || []).map(row => `
+                    <tr><td>Installment ${row.installment}</td><td>${row.due_date}</td><td>${formatMoney(row.amount)}</td></tr>
+                `).join('');
+                const historyRows = (l.funding_history || []).length
+                    ? (l.funding_history || []).map(row => `
+                        <tr><td>${row.lender_hash || 'Lender'}</td><td>${formatMoney(row.amount)}</td><td>${row.confirmed_at || '-'}</td></tr>
+                    `).join('')
+                    : '<tr><td colspan="3" class="text-muted text-center">No confirmed contributions yet.</td></tr>';
 
                 loanDetailsContent.innerHTML = `
                     <div class="row">
                         <div class="col-md-6">
                             <h6>Borrower Information</h6>
                             <table class="table table-sm">
-                                <tr><td>Borrower ID:</td><td>${borrower.id_hash || '-'}</td></tr>
-                                <tr><td>Trust Score:</td><td><span class="badge badge-primary">${borrower.trust_score || 0}/100</span></td></tr>
+                                <tr><td>Borrower Name:</td><td>${borrower.name || '-'}</td></tr>
+                                <tr><td>Trust Score:</td><td><span class="badge badge-info">${borrower.trust_score || 0}/100</span></td></tr>
                                 <tr><td>Trust Tier:</td><td>${ucfirst(borrower.trust_tier || '-')}</td></tr>
                                 <tr><td>Risk Level:</td><td><span class="badge badge-${riskClass}">${ucfirst(borrower.risk_level || 'high')}</span></td></tr>
                                 <tr><td>Repayment Probability:</td><td>${borrower.repayment_probability || 0}%</td></tr>
@@ -411,9 +428,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             <h6>Loan Details</h6>
                             <table class="table table-sm">
                                 <tr><td>Reference:</td><td>${l.reference || '-'}</td></tr>
-                                <tr><td>Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
+                                <tr><td>Purpose:</td><td>${loan.purpose || '-'}</td></tr>
+                                <tr><td>Requested Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
                                 <tr><td>Term:</td><td>${loan.loan_term_days || 0} days</td></tr>
                                 <tr><td>Interest Rate:</td><td>${loan.interest_rate || 0}% p.a.</td></tr>
+                                <tr><td>Expected Return:</td><td class="text-success">${formatMoney(expectedReturn)}</td></tr>
                                 <tr><td>Total Repayment:</td><td>${formatMoney(loan.total_repayment)}</td></tr>
                             </table>
                         </div>
@@ -423,7 +442,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="progress mb-2" style="height: 20px;">
                             <div class="progress-bar bg-${progress >= 75 ? 'success' : (progress >= 50 ? 'warning' : 'info')}" style="width: ${progress}%;">${progress}%</div>
                         </div>
-                        <small class="text-muted">${formatMoney(funding.funded_amount)} of ${formatMoney(loan.approved_amount)} funded &bull; ${formatMoney(remaining)} left</small>
+                        <small class="text-muted">${formatMoney(funding.funded_amount)} funded &bull; ${formatMoney(remaining)} remaining</small>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6>Repayment Schedule</h6>
+                            <table class="table table-sm table-striped">
+                                <thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th></tr></thead>
+                                <tbody>${scheduleRows}</tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Funding History</h6>
+                            <table class="table table-sm table-striped">
+                                <thead><tr><th>Lender</th><th>Amount</th><th>Confirmed</th></tr></thead>
+                                <tbody>${historyRows}</tbody>
+                            </table>
+                        </div>
                     </div>
                     ${canFund ? `
                     <div class="mt-4">
@@ -440,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <small class="text-muted">Min: ${currencySymbol}${minFund}</small>
                         </form>
                     </div>
-                    ` : ''}
+                    ` : '<div class="alert alert-secondary mt-3 mb-0">This loan is not currently available for funding.</div>'}
                 `;
 
                 attachFundingValidation(loanDetailsContent);

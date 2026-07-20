@@ -63,14 +63,6 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
         Route::post('/{loan}/agreement/resend', [LoanController::class, 'resend'])->name('agreement.resend');
     });
 
-    // ─── Funding (Escrow) ─────────────────────────────────────────────
-    Route::prefix('funding')->name('funding.')->group(function () {
-        Route::get('/', [FundingController::class, 'index'])->name('index');
-        Route::get('/{transaction}', [FundingController::class, 'show'])->name('show');
-        Route::patch('/{transaction}/confirm', [FundingController::class, 'confirm'])->name('confirm');
-        Route::patch('/{transaction}/cancel', [FundingController::class, 'cancel'])->name('cancel');
-    });
-
     // ─── Disbursements ────────────────────────────────────────────────
     Route::prefix('disbursements')->name('disbursements.')->group(function () {
         Route::get('/', [DisbursementController::class, 'index'])->name('index');
@@ -109,6 +101,16 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/{type}', [ReportController::class, 'show'])->name('show');
+    });
+
+    // ─── Funding Payments ─────────────────────────────────────────────
+    Route::prefix('funding-payments')->name('funding-payments.')->group(function () {
+        Route::get('/', [FundingController::class, 'index'])->name('index');
+        Route::get('/{transaction}', [FundingController::class, 'show'])->name('show');
+        Route::post('/{transaction}/confirm', [FundingController::class, 'confirm'])->name('confirm');
+        Route::post('/{transaction}/reject', [FundingController::class, 'reject'])->name('reject');
+        Route::post('/{transaction}/request-info', [FundingController::class, 'requestInfo'])->name('request-info');
+        Route::post('/{transaction}/cancel', [FundingController::class, 'cancel'])->name('cancel');
     });
 
     // ─── Settings ─────────────────────────────────────────────────────

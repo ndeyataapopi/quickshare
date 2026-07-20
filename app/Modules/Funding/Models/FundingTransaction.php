@@ -28,6 +28,14 @@ class FundingTransaction extends Model
         'status',
         'confirmed_at',
         'transaction_reference',
+        'payment_method',
+        'payment_method_detail',
+        'payment_reference',
+        'payment_proof_path',
+        'payment_date',
+        'admin_verified_at',
+        'admin_verified_by',
+        'admin_notes',
         'notes',
         'metadata',
     ];
@@ -39,6 +47,8 @@ class FundingTransaction extends Model
             'interest_rate' => 'decimal:2',
             'expected_return' => 'decimal:2',
             'confirmed_at' => 'datetime',
+            'payment_date' => 'datetime',
+            'admin_verified_at' => 'datetime',
             'metadata' => 'array',
         ];
     }

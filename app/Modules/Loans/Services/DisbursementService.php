@@ -122,7 +122,7 @@ class DisbursementService
                 'external_reference' => $externalReference,
             ]);
 
-            // Notify borrower of disbursement
+            // Notify borrower and lenders of disbursement
             try {
                 $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
                 $notificationService->sendAuto(
@@ -135,6 +135,19 @@ class DisbursementService
                         'disbursed_at' => now()->toDateString(),
                     ]
                 );
+
+                foreach ($loan->fundingTransactions()->confirmed()->with('lender')->get() as $funding) {
+                    $notificationService->sendAuto(
+                        $funding->lender,
+                        'loan_disbursed',
+                        [
+                            'loan_id' => $loan->id,
+                            'reference' => $loan->reference,
+                            'amount' => (float) $funding->amount,
+                            'disbursed_at' => now()->toDateString(),
+                        ]
+                    );
+                }
             } catch (\Throwable $notifError) {
                 Log::warning('Failed to send disbursement notification', ['error' => $notifError->getMessage()]);
             }

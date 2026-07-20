@@ -236,8 +236,9 @@ class TrustScoreTest extends TestCase
         $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(10.00)));
         $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(30.00)));
         $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(45.00)));
-        $this->assertEquals('high', TrustScoreService::riskLevel($this->createUser(55.00)));
+        $this->assertEquals('medium', TrustScoreService::riskLevel($this->createUser(50.00)));
         $this->assertEquals('medium', TrustScoreService::riskLevel($this->createUser(65.00)));
+        $this->assertEquals('medium', TrustScoreService::riskLevel($this->createUser(75.00)));
         $this->assertEquals('low', TrustScoreService::riskLevel($this->createUser(85.00)));
     }
 

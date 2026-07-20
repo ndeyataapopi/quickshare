@@ -169,8 +169,8 @@ class TrustScoreService
         $score = (float) $user->trust_score;
 
         return match (true) {
-            $score >= 80 => 'low',
-            $score >= 60 => 'medium',
+            $score > 75 => 'low',
+            $score >= 50 => 'medium',
             default => 'high',
         };
     }

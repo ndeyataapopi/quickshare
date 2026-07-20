@@ -41,6 +41,10 @@ trait HasDatabaseChannel
             'repayment_reminder' => 'Repayment Reminder',
             'repayment_overdue' => 'Repayment Overdue',
             'repayment_received' => 'Payment Received',
+            'funding_payment_submitted' => 'Funding Payment Submitted',
+            'funding_payment_approved' => 'Funding Payment Approved',
+            'funding_payment_rejected' => 'Funding Payment Rejected',
+            'funding_payment_info_requested' => 'More Information Required',
             default => 'Notification',
         };
     }
@@ -66,6 +70,10 @@ trait HasDatabaseChannel
             'repayment_reminder' => "Your repayment for loan {$reference} is due soon.",
             'repayment_overdue' => 'Your loan repayment is now overdue. Please make payment to avoid penalties.',
             'repayment_received' => "Thank you! We received your repayment of {$amount} for loan {$reference}.",
+            'funding_payment_submitted' => "A funding payment of {$amount} has been submitted for loan {$reference}.",
+            'funding_payment_approved' => "Your funding payment of {$amount} for loan {$reference} has been approved.",
+            'funding_payment_rejected' => "Your funding payment of {$amount} for loan {$reference} was rejected.",
+            'funding_payment_info_requested' => "We need more information for your funding payment of {$amount} on loan {$reference}.",
             default => 'You have a new notification.',
         };
     }
@@ -124,6 +132,14 @@ trait HasDatabaseChannel
             'loan_rejected' => ['text' => 'Apply Again', 'url' => route('client.loans.create')],
             'loan_disbursed', 'repayment_reminder', 'repayment_overdue' =>
                 ['text' => 'Make Payment', 'url' => route('client.repayments.index')],
+            'funding_payment_submitted' => [
+                'text' => 'Review Funding',
+                'url' => $this->data['transaction_id'] ?? null
+                    ? route('admin.funding-payments.show', $this->data['transaction_id'])
+                    : route('admin.funding-payments.index'),
+            ],
+            'funding_payment_approved', 'funding_payment_rejected', 'funding_payment_info_requested' =>
+                ['text' => 'View Investment', 'url' => $loanId ? route('client.loans.show', $loanId) : route('client.investments.index')],
             default => null,
         };
     }

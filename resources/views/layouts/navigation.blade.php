@@ -120,6 +120,14 @@
                     </a>
                 </li>
                 @endcan
+                @role('admin')
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding-payments.*')) active @endif" href="{{ route('admin.funding-payments.index') }}">
+                        <i class="mdi mdi-bank-transfer-in"></i>
+                        <span class="hide-menu">Funding Payments</span>
+                    </a>
+                </li>
+                @endrole
                 @can('view_reports')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.reports.*')) active @endif" href="{{ route('admin.reports.index') }}">

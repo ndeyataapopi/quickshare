@@ -68,12 +68,13 @@ class FundingTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.transaction.status', 'pending')
-            ->assertJsonPath('data.loan_status', 'partially_funded');
-        
+            ->assertJsonPath('data.loan_status', 'marketplace');
+
         // Amount may be returned as string '5000.00' due to decimal cast
         $amount = $response->json('data.transaction.amount');
         $this->assertEquals(5000, (float) $amount);
-        $this->assertEquals(5000, (float) $response->json('data.remaining_funding'));
+        // The funding is reserved but not yet applied to the loan until admin verification
+        $this->assertEquals(10000, (float) $response->json('data.remaining_funding'));
 
         $this->assertDatabaseHas('funding_transactions', [
             'loan_id' => $loan->id,
@@ -114,6 +115,16 @@ class FundingTest extends TestCase
         $response = $this->postJson("/api/funding/{$loan->id}", ['amount' => 4000]);
         $response->assertOk();
 
+        // The loan is still marketplace until an admin verifies payments
+        $loan->refresh();
+        $this->assertEquals(0, $loan->funded_amount);
+        $this->assertEquals('marketplace', $loan->status);
+        $this->assertEquals(2, $loan->fundingTransactions()->where('status', 'pending')->count());
+
+        // Once both payments are verified, the loan becomes partially funded
+        foreach ($loan->fundingTransactions()->where('status', 'pending')->get() as $transaction) {
+            $this->service->confirmFunding($transaction, $this->lender);
+        }
         $loan->refresh();
         $this->assertEquals(7000, $loan->funded_amount);
         $this->assertEquals('partially_funded', $loan->status);
@@ -131,11 +142,17 @@ class FundingTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('data.loan_status', 'funded')
-            ->assertJsonPath('data.remaining_funding', 0);
+            ->assertJsonPath('data.transaction.status', 'pending')
+            ->assertJsonPath('data.loan_status', 'marketplace')
+            ->assertJsonPath('data.remaining_funding', 5000);
+
+        // Admin verifies the funding payment
+        $transaction = FundingTransaction::where('loan_id', $loan->id)->first();
+        $this->service->confirmFunding($transaction, $this->lender);
 
         $loan->refresh();
         $this->assertEquals('funded', $loan->status);
+        $this->assertEquals(0, $this->service->getRemainingFunding($loan));
     }
 
     // ─── Overfunding Protection ──────────────────────────────────────

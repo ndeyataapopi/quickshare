@@ -3,13 +3,13 @@
 <div class="page-breadcrumb border-bottom">
     <div class="row">
         <div class="col-lg-3 col-md-4 col-xs-12 align-self-center">
-            <h5 class="font-medium text-uppercase mb-0"><i class="mdi mdi-bank-transfer-in mr-2"></i>Funding / Escrow</h5>
+            <h5 class="font-medium text-uppercase mb-0"><i class="mdi mdi-bank-transfer-in mr-2"></i>Funding Payments</h5>
         </div>
         <div class="col-lg-9 col-md-8 col-xs-12 align-self-center">
             <nav aria-label="breadcrumb" class="mt-2 float-md-right float-left">
                 <ol class="breadcrumb mb-0 justify-content-end p-0">
                     <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
-                    <li class="breadcrumb-item active">Funding</li>
+                    <li class="breadcrumb-item active">Funding Payments</li>
                 </ol>
             </nav>
         </div>
@@ -93,7 +93,7 @@
                     <tbody>
                         @forelse($transactions as $t)
                         <tr>
-                            <td><a href="{{ route('admin.funding.show', $t) }}">{{ $t->transaction_reference }}</a></td>
+                            <td><a href="{{ route('admin.funding-payments.show', $t) }}">{{ $t->transaction_reference }}</a></td>
                             <td>{{ $t->lender ? $t->lender->first_name . ' ' . $t->lender->last_name : '—' }}</td>
                             <td>{{ $t->loan ? $t->loan->reference : '—' }}</td>
                             <td>N$ {{ number_format($t->amount, 2) }}</td>
@@ -104,13 +104,7 @@
                             </td>
                             <td>{{ $t->created_at->format('M j, Y') }}</td>
                             <td>
-                                <a href="{{ route('admin.funding.show', $t) }}" class="btn btn-xs btn-outline-primary">View</a>
-                                @if($t->status === 'pending')
-                                    <form method="POST" action="{{ route('admin.funding.confirm', $t) }}" class="d-inline">
-                                        @csrf @method('PATCH')
-                                        <button class="btn btn-xs btn-success" onclick="return confirm('Confirm this payment?')">Confirm</button>
-                                    </form>
-                                @endif
+                                <a href="{{ route('admin.funding-payments.show', $t) }}" class="btn btn-xs btn-outline-primary">View</a>
                             </td>
                         </tr>
                         @empty
