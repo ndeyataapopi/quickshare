@@ -37,17 +37,32 @@
             @foreach($notifications as $n)
             @php
                 $unread  = is_null($n->read_at);
+                $title   = $n->data['title'] ?? 'Notification';
                 $message = $n->data['message'] ?? 'You have a new notification.';
+                $details = $n->data['details'] ?? [];
+                $actionText = $n->data['action_text'] ?? null;
+                $actionUrl  = $n->data['action_url'] ?? null;
                 $type    = $n->data['type'] ?? '';
-                $icons   = ['kyc_approved'=>['mdi-check-circle','text-success'],'kyc_rejected'=>['mdi-close-circle','text-danger'],'loan_approved'=>['mdi-cash-check','text-success'],'loan_rejected'=>['mdi-cash-remove','text-danger'],'loan_funded'=>['mdi-bank-transfer','text-primary'],'loan_disbursed'=>['mdi-bank-transfer-out','text-primary'],'repayment_received'=>['mdi-cash-usd','text-success'],'repayment_reminder'=>['mdi-alarm','text-warning'],'repayment_overdue'=>['mdi-alert-circle','text-danger']];
+                $icons   = ['welcome'=>['mdi-account-plus','text-info'],'password_reset'=>['mdi-lock-reset','text-warning'],'kyc_approved'=>['mdi-check-circle','text-success'],'kyc_rejected'=>['mdi-close-circle','text-danger'],'loan_submitted'=>['mdi-file-document','text-info'],'loan_approved'=>['mdi-cash-check','text-success'],'loan_rejected'=>['mdi-cash-remove','text-danger'],'loan_funded'=>['mdi-bank-transfer','text-primary'],'loan_disbursed'=>['mdi-bank-transfer-out','text-primary'],'repayment_received'=>['mdi-cash-usd','text-success'],'repayment_reminder'=>['mdi-alarm','text-warning'],'repayment_overdue'=>['mdi-alert-circle','text-danger']];
                 [$ico, $cls] = $icons[$type] ?? ['mdi-bell','text-muted'];
             @endphp
             <div class="list-group-item py-3 {{ $unread ? 'border-left border-primary bg-light' : '' }}">
                 <div class="d-flex align-items-start">
                     <i class="mdi {{ $ico }} {{ $cls }} mr-3 mt-1" style="font-size:22px;"></i>
                     <div class="flex-grow-1">
-                        <p class="mb-1 {{ $unread ? 'font-weight-bold' : '' }}">{{ $message }}</p>
-                        <small class="text-muted">{{ $n->created_at->diffForHumans() }}</small>
+                        <h6 class="mb-1 {{ $unread ? 'font-weight-bold' : '' }}">{{ $title }}</h6>
+                        <p class="mb-1">{{ $message }}</p>
+                        @if(!empty($details))
+                            <ul class="list-unstyled mb-1 small text-muted">
+                            @foreach($details as $label => $value)
+                                <li><span class="font-weight-bold">{{ $label }}:</span> {{ $value }}</li>
+                            @endforeach
+                            </ul>
+                        @endif
+                        @if($actionText && $actionUrl)
+                            <a href="{{ $actionUrl }}" class="btn btn-sm btn-outline-primary mt-1">{{ $actionText }}</a>
+                        @endif
+                        <br><small class="text-muted">{{ $n->created_at->diffForHumans() }}</small>
                     </div>
                     <div class="ml-3 text-right flex-shrink-0">
                         @if($unread)<span class="badge badge-primary d-block mb-1">New</span>

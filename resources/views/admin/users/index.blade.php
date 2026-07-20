@@ -25,15 +25,22 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="card-title text-uppercase mb-0">All Users</h5>
-                        <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Create Client
-                        </a>
+                        <div>
+                            <a href="{{ route('admin.users.create') }}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Create Client
+                            </a>
+                            <a href="{{ route('admin.users.create-admin') }}" class="btn btn-info ml-2">
+                                <i class="fas fa-user-shield"></i> Create Admin
+                            </a>
+                        </div>
                     </div>
                     <form method="GET" class="form-inline mb-4">
                         <input type="text" name="search" class="form-control mr-2 mb-2" placeholder="Search users..." value="{{ request('search') }}">
                         <select name="role" class="form-control mr-2 mb-2">
                             <option value="">All Roles</option>
                             <option value="admin" {{ request('role') === 'admin' ? 'selected' : '' }}>Admin</option>
+                            <option value="compliance_officer" {{ request('role') === 'compliance_officer' ? 'selected' : '' }}>Compliance Officer</option>
+                            <option value="finance_officer" {{ request('role') === 'finance_officer' ? 'selected' : '' }}>Finance Officer</option>
                             <option value="client" {{ request('role') === 'client' ? 'selected' : '' }}>Client</option>
                         </select>
                         <select name="status" class="form-control mr-2 mb-2">
@@ -96,7 +103,14 @@
                                     <td onclick="event.stopPropagation()">
                                         @if($user->kycSubmission && $user->kycSubmission->status === 'pending')
                                             <a href="{{ route('admin.kyc.show', $user->kycSubmission) }}" class="btn btn-sm btn-warning">Review KYC</a>
-                                        @else
+                                        @endif
+                                        @if(auth()->user()->can('impersonate_users') && !session()->has('impersonate.original_id') && $user->hasRole('client') && ! $user->is(auth()->user()))
+                                            <form method="POST" action="{{ route('admin.impersonate.start', $user) }}" class="d-inline ml-1">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-info">Login As</button>
+                                            </form>
+                                        @endif
+                                        @if(! ($user->kycSubmission && $user->kycSubmission->status === 'pending') && ! (auth()->user()->can('impersonate_users') && !session()->has('impersonate.original_id') && $user->hasRole('client') && ! $user->is(auth()->user())))
                                             <span class="text-muted small">—</span>
                                         @endif
                                     </td>

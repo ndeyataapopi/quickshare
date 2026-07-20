@@ -23,7 +23,7 @@ class MarketplaceController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'risk' => ['sometimes', 'string', 'in:low,moderate,high'],
+            'risk' => ['sometimes', 'string', 'in:low,medium,high'],
             'trust_tier' => ['sometimes', 'string', Rule::in($this->trustTierService->names())],
             'amount_min' => ['sometimes', 'numeric', 'min:0'],
             'amount_max' => ['sometimes', 'numeric', 'min:0'],

@@ -49,8 +49,9 @@ class LoanRequestTest extends TestCase
     {
         $calc = $this->loanService->calculate($this->borrower, 10000.00, 90);
 
+        $expectedRate = (float) config('loan.trust_tiers.silver.platform_fee_percent') + (float) config('loan.trust_tiers.silver.lender_return_percent');
         $this->assertEquals(10000.00, $calc->principal);
-        $this->assertEquals((float) config('loan.trust_tiers.silver.interest_percent'), $calc->interestRate);
+        $this->assertEquals($expectedRate, $calc->interestRate);
         $this->assertEquals(90, $calc->termDays);
         $this->assertGreaterThan(0, $calc->interestAmount);
         $this->assertGreaterThan(0, $calc->platformFee);
@@ -58,15 +59,13 @@ class LoanRequestTest extends TestCase
         $this->assertEquals('silver', $calc->trustTier);
     }
 
-    public function test_interest_calculation_is_proportional_to_term(): void
+    public function test_total_interest_is_independent_of_loan_term(): void
     {
         $calc30 = $this->loanService->calculate($this->borrower, 10000.00, 30);
         $calc90 = $this->loanService->calculate($this->borrower, 10000.00, 90);
 
-        $this->assertGreaterThan($calc30->interestAmount, $calc90->interestAmount);
-        // 90-day interest should be approx 3x the 30-day interest
-        $ratio = $calc90->interestAmount / $calc30->interestAmount;
-        $this->assertEqualsWithDelta(3.0, $ratio, 0.01);
+        $this->assertEquals($calc30->interestAmount, $calc90->interestAmount);
+        $this->assertEquals($calc30->totalRepayment, $calc90->totalRepayment);
     }
 
     public function test_platform_fee_is_percentage_of_principal(): void
@@ -82,8 +81,8 @@ class LoanRequestTest extends TestCase
         config([
             'loan.trust_tiers.silver.name' => 'custom-silver',
             'loan.trust_tiers.silver.maximum_loan' => 4321.00,
-            'loan.trust_tiers.silver.interest_percent' => 12.50,
             'loan.trust_tiers.silver.platform_fee_percent' => 2.25,
+            'loan.trust_tiers.silver.lender_return_percent' => 10.25,
         ]);
 
         $calculation = $this->loanService->calculate($this->borrower, 1000.00, 30);
@@ -92,13 +91,14 @@ class LoanRequestTest extends TestCase
         $this->assertEquals(4321.00, $calculation->maxAllowedAmount);
         $this->assertEquals(12.50, $calculation->interestRate);
         $this->assertEquals(22.50, $calculation->platformFee);
+        $this->assertEquals(102.50, $calculation->lenderReturnAmount);
     }
 
-    public function test_total_repayment_equals_principal_plus_interest_plus_fee(): void
+    public function test_total_repayment_equals_principal_plus_total_interest(): void
     {
         $calc = $this->loanService->calculate($this->borrower, 10000.00, 60);
 
-        $expected = round($calc->principal + $calc->interestAmount + $calc->platformFee, 2);
+        $expected = round($calc->principal + $calc->interestAmount, 2);
         $this->assertEquals($expected, $calc->totalRepayment);
     }
 
@@ -111,7 +111,13 @@ class LoanRequestTest extends TestCase
         $this->assertArrayHasKey('interest_rate', $arr);
         $this->assertArrayHasKey('interest_amount', $arr);
         $this->assertArrayHasKey('platform_fee', $arr);
+        $this->assertArrayHasKey('platform_fee_percent', $arr);
+        $this->assertArrayHasKey('lender_return_amount', $arr);
+        $this->assertArrayHasKey('lender_return_percent', $arr);
+        $this->assertArrayHasKey('total_interest_amount', $arr);
+        $this->assertArrayHasKey('total_interest_percent', $arr);
         $this->assertArrayHasKey('total_repayment', $arr);
+        $this->assertArrayHasKey('repayment_date', $arr);
         $this->assertArrayHasKey('risk_score', $arr);
         $this->assertArrayHasKey('risk_level', $arr);
         $this->assertArrayHasKey('trust_tier', $arr);
@@ -402,7 +408,10 @@ class LoanRequestTest extends TestCase
             ->assertJsonStructure([
                 'data' => [
                     'principal', 'interest_rate', 'term_days',
-                    'interest_amount', 'platform_fee', 'total_repayment',
+                    'interest_amount', 'platform_fee', 'platform_fee_percent',
+                    'lender_return_amount', 'lender_return_percent',
+                    'total_interest_amount', 'total_interest_percent',
+                    'total_repayment', 'repayment_date',
                     'risk_score', 'risk_level', 'trust_tier', 'max_allowed_amount',
                 ],
             ]);

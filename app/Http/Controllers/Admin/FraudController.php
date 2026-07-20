@@ -15,14 +15,14 @@ class FraudController extends Controller
 
     public function index(Request $request)
     {
-        $query = FraudFlag::with(['user'])->latest();
+        $query = FraudFlag::with(['detector'])->latest();
 
         if ($search = $request->input('search')) {
-            $query->whereHas('user', fn($u) => $u->where('first_name', 'like', "%{$search}%")
+            $query->whereHas('detector', fn($u) => $u->where('first_name', 'like', "%{$search}%")
                 ->orWhere('last_name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%"))
                 ->orWhere('description', 'like', "%{$search}%")
-                ->orWhere('type', 'like', "%{$search}%");
+                ->orWhere('flag_type', 'like', "%{$search}%");
         }
 
         if ($status = $request->input('status')) {
@@ -30,7 +30,7 @@ class FraudController extends Controller
         }
 
         if ($riskLevel = $request->input('risk_level')) {
-            $query->where('risk_level', $riskLevel);
+            $query->where('severity', $riskLevel);
         }
 
         $alerts = $query->paginate(20)->withQueryString();
@@ -38,9 +38,9 @@ class FraudController extends Controller
         $stats = [
             'total' => FraudFlag::count(),
             'open' => FraudFlag::where('status', 'open')->count(),
-            'investigating' => FraudFlag::where('status', 'investigating')->count(),
+            'investigating' => FraudFlag::where('status', 'under_review')->count(),
             'resolved' => FraudFlag::where('status', 'resolved')->count(),
-            'high_risk' => FraudFlag::whereIn('risk_level', ['high', 'critical'])->count(),
+            'high_risk' => FraudFlag::whereIn('severity', ['high', 'critical'])->count(),
         ];
 
         return view('admin.fraud.index', compact('alerts', 'stats'));

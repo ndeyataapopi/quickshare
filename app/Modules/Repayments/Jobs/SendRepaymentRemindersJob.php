@@ -47,7 +47,7 @@ class SendRepaymentRemindersJob implements ShouldQueue
                             'due_date' => $repayment->due_date->toFormattedDateString(),
                             'days_until_due' => $daysAhead,
                         ],
-                        ['email', 'sms']
+                        ['email', 'sms', 'database']
                     );
 
                     $sent++;

@@ -125,6 +125,11 @@ class LoanController extends Controller
             return redirect()->back()->with('error', 'No agreement has been generated for this loan.');
         }
 
+        $disk = (string) config('loan.agreement.disk');
+        if (! \Storage::disk($disk)->exists($loan->agreement_path)) {
+            return redirect()->back()->with('error', 'Agreement file not found on storage disk.');
+        }
+
         Mail::to($loan->borrower->email)->queue(new LoanAgreementMail($loan));
 
         return redirect()->back()->with('success', 'Loan agreement email resent to '.$loan->borrower->email);

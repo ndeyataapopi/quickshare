@@ -10,22 +10,36 @@ use App\Http\Controllers\Admin\RepaymentController;
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\FraudController;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingsController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+    Route::post('/impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
+});
+
+Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_officer'])->prefix('admin')->name('admin.')->group(function () {
 
     // ─── Dashboard ────────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('impersonate.start');
 
     // ─── Users ────────────────────────────────────────────────────────
     Route::prefix('users')->name('users.')->group(function () {
         Route::get('/', [UserController::class, 'index'])->name('index');
         Route::get('/create', [UserController::class, 'create'])->name('create');
         Route::post('/', [UserController::class, 'store'])->name('store');
+        Route::middleware('role:admin')->group(function () {
+            Route::get('/create-admin', [UserController::class, 'createAdmin'])->name('create-admin');
+            Route::post('/admin', [UserController::class, 'storeAdmin'])->name('store-admin');
+        });
         Route::get('/{user}', [UserController::class, 'show'])->name('show');
         Route::patch('/{user}/status', [UserController::class, 'updateStatus'])->name('status');
+        Route::get('/{user}/roles', [UserController::class, 'manageRolesAndPermissions'])->name('roles');
+        Route::patch('/{user}/roles', [UserController::class, 'updateRoles'])->name('roles.update');
+        Route::patch('/{user}/permissions', [UserController::class, 'updatePermissions'])->name('permissions.update');
     });
 
     // ─── KYC ──────────────────────────────────────────────────────────
@@ -97,8 +111,5 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     });
 
     // ─── Settings ─────────────────────────────────────────────────────
-    Route::prefix('settings')->name('settings.')->group(function () {
-        Route::get('/', [SettingsController::class, 'index'])->name('index');
-        Route::post('/', [SettingsController::class, 'update'])->name('update');
-    });
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
 });

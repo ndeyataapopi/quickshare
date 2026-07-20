@@ -34,7 +34,7 @@ class CollectionController extends Controller
             'total' => CollectionCase::count(),
             'open' => CollectionCase::where('status', 'open')->count(),
             'resolved' => CollectionCase::where('status', 'resolved')->count(),
-            'overdue_amount' => CollectionCase::sum('overdue_amount'),
+            'overdue_amount' => CollectionCase::sum('amount_outstanding'),
             'recovered_amount' => CollectionCase::sum('amount_recovered'),
         ];
 

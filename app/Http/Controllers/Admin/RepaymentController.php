@@ -38,7 +38,7 @@ class RepaymentController extends Controller
         $stats = [
             'total'     => Repayment::count(),
             'pending'   => Repayment::where('status', 'pending')->count(),
-            'paid'      => Repayment::where('status', 'paid')->count(),
+            'completed' => Repayment::where('status', 'paid')->count(),
             'overdue'   => Repayment::where('status', 'overdue')->count(),
             'defaulted' => Repayment::where('status', 'defaulted')->count(),
         ];

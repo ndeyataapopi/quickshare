@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     // ─── Marketplace (Lender) ─────────────────────────────────────────
     Route::middleware(['kyc_verified'])->prefix('marketplace')->name('marketplace.')->group(function () {
         Route::get('/', [MarketplaceController::class, 'index'])->name('index');
+        Route::get('/{loan}', [MarketplaceController::class, 'show'])->name('show');
         Route::post('/{loan}/fund', [MarketplaceController::class, 'fund'])->name('fund');
     });
 
@@ -85,7 +86,7 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     // ─── Profile ──────────────────────────────────────────────────────
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('edit');
-        Route::patch('/', [ProfileController::class, 'update'])->name('update');
-        Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
+        Route::patch('/', [ProfileController::class, 'update'])->middleware('prevent_impersonation')->name('update');
+        Route::delete('/', [ProfileController::class, 'destroy'])->middleware('prevent_impersonation')->name('destroy');
     });
 });

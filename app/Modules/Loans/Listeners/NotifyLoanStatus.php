@@ -33,9 +33,13 @@ class NotifyLoanStatus implements ShouldQueue
         ]);
 
         // Loan approval/rejection notifications via email
+        $loan = \App\Modules\Loans\Models\Loan::find($event->loanId);
+
         $notificationType = $event instanceof LoanApproved ? 'loan_approved' : 'loan_rejected';
         $data = [
             'loan_id' => $event->loanId,
+            'reference' => $loan?->reference ?? 'N/A',
+            'amount' => $loan?->approved_amount ?? $loan?->requested_amount ?? 0,
         ];
 
         if ($event instanceof LoanRejected) {

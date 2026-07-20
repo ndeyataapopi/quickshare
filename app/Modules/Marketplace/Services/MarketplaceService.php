@@ -159,7 +159,7 @@ class MarketplaceService
 
         return match ($risk) {
             'low' => $query->where('users.trust_score', '>=', $gold['trust_score']['min']),
-            'moderate' => $query->whereBetween('users.trust_score', [
+            'medium' => $query->whereBetween('users.trust_score', [
                 $silver['trust_score']['min'],
                 $silver['trust_score']['max'],
             ]),

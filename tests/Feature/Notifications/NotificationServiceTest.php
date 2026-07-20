@@ -244,10 +244,10 @@ class NotificationServiceTest extends TestCase
         LaravelNotification::fake();
         Event::fake([NotificationSent::class]);
 
-        // Config sets 'kyc_approved' to ['email'] only
+        // Config sets 'kyc_approved' to ['email', 'database']
         $this->service->sendAuto($this->user, 'kyc_approved', []);
 
-        Event::assertDispatched(NotificationSent::class, 1);
+        Event::assertDispatched(NotificationSent::class, 2);
     }
 
     public function test_send_auto_repayment_overdue_uses_all_channels(): void
@@ -255,13 +255,13 @@ class NotificationServiceTest extends TestCase
         LaravelNotification::fake();
         Event::fake([NotificationSent::class]);
 
-        // Config sets 'repayment_overdue' to ['email', 'sms', 'whatsapp']
+        // Config sets 'repayment_overdue' to ['email', 'sms', 'whatsapp', 'database']
         $this->service->sendAuto($this->user, 'repayment_overdue', [
             'amount' => 2000,
             'days_overdue' => 3,
         ]);
 
-        Event::assertDispatched(NotificationSent::class, 3);
+        Event::assertDispatched(NotificationSent::class, 4);
     }
 
     // ─── Bulk Notifications ────────────────────────────────────────────

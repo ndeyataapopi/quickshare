@@ -28,19 +28,23 @@ class LoanService
 
     public function calculate(User $borrower, float $amount, int $termDays): LoanCalculation
     {
+        $termDays = (int) $termDays;
         $riskScore = (float) $borrower->trust_score;
         $tier = $this->trustTierService->forScore($riskScore);
-        $interestRate = $tier['interest_percent'];
         $platformFeePercent = $tier['platform_fee_percent'];
+        $lenderReturnPercent = $tier['lender_return_percent'];
+        $interestRate = $platformFeePercent + $lenderReturnPercent;
         $riskLevel = $borrower->riskLevel();
         $trustTier = $tier['name'];
         $maxAllowed = $tier['maximum_loan'];
 
-        // Calculate interest as flat percentage of loan amount
-        $interestAmount = round($amount * ($interestRate / 100) * ($termDays / 365), 2);
+        // Calculate platform fee and lender return as flat percentages of principal
         $platformFee = round($amount * ($platformFeePercent / 100), 2);
-        $totalRepayment = round($amount + $interestAmount + $platformFee, 2);
+        $lenderReturnAmount = round($amount * ($lenderReturnPercent / 100), 2);
+        $interestAmount = round($platformFee + $lenderReturnAmount, 2);
+        $totalRepayment = round($amount + $interestAmount, 2);
         $dailyRate = $totalRepayment / $termDays;
+        $repaymentDate = now()->copy()->addDays($termDays)->toDateString();
 
         return new LoanCalculation(
             principal: $amount,
@@ -49,12 +53,15 @@ class LoanService
             interestAmount: $interestAmount,
             platformFee: $platformFee,
             platformFeePercent: $platformFeePercent,
+            lenderReturnPercent: $lenderReturnPercent,
+            lenderReturnAmount: $lenderReturnAmount,
             totalRepayment: $totalRepayment,
             dailyRate: $dailyRate,
             riskScore: $riskScore,
             riskLevel: $riskLevel,
             trustTier: $trustTier,
             maxAllowedAmount: $maxAllowed,
+            repaymentDate: $repaymentDate,
         );
     }
 
@@ -75,9 +82,10 @@ class LoanService
             (string) ($data['agreement_version'] ?? ''),
         );
 
-        $calculation = $this->calculate($borrower, $data['amount'], $data['repayment_period']);
+        $termDays = (int) $data['repayment_period'];
+        $calculation = $this->calculate($borrower, $data['amount'], $termDays);
         $submittedAt = now();
-        $repaymentDate = $submittedAt->copy()->addDays($data['repayment_period']);
+        $repaymentDate = $submittedAt->copy()->addDays($termDays);
         $configurationSnapshot = $this->configurationSnapshot($tier, $calculation);
         $consent = $this->agreementConsent();
 
@@ -107,7 +115,7 @@ class LoanService
 
             $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
 
-            event(new LoanRequested($borrower, $data['amount'], $data['repayment_period']));
+            event(new LoanRequested($borrower, $data['amount'], $data['repayment_period'], $loan->id));
 
             return $loan;
         });
@@ -134,9 +142,10 @@ class LoanService
             $data->agreementVersion,
         );
 
-        $calculation = $this->calculate($borrower, $data->requestedAmount, $data->loanTermDays);
+        $termDays = (int) $data->loanTermDays;
+        $calculation = $this->calculate($borrower, $data->requestedAmount, $termDays);
         $submittedAt = now();
-        $repaymentDate = $submittedAt->copy()->addDays($data->loanTermDays);
+        $repaymentDate = $submittedAt->copy()->addDays($termDays);
         $configurationSnapshot = $this->configurationSnapshot($tier, $calculation);
         $consent = $this->agreementConsent();
 
@@ -163,7 +172,7 @@ class LoanService
 
             $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
 
-            event(new LoanRequested($borrower, $data->requestedAmount, $data->loanTermDays));
+            event(new LoanRequested($borrower, $data->requestedAmount, $data->loanTermDays, $loan->id));
 
             return $loan;
         });

@@ -18,7 +18,7 @@ class AdminSeeder extends Seeder
         $referralCode = strtoupper(Str::random(8));
 
         $admin = User::firstOrCreate(
-            ['email' => 'admin@quickshare.com'],
+            ['email' => 'quickshare@nepticgroup.com'],
             [
                 'first_name' => 'Admin',
                 'last_name' => 'Quickshare',

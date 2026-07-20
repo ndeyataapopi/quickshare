@@ -146,6 +146,7 @@ class NotificationService
             'kyc_submitted' => \App\Modules\Notifications\Notifications\KycSubmittedNotification::class,
             'kyc_approved' => \App\Modules\Notifications\Notifications\KycApprovedNotification::class,
             'kyc_rejected' => \App\Modules\Notifications\Notifications\KycRejectedNotification::class,
+            'loan_submitted' => \App\Modules\Notifications\Notifications\LoanSubmittedNotification::class,
             'loan_approved' => \App\Modules\Notifications\Notifications\LoanApprovedNotification::class,
             'loan_rejected' => \App\Modules\Notifications\Notifications\LoanRejectedNotification::class,
             'loan_funded' => \App\Modules\Notifications\Notifications\LoanFundedNotification::class,

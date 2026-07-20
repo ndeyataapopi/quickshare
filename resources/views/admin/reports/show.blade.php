@@ -36,27 +36,31 @@
                         <a href="{{ route('admin.reports.index') }}" class="btn btn-sm btn-outline-secondary"><i class="mdi mdi-arrow-left"></i> Back</a>
                     </div>
                     @if(isset($data) && $data->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped">
-                            <thead class="thead-light">
-                                <tr>
-                                    @foreach(array_keys($data->first()->toArray()) as $col)
-                                        <th>{{ ucfirst(str_replace('_',' ',$col)) }}</th>
-                                    @endforeach
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($data as $row)
-                                <tr>
-                                    @foreach($row->toArray() as $val)
-                                        <td>{{ is_array($val) ? json_encode($val) : $val }}</td>
-                                    @endforeach
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="mt-3">{{ $data->links() }}</div>
+                        @if(view()->exists("admin.reports.partials.{$type}"))
+                            @include("admin.reports.partials.{$type}")
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            @foreach(array_keys($data->first()->toArray()) as $col)
+                                                <th>{{ ucfirst(str_replace('_',' ',$col)) }}</th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($data as $row)
+                                        <tr>
+                                            @foreach($row->toArray() as $val)
+                                                <td>{{ is_array($val) ? json_encode($val) : $val }}</td>
+                                            @endforeach
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-3">{{ $data->links() }}</div>
+                        @endif
                     @else
                     <div class="text-center py-5">
                         <i class="mdi mdi-chart-line text-muted" style="font-size:64px;"></i>

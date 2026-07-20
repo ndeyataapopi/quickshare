@@ -59,6 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\ThrottleIP::class . ':60,1',
+            \App\Http\Middleware\ShareImpersonationState::class,
         ]);
 
         $middleware->api(append: [
@@ -71,6 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'active_user' => \App\Http\Middleware\EnsureActiveUser::class,
             'kyc_verified' => \App\Http\Middleware\CheckKYCStatus::class,
+            'prevent_impersonation' => \App\Http\Middleware\PreventImpersonationSensitiveActions::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -170,10 +170,8 @@ class TrustScoreService
 
         return match (true) {
             $score >= 80 => 'low',
-            $score >= 60 => 'moderate',
-            $score >= 40 => 'elevated',
-            $score >= 20 => 'high',
-            default => 'critical',
+            $score >= 60 => 'medium',
+            default => 'high',
         };
     }
 

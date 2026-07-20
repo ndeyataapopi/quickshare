@@ -30,7 +30,7 @@ class SendWelcomeNotification implements ShouldQueue
             $event->user,
             'welcome',
             [],
-            ['email']
+            ['email', 'database']
         );
     }
 }

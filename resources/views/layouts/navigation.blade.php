@@ -40,7 +40,7 @@
                     </ul>
                 </li>
 
-                @role('admin')
+                @hasanyrole('admin|compliance_officer|finance_officer')
                 <!-- Admin Menu -->
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.dashboard')) active @endif" href="{{ route('admin.dashboard') }}">
@@ -48,66 +48,87 @@
                         <span class="hide-menu">Dashboard</span>
                     </a>
                 </li>
+                @can('manage_users')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.users.*')) active @endif" href="{{ route('admin.users.index') }}">
                         <i class="mdi mdi-account-multiple"></i>
                         <span class="hide-menu">Users</span>
                     </a>
                 </li>
+                @endcan
+                @can('approve_kyc')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.kyc.*')) active @endif" href="{{ route('admin.kyc.index') }}">
                         <i class="mdi mdi-account-card-details"></i>
                         <span class="hide-menu">KYC Review</span>
                     </a>
                 </li>
+                @endcan
+                @can('manage_loans')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.loans.*')) active @endif" href="{{ route('admin.loans.index') }}">
                         <i class="mdi mdi-cash"></i>
                         <span class="hide-menu">Loans</span>
                     </a>
                 </li>
+                @endcan
+                @can('manage_funding')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding.*')) active @endif" href="{{ route('admin.funding.index') }}">
                         <i class="mdi mdi-bank-transfer-in"></i>
                         <span class="hide-menu">Funding / Escrow</span>
                     </a>
                 </li>
+                @endcan
+                @can('manage_disbursements')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.disbursements.*')) active @endif" href="{{ route('admin.disbursements.index') }}">
                         <i class="mdi mdi-send"></i>
                         <span class="hide-menu">Disbursements</span>
                     </a>
                 </li>
+                @endcan
+                @can('manage_repayments')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.repayments.*')) active @endif" href="{{ route('admin.repayments.index') }}">
                         <i class="mdi mdi-cash-usd"></i>
                         <span class="hide-menu">Repayments</span>
                     </a>
                 </li>
+                @endcan
+                @can('manage_collections')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.collections.*')) active @endif" href="{{ route('admin.collections.index') }}">
                         <i class="mdi mdi-bank"></i>
                         <span class="hide-menu">Collections</span>
                     </a>
                 </li>
+                @endcan
+                @can('manage_fraud_alerts')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.fraud.*')) active @endif" href="{{ route('admin.fraud.index') }}">
                         <i class="mdi mdi-shield-alert"></i>
                         <span class="hide-menu">Fraud</span>
                     </a>
                 </li>
+                @endcan
+                @can('view_audit_logs')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.audit.*')) active @endif" href="{{ route('admin.audit.index') }}">
                         <i class="mdi mdi-history"></i>
                         <span class="hide-menu">Audit Logs</span>
                     </a>
                 </li>
+                @endcan
+                @can('view_reports')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.reports.*')) active @endif" href="{{ route('admin.reports.index') }}">
                         <i class="mdi mdi-chart-line"></i>
                         <span class="hide-menu">Reports</span>
                     </a>
                 </li>
+                @endcan
+                @role('admin')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.settings.*')) active @endif" href="{{ route('admin.settings.index') }}">
                         <i class="mdi mdi-settings"></i>
@@ -115,6 +136,7 @@
                     </a>
                 </li>
                 @endrole
+                @endhasanyrole
 
                 @role('client')
                 <!-- Client Menu (Borrower & Lender) -->
