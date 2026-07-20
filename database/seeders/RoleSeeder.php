@@ -36,6 +36,7 @@ class RoleSeeder extends Seeder
             'submit_kyc',
             'view_own_profile',
             'manage_referrals',
+            'impersonate_users',
         ];
 
         foreach ($permissions as $permission) {

@@ -96,7 +96,14 @@
                                     <td onclick="event.stopPropagation()">
                                         @if($user->kycSubmission && $user->kycSubmission->status === 'pending')
                                             <a href="{{ route('admin.kyc.show', $user->kycSubmission) }}" class="btn btn-sm btn-warning">Review KYC</a>
-                                        @else
+                                        @endif
+                                        @if(auth()->user()->can('impersonate_users') && !session()->has('impersonate.original_id') && $user->hasRole('client') && ! $user->is(auth()->user()))
+                                            <form method="POST" action="{{ route('admin.impersonate.start', $user) }}" class="d-inline ml-1">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-info">Login As</button>
+                                            </form>
+                                        @endif
+                                        @if(! ($user->kycSubmission && $user->kycSubmission->status === 'pending') && ! (auth()->user()->can('impersonate_users') && !session()->has('impersonate.original_id') && $user->hasRole('client') && ! $user->is(auth()->user())))
                                             <span class="text-muted small">—</span>
                                         @endif
                                     </td>

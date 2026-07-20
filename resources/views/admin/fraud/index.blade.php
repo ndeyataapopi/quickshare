@@ -91,11 +91,11 @@
                             <tbody>
                                 @foreach($alerts as $alert)
                                 <tr>
-                                    <td>{{ optional($alert->user)->first_name }} {{ optional($alert->user)->last_name }}</td>
-                                    <td>{{ ucfirst(str_replace('_',' ',$alert->type ?? '-')) }}</td>
+                                    <td>{{ optional($alert->detector)->first_name }} {{ optional($alert->detector)->last_name }}</td>
+                                    <td>{{ ucfirst(str_replace('_',' ',$alert->flag_type ?? '-')) }}</td>
                                     <td>
                                         @php $rl=['low'=>'success','medium'=>'warning','high'=>'danger','critical'=>'danger']; @endphp
-                                        <span class="badge badge-{{ $rl[$alert->risk_level] ?? 'secondary' }}">{{ ucfirst($alert->risk_level ?? '-') }}</span>
+                                        <span class="badge badge-{{ $rl[$alert->severity] ?? 'secondary' }}">{{ ucfirst($alert->severity ?? '-') }}</span>
                                     </td>
                                     <td>{{ Str::limit($alert->description ?? '-', 60) }}</td>
                                     <td>

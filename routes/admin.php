@@ -10,14 +10,21 @@ use App\Http\Controllers\Admin\RepaymentController;
 use App\Http\Controllers\Admin\CollectionController;
 use App\Http\Controllers\Admin\FraudController;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingsController;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+    Route::post('/impersonate/stop', [ImpersonationController::class, 'stop'])->name('impersonate.stop');
+});
 
 Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
 
     // ─── Dashboard ────────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('impersonate.start');
 
     // ─── Users ────────────────────────────────────────────────────────
     Route::prefix('users')->name('users.')->group(function () {

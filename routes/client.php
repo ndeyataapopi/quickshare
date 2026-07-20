@@ -85,7 +85,7 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     // ─── Profile ──────────────────────────────────────────────────────
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'edit'])->name('edit');
-        Route::patch('/', [ProfileController::class, 'update'])->name('update');
-        Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
+        Route::patch('/', [ProfileController::class, 'update'])->middleware('prevent_impersonation')->name('update');
+        Route::delete('/', [ProfileController::class, 'destroy'])->middleware('prevent_impersonation')->name('destroy');
     });
 });

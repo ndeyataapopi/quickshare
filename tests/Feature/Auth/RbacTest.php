@@ -131,6 +131,7 @@ class RbacTest extends TestCase
             'submit_kyc',
             'view_own_profile',
             'manage_referrals',
+            'impersonate_users',
         ];
 
         foreach ($requiredPermissions as $permission) {

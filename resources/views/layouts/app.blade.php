@@ -229,6 +229,16 @@
         <!-- ============================================================== -->
 
 
+        <!-- impersonation banner -->
+        @if($impersonating ?? false)
+            <div class="alert alert-warning rounded-0 mb-0 text-center border-0" style="z-index: 9999;">
+                <strong>Impersonating:</strong> {{ $impersonatedUser?->first_name }} {{ $impersonatedUser?->last_name }}
+                <form method="POST" action="{{ $impersonateAdminUrl }}" class="d-inline ml-3">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-dark">Return to Admin</button>
+                </form>
+            </div>
+        @endif
         <!-- navigation layout blade -->
         @include('layouts.navigation')
         <!-- navigation layout blade -->

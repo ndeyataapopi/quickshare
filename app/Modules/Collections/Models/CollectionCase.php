@@ -39,6 +39,22 @@ class CollectionCase extends Model
         ];
     }
 
+    public function getOverdueAmountAttribute(): float
+    {
+        return (float) $this->amount_outstanding;
+    }
+
+    public function getDaysOverdueAttribute(): int
+    {
+        $repaymentDate = $this->loan?->repayment_date;
+
+        if (! $repaymentDate) {
+            return 0;
+        }
+
+        return max(0, now()->diffInDays($repaymentDate));
+    }
+
     // ─── Relationships ───────────────────────────────────────────────
 
     public function loan(): BelongsTo
