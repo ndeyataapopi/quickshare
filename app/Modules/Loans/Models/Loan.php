@@ -26,6 +26,8 @@ class Loan extends Model
     protected $fillable = [
         'borrower_id',
         'reference',
+        'purpose',
+        'description',
         'requested_amount',
         'approved_amount',
         'interest_rate',

@@ -25,7 +25,7 @@ return [
             'maximum_loan' => env('LOAN_LIMIT_BRONZE', 500.00),
             'interest_percent' => env('LOAN_INTEREST_BRONZE', 30.00),
             'platform_fee_percent' => env('LOAN_PLATFORM_FEE_BRONZE', 5.00),
-            'lender_return_percent' => env('LOAN_LENDER_RETURN_BRONZE', 30.00),
+            'lender_return_percent' => env('LOAN_LENDER_RETURN_BRONZE', 25.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_BRONZE', implode(',', range(7, 30)))),
         ],
         'silver' => [
@@ -37,7 +37,7 @@ return [
             'maximum_loan' => env('LOAN_LIMIT_SILVER', 1000.00),
             'interest_percent' => env('LOAN_INTEREST_SILVER', 30.00),
             'platform_fee_percent' => env('LOAN_PLATFORM_FEE_SILVER', 5.00),
-            'lender_return_percent' => env('LOAN_LENDER_RETURN_SILVER', 30.00),
+            'lender_return_percent' => env('LOAN_LENDER_RETURN_SILVER', 25.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_SILVER', implode(',', range(7, 30)))),
         ],
         'gold' => [
@@ -49,7 +49,7 @@ return [
             'maximum_loan' => env('LOAN_LIMIT_GOLD', 1500.00),
             'interest_percent' => env('LOAN_INTEREST_GOLD', 30.00),
             'platform_fee_percent' => env('LOAN_PLATFORM_FEE_GOLD', 5.00),
-            'lender_return_percent' => env('LOAN_LENDER_RETURN_GOLD', 30.00),
+            'lender_return_percent' => env('LOAN_LENDER_RETURN_GOLD', 25.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_GOLD', implode(',', range(7, 30)))),
         ],
         'platinum' => [
@@ -61,7 +61,7 @@ return [
             'maximum_loan' => env('LOAN_LIMIT_PLATINUM', 1500.00),
             'interest_percent' => env('LOAN_INTEREST_PLATINUM', 30.00),
             'platform_fee_percent' => env('LOAN_PLATFORM_FEE_PLATINUM', 5.00),
-            'lender_return_percent' => env('LOAN_LENDER_RETURN_PLATINUM', 30.00),
+            'lender_return_percent' => env('LOAN_LENDER_RETURN_PLATINUM', 25.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_PLATINUM', implode(',', range(7, 30)))),
         ],
     ],

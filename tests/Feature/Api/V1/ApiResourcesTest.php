@@ -97,6 +97,8 @@ class ApiResourcesTest extends TestCase
         $this->assertArrayHasKey('id', $resource);
         $this->assertArrayHasKey('reference', $resource);
         $this->assertArrayHasKey('status', $resource);
+        $this->assertArrayHasKey('purpose', $resource);
+        $this->assertArrayHasKey('description', $resource);
         $this->assertArrayHasKey('amounts', $resource);
         $this->assertArrayHasKey('terms', $resource);
         $this->assertArrayHasKey('funding_progress', $resource);

@@ -42,7 +42,7 @@
                             <div class="card text-center border-success">
                                 <div class="card-body py-2">
                                     <h6 class="text-success mb-0">{{ $interestRate }}%</h6>
-                                    <small class="text-muted">Interest Rate</small>
+                                    <small class="text-muted">Total Interest Rate</small>
                                 </div>
                             </div>
                         </div>
@@ -112,7 +112,7 @@
                                                 <option value="{{ $duration }}" {{ old('repayment_period') == $duration ? 'selected' : '' }}>{{ $duration }} days</option>
                                             @endforeach
                                         </select>
-                                        @error('repayment_period')<div class="invalid-feedback">{{ $message }}</div>@enderror>
+                                        @error('repayment_period')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
                                 
@@ -138,17 +138,29 @@
                                             <h5 class="text-primary mb-0" id="calcAmount">{{ config('loans.currency_symbol') }}0</h5>
                                         </div>
                                         <div class="mb-3">
-                                            <small class="text-muted">Interest ({{ $interestRate }}%)</small>
-                                            <h5 class="text-info mb-0" id="calcInterest">{{ config('loans.currency_symbol') }}0</h5>
+                                            <small class="text-muted">Trust Tier</small>
+                                            <h5 class="text-secondary mb-0" id="calcTier">-</h5>
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Platform Fee ({{ $platformFee }}%)</small>
                                             <h5 class="text-warning mb-0" id="calcFee">{{ config('loans.currency_symbol') }}0</h5>
                                         </div>
+                                        <div class="mb-3">
+                                            <small class="text-muted">Lender Return ({{ $lenderReturnPercent }}%)</small>
+                                            <h5 class="text-info mb-0" id="calcLenderReturn">{{ config('loans.currency_symbol') }}0</h5>
+                                        </div>
+                                        <div class="mb-3">
+                                            <small class="text-muted">Total Interest ({{ $interestRate }}%)</small>
+                                            <h5 class="text-dark mb-0" id="calcInterest">{{ config('loans.currency_symbol') }}0</h5>
+                                        </div>
                                         <hr>
                                         <div class="mb-3">
                                             <small class="text-muted">Total Repayment</small>
                                             <h4 class="text-success mb-0" id="calcTotal">{{ config('loans.currency_symbol') }}0</h4>
+                                        </div>
+                                        <div class="mb-3">
+                                            <small class="text-muted">Repayment Date</small>
+                                            <h5 class="text-primary mb-0" id="calcRepaymentDate">-</h5>
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Monthly Payment</small>
@@ -223,7 +235,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     const currencySymbol = '{{ config('loans.currency_symbol') }}';
     const interestRate = {{ $interestRate }};
-    const platformFee = {{ $platformFee }};
+    const platformFeePercent = {{ $platformFee }};
+    const lenderReturnPercent = {{ $lenderReturnPercent }};
+    const trustTier = '{{ ucfirst($trustTier) }}';
     
     const amountInput = document.getElementById('amount');
     const termSelect = document.getElementById('repayment_period');
@@ -237,41 +251,53 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Calculator elements
     const calcAmount = document.getElementById('calcAmount');
+    const calcTier = document.getElementById('calcTier');
     const calcInterest = document.getElementById('calcInterest');
     const calcFee = document.getElementById('calcFee');
+    const calcLenderReturn = document.getElementById('calcLenderReturn');
     const calcTotal = document.getElementById('calcTotal');
+    const calcRepaymentDate = document.getElementById('calcRepaymentDate');
     const calcMonthly = document.getElementById('calcMonthly');
     
+    function formatCurrency(value) {
+        return currencySymbol + value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    function formatDate(date) {
+        return date.toLocaleDateString('en-GB', {day: 'numeric', month: 'long', year: 'numeric'});
+    }
+
     function calculateLoan() {
         const amount = parseFloat(amountInput.value) || 0;
         const termDays = parseInt(termSelect.value) || 0;
-        
+
         if (amount > 0 && termDays > 0) {
-            // Calculate interest (simple interest for demo)
-            const interestAmount = (amount * interestRate / 100) * (termDays / 365);
-            
-            // Calculate platform fee
-            const feeAmount = amount * platformFee / 100;
-            
-            // Calculate total repayment
-            const totalRepayment = amount + interestAmount + feeAmount;
-            
-            // Calculate monthly payment
+            const feeAmount = amount * platformFeePercent / 100;
+            const lenderReturnAmount = amount * lenderReturnPercent / 100;
+            const interestAmount = feeAmount + lenderReturnAmount;
+            const totalRepayment = amount + interestAmount;
             const months = Math.ceil(termDays / 30);
             const monthlyPayment = totalRepayment / months;
-            
-            // Update display
-            calcAmount.textContent = currencySymbol + amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            calcInterest.textContent = currencySymbol + interestAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            calcFee.textContent = currencySymbol + feeAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            calcTotal.textContent = currencySymbol + totalRepayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            calcMonthly.textContent = currencySymbol + monthlyPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const repaymentDate = new Date();
+            repaymentDate.setDate(repaymentDate.getDate() + termDays);
+
+            calcAmount.textContent = formatCurrency(amount);
+            calcTier.textContent = trustTier;
+            calcFee.textContent = formatCurrency(feeAmount);
+            calcLenderReturn.textContent = formatCurrency(lenderReturnAmount);
+            calcInterest.textContent = formatCurrency(interestAmount);
+            calcTotal.textContent = formatCurrency(totalRepayment);
+            calcRepaymentDate.textContent = formatDate(repaymentDate);
+            calcMonthly.textContent = formatCurrency(monthlyPayment);
         } else {
-            // Reset display
             calcAmount.textContent = currencySymbol + '0';
+            calcTier.textContent = '-';
             calcInterest.textContent = currencySymbol + '0';
             calcFee.textContent = currencySymbol + '0';
+            calcLenderReturn.textContent = currencySymbol + '0';
             calcTotal.textContent = currencySymbol + '0';
+            calcRepaymentDate.textContent = '-';
             calcMonthly.textContent = currencySymbol + '0';
         }
     }

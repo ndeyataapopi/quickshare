@@ -34,11 +34,13 @@ class LoanController extends Controller
         $allowedDurations = $tier['allowed_durations'];
         $minTermDays = min($allowedDurations);
         $maxTermDays = max($allowedDurations);
-        $interestRate = $tier['interest_percent'];
         $platformFee = $tier['platform_fee_percent'];
+        $lenderReturnPercent = $tier['lender_return_percent'];
+        $interestRate = $platformFee + $lenderReturnPercent;
+        $trustTier = $tier['name'];
         $maxActive = config('loans.max_active_loans');
 
-        return view('client.loans.create', compact('minAmount', 'maxAmount', 'allowedDurations', 'minTermDays', 'maxTermDays', 'interestRate', 'platformFee', 'maxActive'));
+        return view('client.loans.create', compact('minAmount', 'maxAmount', 'allowedDurations', 'minTermDays', 'maxTermDays', 'interestRate', 'platformFee', 'lenderReturnPercent', 'trustTier', 'maxActive'));
     }
 
     public function agreementPreview(Request $request)

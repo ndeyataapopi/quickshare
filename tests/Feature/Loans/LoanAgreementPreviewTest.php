@@ -103,6 +103,23 @@ class LoanAgreementPreviewTest extends TestCase
         Mail::assertNothingQueued();
     }
 
+    public function test_final_web_submission_accepts_string_repayment_period(): void
+    {
+        $this->actingAs($this->borrower)
+            ->post(route('client.loans.store'), [
+                'amount' => (float) config('loans.min_amount'),
+                'purpose' => 'Education',
+                'repayment_period' => (string) max(config('loan.trust_tiers.silver.allowed_durations')),
+                'agreement_read' => '1',
+                'agreement_terms' => '1',
+                'electronic_documents' => '1',
+                'agreement_version' => (string) config('loan.agreement.version'),
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseCount('loans', 1);
+    }
+
     public function test_final_web_submission_stores_agreement_configuration_and_request_audit(): void
     {
         $response = $this->actingAs($this->borrower)
@@ -119,6 +136,7 @@ class LoanAgreementPreviewTest extends TestCase
             ]);
 
         $loan = Loan::firstOrFail();
+        $this->assertSame('Education', $loan->purpose);
         $response->assertRedirect(route('client.loans.show', $loan));
         Storage::disk((string) config('loan.agreement.disk'))->assertExists($loan->agreement_path);
         $this->assertSame((string) config('loan.agreement.version'), $loan->agreement_version);

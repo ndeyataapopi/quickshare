@@ -13,6 +13,8 @@ class LoanResource extends JsonResource
             'id' => $this->id,
             'reference' => $this->reference,
             'status' => $this->status,
+            'purpose' => $this->purpose,
+            'description' => $this->description,
             'amounts' => [
                 'requested' => (float) $this->requested_amount,
                 'approved' => (float) $this->approved_amount,

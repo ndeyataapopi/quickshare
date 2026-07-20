@@ -43,17 +43,12 @@ class LoanAgreementService
 
     public function data(Loan $loan, LoanCalculation $calculation, CarbonInterface $repaymentDate): array
     {
-        $tier = $this->trustTierService->forScore($calculation->riskScore);
-
         return [
             'loan' => $loan,
             'borrower' => $loan->borrower,
             'calculation' => $calculation,
-            'lenderReturnPercent' => $tier['lender_return_percent'],
-            'lenderReturnAmount' => round(
-                $calculation->principal * ($tier['lender_return_percent'] / 100) * ($calculation->termDays / 365),
-                2,
-            ),
+            'lenderReturnPercent' => $calculation->lenderReturnPercent,
+            'lenderReturnAmount' => $calculation->lenderReturnAmount,
             'repaymentDate' => $repaymentDate,
             'terms' => config('loan.agreement.terms'),
             'conditions' => config('loan.agreement.conditions'),

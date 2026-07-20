@@ -106,7 +106,7 @@ return [
         'bronze'   => env('LOAN_LIMIT_BRONZE',   500.00),
         'silver'   => env('LOAN_LIMIT_SILVER',   1000.00),
         'gold'     => env('LOAN_LIMIT_GOLD',     1500.00),
-        'platinum' => env('LOAN_LIMIT_PLATINUM', 1500.00),
+        'platinum' => env('LOAN_LIMIT_PLATINUM', 2500.00),
     ],
 
     /*
