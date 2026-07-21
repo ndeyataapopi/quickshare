@@ -5,6 +5,7 @@ namespace App\Modules\Loans\Services;
 use App\Exceptions\ApiException;
 use App\Modules\Loans\Models\DisbursementTransaction;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\LoanService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -12,6 +13,10 @@ class DisbursementService
 {
     const MAX_RETRIES = 3;
     const RETRY_DELAYS = [300, 900, 3600]; // 5 min, 15 min, 1 hour (in seconds)
+
+    public function __construct(protected LoanService $loanService)
+    {
+    }
 
     // ─── Core Disbursement ───────────────────────────────────────────
 
@@ -48,7 +53,7 @@ class DisbursementService
             // Calculate amounts
             $grossAmount = (float) $lockedLoan->funded_amount;
             $platformFee = (float) $lockedLoan->platform_fee;
-            $netAmount = round($grossAmount - $platformFee, 2);
+            $netAmount = $this->loanService->disbursementAmount($lockedLoan);
 
             if ($netAmount <= 0) {
                 throw new ApiException('Net disbursement amount must be positive.', 422);

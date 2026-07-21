@@ -5,9 +5,9 @@ $funded = (float) $loan->funded_amount;
 $remaining = max(0, $target - $funded);
 $progress = $target > 0 ? round(($funded / $target) * 100, 2) : 0;
 $myAmount = (float) $transaction->amount;
-$interest = $myAmount * ($transaction->interest_rate / 100) * ($loan->loan_term_days / 365);
-$expectedProfit = round($interest, 2);
-$expectedReturn = round($myAmount + $expectedProfit, 2);
+$expectedReturn = (float) $transaction->expected_return;
+$expectedProfit = round($expectedReturn - $myAmount, 2);
+$totalExpectedRepayment = $expectedReturn;
 $currency = config('loans.currency_symbol', 'N$');
 $banks = config('payments.banks', []);
 $wallets = config('payments.wallets', []);
@@ -80,10 +80,10 @@ $cashDepositBank = config('payments.cash_deposit.default_bank');
                         <div class="card-body">
                             <h5 class="card-title text-uppercase mb-3">Your Investment</h5>
                             <div class="row mb-2"><div class="col-6 text-muted">My Funding Amount</div><div class="col-6 font-weight-bold">{{ $currency }} {{ number_format($myAmount, 2) }}</div></div>
-                            <div class="row mb-2"><div class="col-6 text-muted">Interest Rate</div><div class="col-6">{{ $transaction->interest_rate }}% p.a.</div></div>
+                            <div class="row mb-2"><div class="col-6 text-muted">Interest Rate</div><div class="col-6">{{ $transaction->interest_rate }}%</div></div>
                             <div class="row mb-2"><div class="col-6 text-muted">Expected Return</div><div class="col-6 text-success font-weight-bold">{{ $currency }} {{ number_format($expectedReturn, 2) }}</div></div>
                             <div class="row mb-2"><div class="col-6 text-muted">Expected Profit</div><div class="col-6 text-success">{{ $currency }} {{ number_format($expectedProfit, 2) }}</div></div>
-                            <div class="row mb-2"><div class="col-6 text-muted">Total Expected Repayment</div><div class="col-6 font-weight-bold">{{ $currency }} {{ number_format($expectedReturn, 2) }}</div></div>
+                            <div class="row mb-2"><div class="col-6 text-muted">Total Expected Repayment</div><div class="col-6 font-weight-bold">{{ $currency }} {{ number_format($totalExpectedRepayment, 2) }}</div></div>
                             <div class="row"><div class="col-6 text-muted">Funding Percentage</div><div class="col-6">{{ $target > 0 ? round(($myAmount / $target) * 100, 2) : 0 }}%</div></div>
                         </div>
                     </div>

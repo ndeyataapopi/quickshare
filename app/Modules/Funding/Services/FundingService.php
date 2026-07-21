@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Modules\Funding\Events\FundingCompleted;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Loans\Models\Loan;
-use App\Modules\Loans\Services\TrustTierService;
+use App\Modules\Loans\Services\LoanService;
 use App\Modules\Marketplace\Services\MarketplaceService;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +15,7 @@ class FundingService
 {
     public function __construct(
         protected MarketplaceService $marketplaceService,
-        protected TrustTierService $trustTierService,
+        protected LoanService $loanService,
     ) {
     }
 
@@ -75,7 +75,7 @@ class FundingService
             throw new ApiException('Funding amount must be greater than 0.', 422);
         }
 
-        $minFunding = config('loans.min_funding_amount', 100);
+        $minFunding = config('loan.marketplace.min_funding_amount', 100);
         if ($amount < $minFunding) {
             throw new ApiException("Minimum funding amount is {$minFunding}.", 422);
         }
@@ -123,30 +123,19 @@ class FundingService
 
     protected function calculateExpectedReturn(float $amount, Loan $loan, float $lenderReturnPercent): float
     {
-        $termDays = $loan->loan_term_days;
-        $dailyRate = $lenderReturnPercent / 365 / 100;
-
-        // Simple interest calculation for lender's portion
-        $interest = round($amount * $dailyRate * $termDays, 2);
-
-        return round($amount + $interest, 2);
+        return $this->loanService->expectedReturnForFunding($loan, $amount);
     }
 
     protected function lenderReturnPercent(Loan $loan): float
     {
-        $score = (float) $loan->risk_score;
-
-        return $this->trustTierService->forScore($score)['lender_return_percent'];
+        return $this->loanService->lenderReturnPercentForLoan($loan);
     }
 
     // ─── Remaining Funding ───────────────────────────────────────────
 
     public function getRemainingFunding(Loan $loan): float
     {
-        $target = (float) ($loan->approved_amount ?? $loan->requested_amount);
-        $funded = (float) $loan->funded_amount;
-
-        return max(0, round($target - $funded, 2));
+        return $this->loanService->remainingFunding($loan);
     }
 
     // ─── Confirm Funding ─────────────────────────────────────────────

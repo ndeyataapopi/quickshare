@@ -74,7 +74,7 @@
                 @endcan
                 @can('manage_funding')
                 <li class="sidebar-item">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding.*')) active @endif" href="{{ route('admin.funding.index') }}">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding-payments.*')) active @endif" href="{{ route('admin.funding-payments.index') }}">
                         <i class="mdi mdi-bank-transfer-in"></i>
                         <span class="hide-menu">Funding / Escrow</span>
                     </a>

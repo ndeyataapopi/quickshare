@@ -65,7 +65,7 @@ class DisbursementTest extends TestCase
         $this->assertEquals('awaiting_disbursement', $disbursement->status);
         $this->assertEquals(10000.00, $disbursement->gross_amount);
         $this->assertEquals(300.00, $disbursement->platform_fee);
-        $this->assertEquals(9700.00, $disbursement->net_amount); // Gross - Fee
+        $this->assertEquals(10000.00, $disbursement->net_amount); // Borrower receives full principal
         $this->assertNotNull($disbursement->transaction_reference);
         $this->assertStringStartsWith('DISB-', $disbursement->transaction_reference);
     }
@@ -135,8 +135,9 @@ class DisbursementTest extends TestCase
     public function test_cannot_disburse_if_net_amount_zero_or_negative(): void
     {
         $loan = $this->createFundedLoan([
-            'funded_amount' => 200,
-            'platform_fee' => 300, // Fee > funded
+            'approved_amount' => 0,
+            'requested_amount' => 0,
+            'funded_amount' => 0,
         ]);
 
         $this->expectException(\App\Exceptions\ApiException::class);
@@ -379,16 +380,28 @@ class DisbursementTest extends TestCase
     public function test_reconciliation_report_shows_correct_totals(): void
     {
         // Create and process multiple disbursements
-        $loan1 = $this->createFundedLoan(['funded_amount' => 5000]);
+        $loan1 = $this->createFundedLoan([
+            'approved_amount' => 5000,
+            'requested_amount' => 5000,
+            'funded_amount' => 5000,
+        ]);
         $d1 = $this->service->initiateDisbursement($loan1);
         $this->service->processDisbursement($d1);
 
-        $loan2 = $this->createFundedLoan(['funded_amount' => 10000]);
+        $loan2 = $this->createFundedLoan([
+            'approved_amount' => 10000,
+            'requested_amount' => 10000,
+            'funded_amount' => 10000,
+        ]);
         $d2 = $this->service->initiateDisbursement($loan2);
         $this->service->processDisbursement($d2);
         $this->service->reconcile($d2->fresh(), 'admin@test.com');
 
-        $loan3 = $this->createFundedLoan(['funded_amount' => 8000]);
+        $loan3 = $this->createFundedLoan([
+            'approved_amount' => 8000,
+            'requested_amount' => 8000,
+            'funded_amount' => 8000,
+        ]);
         $d3 = $this->service->initiateDisbursement($loan3);
         $d3->update(['status' => 'failed']);
 
@@ -398,8 +411,8 @@ class DisbursementTest extends TestCase
         $this->assertEquals(1, $report['reconciled_count']);
         $this->assertEquals(1, $report['unreconciled_count']);
         $this->assertEquals(1, $report['failed_count']);
-        // Loan1: 5000 - 300 = 4700, Loan2: 10000 - 300 = 9700, Total = 14400
-        $this->assertEquals(14400, $report['total_amount']);
+        // Loan1: 5000, Loan2: 10000, Total = 15000
+        $this->assertEquals(15000, $report['total_amount']);
     }
 
     // ─── Model Tests ─────────────────────────────────────────────────

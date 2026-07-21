@@ -167,10 +167,10 @@
 
                     <div class="row small text-muted mb-2">
                         <div class="col-6">
-                            <i class="mdi mdi-percent mr-1"></i> {{ $loan->interest_rate ?? '-' }}% p.a.
+                            {{ $loan->interest_rate ?? '-' }} %
                         </div>
                         <div class="col-6">
-                            <i class="mdi mdi-cash-multiple mr-1"></i> Exp. Return {{ config('loans.currency_symbol') }}{{ number_format($target * ($loan->interest_rate / 100) * ($loan->loan_term_days / 365), 2) }}
+                            <i class="mdi mdi-cash-multiple"></i> Exp. Return {{ config('loans.currency_symbol') }}{{ number_format($target + $loan->interest_amount, 2) }}
                         </div>
                     </div>
                     
@@ -402,7 +402,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const minFund = {{ config('loans.min_funding_amount', 500) }};
 
                 const riskClass = riskBadgeClass(borrower.risk_level);
-                const expectedReturn = (loan.approved_amount || 0) * (loan.interest_rate || 0) / 100 * (loan.loan_term_days || 0) / 365;
+                const expectedReturn = loan.expected_return || ((loan.total_repayment || 0) - (loan.platform_fee || 0));
+                const expectedProfit = loan.expected_profit || (expectedReturn - (loan.approved_amount || 0));
                 const scheduleRows = (loan.repayment_schedule || []).map(row => `
                     <tr><td>Installment ${row.installment}</td><td>${row.due_date}</td><td>${formatMoney(row.amount)}</td></tr>
                 `).join('');
@@ -431,8 +432,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <tr><td>Purpose:</td><td>${loan.purpose || '-'}</td></tr>
                                 <tr><td>Requested Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
                                 <tr><td>Term:</td><td>${loan.loan_term_days || 0} days</td></tr>
-                                <tr><td>Interest Rate:</td><td>${loan.interest_rate || 0}% p.a.</td></tr>
+                                <tr><td>Interest Rate:</td><td>${loan.interest_rate || 0}%</td></tr>
+                                <tr><td>Platform Fee:</td><td>${formatMoney(loan.platform_fee)}</td></tr>
                                 <tr><td>Expected Return:</td><td class="text-success">${formatMoney(expectedReturn)}</td></tr>
+                                <tr><td>Expected Profit:</td><td class="text-success">${formatMoney(expectedProfit)}</td></tr>
                                 <tr><td>Total Repayment:</td><td>${formatMoney(loan.total_repayment)}</td></tr>
                             </table>
                         </div>

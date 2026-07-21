@@ -475,7 +475,9 @@ class FundingTest extends TestCase
         config(['loan.trust_tiers.silver.lender_return_percent' => 8.00]);
         $loan = $this->createMarketplaceLoan([
             'approved_amount' => 10000,
-            'interest_rate' => 15.00,
+            'interest_rate' => 13.00,
+            'platform_fee' => 500,
+            'total_repayment' => 11300,
             'loan_term_days' => 30,
         ]);
 
@@ -487,7 +489,7 @@ class FundingTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.transaction.interest_rate', '8.00')
-            ->assertJsonPath('data.transaction.expected_return', '5032.88');
+            ->assertJsonPath('data.transaction.expected_return', '5400.00');
     }
 
     // ─── RBAC Tests ──────────────────────────────────────────────────

@@ -191,26 +191,19 @@ class MarketplaceService
         $remaining = max(0, $approved - $funded);
         $fundingProgress = $approved > 0 ? round(($funded / $approved) * 100, 2) : 0;
 
-        $monthlyRate = (float) $loan->interest_rate / 12 / 100;
-        $monthlyRepayment = $approved > 0 && $monthlyRate > 0
-            ? round($approved * $monthlyRate / (1 - pow(1 + $monthlyRate, -ceil($loan->loan_term_days / 30))), 2)
-            : round($approved, 2);
-
+        // QuickShare loans have one flat bullet repayment on the due date
         $repaymentSchedule = [];
         if ($loan->loan_term_days && $approved > 0) {
-            $months = max(1, (int) ceil($loan->loan_term_days / 30));
-            for ($i = 1; $i <= $months; $i++) {
-                $repaymentSchedule[] = [
-                    'installment' => $i,
-                    'due_date' => $loan->repayment_date
-                        ? $loan->repayment_date->copy()->subMonths($months - $i)->toDateString()
-                        : now()->addMonths($i)->toDateString(),
-                    'amount' => $i === $months
-                        ? round((float) $loan->total_repayment - ($monthlyRepayment * ($months - 1)), 2)
-                        : $monthlyRepayment,
-                ];
-            }
+            $repaymentSchedule[] = [
+                'installment' => 1,
+                'due_date' => $loan->repayment_date?->toDateString()
+                    ?? now()->addDays($loan->loan_term_days)->toDateString(),
+                'amount' => (float) $loan->total_repayment,
+            ];
         }
+
+        $lenderExpectedReturn = round($approved + (float) $loan->interest_amount, 2);
+        $lenderExpectedProfit = round((float) $loan->interest_amount, 2);
 
         $fundingHistory = $loan->fundingTransactions()
             ->confirmed()
@@ -241,6 +234,8 @@ class MarketplaceService
                 'interest_rate' => (float) $loan->interest_rate,
                 'platform_fee' => (float) $loan->platform_fee,
                 'total_repayment' => (float) $loan->total_repayment,
+                'expected_return' => $lenderExpectedReturn,
+                'expected_profit' => $lenderExpectedProfit,
                 'loan_term_days' => $loan->loan_term_days,
                 'repayment_date' => $loan->repayment_date?->toDateString(),
                 'repayment_schedule' => $repaymentSchedule,

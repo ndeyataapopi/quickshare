@@ -168,11 +168,16 @@ class TrustScoreService
     {
         $score = (float) $user->trust_score;
 
-        return match (true) {
-            $score > 75 => 'low',
-            $score >= 50 => 'medium',
-            default => 'high',
-        };
+        foreach (config('loan.risk_levels', []) as $level => $rule) {
+            $min = (float) ($rule['min'] ?? 0);
+            $max = (float) ($rule['max'] ?? 100);
+
+            if ($score >= $min && $score <= $max) {
+                return $level;
+            }
+        }
+
+        return 'high';
     }
 
     // ─── History & Stats ─────────────────────────────────────────────

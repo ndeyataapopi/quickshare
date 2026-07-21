@@ -165,16 +165,18 @@ class Repayment extends Model
 
     // ─── Calculate Penalty ───────────────────────────────────────────
 
-    public function calculatePenalty(float $penaltyRate = 0.05): float
+    public function calculatePenalty(): float
     {
         if ($this->days_overdue <= 0) {
             return 0;
         }
 
-        // Simple penalty: 5% per week overdue (configurable)
-        $weeksOverdue = ceil($this->days_overdue / 7);
-        $penalty = $this->amount * ($penaltyRate * $weeksOverdue);
+        $rate = (float) config('loan.repayment.penalty_rate_weekly', 0.05);
+        $maxRatio = (float) config('loan.repayment.max_penalty_ratio', 0.50);
 
-        return round(min($penalty, $this->amount * 0.5), 2); // Cap at 50% of repayment
+        $weeksOverdue = ceil($this->days_overdue / 7);
+        $penalty = $this->amount * ($rate * $weeksOverdue);
+
+        return round(min($penalty, $this->amount * $maxRatio), 2);
     }
 }

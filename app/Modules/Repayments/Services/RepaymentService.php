@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\LoanService;
 use App\Modules\Repayments\Events\LoanFullyRepaid;
 use App\Modules\Repayments\Events\RepaymentMade;
 use App\Modules\Repayments\Events\RepaymentOverdue;
@@ -16,8 +17,9 @@ use Illuminate\Support\Facades\Log;
 
 class RepaymentService
 {
-    const PENALTY_RATE_WEEKLY = 0.05; // 5% per week
-    const MAX_PENALTY_RATIO = 0.50;   // Cap at 50% of repayment
+    public function __construct(protected LoanService $loanService)
+    {
+    }
 
     // ─── Create Repayment Schedule ───────────────────────────────────
 
@@ -35,13 +37,15 @@ class RepaymentService
 
             // Create single repayment for now (bullet repayment)
             // Future: could create amortized schedule with multiple payments
+            $schedule = $this->loanService->repaymentCalculation($loan);
+
             $repayment = Repayment::create([
                 'loan_id' => $loan->id,
                 'borrower_id' => $loan->borrower_id,
-                'amount' => $loan->total_repayment,
-                'principal' => $loan->approved_amount ?? $loan->requested_amount,
-                'interest' => $this->calculateInterestPortion($loan),
-                'platform_fee' => $loan->platform_fee,
+                'amount' => $schedule['amount'],
+                'principal' => $schedule['principal'],
+                'interest' => $schedule['lender_return'],
+                'platform_fee' => $schedule['platform_fee'],
                 'penalty' => 0,
                 'status' => 'pending',
                 'due_date' => $dueDate,
@@ -167,25 +171,22 @@ class RepaymentService
         $totalFunded = $fundings->sum('amount');
 
         foreach ($fundings as $funding) {
-            $proportion = $totalFunded > 0 ? $funding->amount / $totalFunded : 0;
-            $lenderAmount = round($amount * $proportion, 2);
-
-            // Split into principal return and interest earned
-            $totalPrincipal = $repayment->principal ?? ($loan->approved_amount ?? $loan->requested_amount);
-            $totalInterest = $repayment->interest ?? $this->calculateInterestPortion($loan);
-
-            $principalReturn = round($lenderAmount * ($totalPrincipal / $repayment->amount), 2);
-            $interestEarned = round($lenderAmount - $principalReturn, 2);
+            $distribution = $this->loanService->lenderRepaymentDistribution(
+                $loan,
+                $funding,
+                $totalFunded,
+                $amount,
+            );
 
             LenderRepayment::create([
                 'repayment_id' => $repayment->id,
                 'lender_id' => $funding->lender_id,
                 'funding_transaction_id' => $funding->id,
-                'amount' => $lenderAmount,
-                'principal_return' => $principalReturn,
-                'interest_earned' => $interestEarned,
+                'amount' => $distribution['amount'],
+                'principal_return' => $distribution['principal_return'],
+                'interest_earned' => $distribution['interest_earned'],
                 'penalty_share' => 0, // Penalties go to platform, not lenders
-                'funding_percentage' => round($proportion * 100, 2),
+                'funding_percentage' => $distribution['funding_percentage'],
                 'status' => 'pending',
                 'transaction_reference' => LenderRepayment::generateReference(),
             ]);
@@ -238,13 +239,7 @@ class RepaymentService
 
     public function calculatePenalty(Repayment $repayment, int $daysOverdue): float
     {
-        $weeksOverdue = ceil($daysOverdue / 7);
-        $penalty = $repayment->amount * (self::PENALTY_RATE_WEEKLY * $weeksOverdue);
-
-        // Cap at maximum penalty ratio
-        $maxPenalty = $repayment->amount * self::MAX_PENALTY_RATIO;
-
-        return round(min($penalty, $maxPenalty), 2);
+        return $this->loanService->penaltyForRepayment($repayment, $daysOverdue);
     }
 
     // ─── Mark Loan as Fully Repaid ───────────────────────────────────
@@ -283,15 +278,12 @@ class RepaymentService
         return collect($history)->sum('amount');
     }
 
-    // ─── Calculate Interest Portion ────────────────────────────────────
+    // ─── Interest Portion ────────────────────────────────────────────
+    // Delegated to the Financial Engine; kept here for compatibility.
 
     protected function calculateInterestPortion(Loan $loan): float
     {
-        $principal = $loan->approved_amount ?? $loan->requested_amount;
-        $dailyRate = $loan->interest_rate / 365 / 100;
-        $interest = $principal * $dailyRate * $loan->loan_term_days;
-
-        return round($interest, 2);
+        return $this->loanService->loanLenderReturnAmount($loan);
     }
 
     // ─── Queries ─────────────────────────────────────────────────────
