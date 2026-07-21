@@ -271,13 +271,19 @@ class AdminDashboardService
 
     protected function getProjectedMonthlyRevenue(): float
     {
-        // Calculate based on active loan volume
         $activeLoanVolume = Loan::whereIn('status', ['active', 'disbursed'])
             ->sum('approved_amount');
-        
-        $avgPlatformFeeRate = 0.03; // 3%
-        
-        return $activeLoanVolume * $avgPlatformFeeRate;
+
+        if ($activeLoanVolume <= 0) {
+            return 0.0;
+        }
+
+        $avgPlatformFeeRate = Loan::whereNotNull('disbursed_at')
+            ->where('approved_amount', '>', 0)
+            ->selectRaw('COALESCE(AVG(platform_fee / approved_amount), 0) as avg_rate')
+            ->value('avg_rate');
+
+        return round($activeLoanVolume * (float) $avgPlatformFeeRate, 2);
     }
 
     // ─── Chart Data ──────────────────────────────────────────────────

@@ -160,6 +160,7 @@ class LoanService
                 'platform_fee' => $calculation->platformFee,
                 'total_repayment' => $calculation->totalRepayment,
                 'loan_term_days' => $data->loanTermDays,
+                'purpose' => $data->purpose,
                 'risk_score' => $calculation->riskScore,
                 'repayment_date' => $repaymentDate->toDateString(),
                 'agreement_version' => config('loan.agreement.version'),

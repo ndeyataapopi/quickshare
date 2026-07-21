@@ -12,12 +12,12 @@ class LogLoanRequest
         ActivityLog::create([
             'user_id' => $event->borrower->id,
             'action' => 'loan.requested',
-            'description' => "Loan requested: R{$event->amount} for {$event->termMonths} months",
+            'description' => "Loan requested: R{$event->amount} for {$event->termMonths} days",
             'subject_type' => get_class($event->borrower),
             'subject_id' => $event->borrower->id,
             'metadata' => [
                 'amount' => $event->amount,
-                'term_months' => $event->termMonths,
+                'term_days' => $event->termMonths,
             ],
             'ip_address' => request()->ip(),
         ]);
