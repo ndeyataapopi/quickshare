@@ -12,6 +12,7 @@ use App\Modules\Loans\Services\LoanService;
 use App\Modules\Marketplace\Services\MarketplaceService;
 use App\Modules\Repayments\Services\RepaymentService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FundingService
 {
@@ -139,6 +140,35 @@ class FundingService
     public function getRemainingFunding(Loan $loan): float
     {
         return $this->loanService->remainingFunding($loan);
+    }
+
+    // ─── Submit Payment Proof ────────────────────────────────────────
+
+    public function submitPayment(FundingTransaction $transaction, array $data, $proofFile): FundingTransaction
+    {
+        if (! $transaction->isPending()) {
+            throw new ApiException('This funding transaction cannot be updated.', 422);
+        }
+
+        return DB::transaction(function () use ($transaction, $data, $proofFile) {
+            $proofPath = $proofFile->store('funding-payments', 'public');
+
+            $metadata = $transaction->metadata ?? [];
+            $metadata['payer_reference_number'] = $data['reference_number'] ?? null;
+            $metadata['payer_transaction_number'] = $data['transaction_number'] ?? null;
+
+            $transaction->update([
+                'payment_method' => $data['payment_method'],
+                'payment_method_detail' => $data['payment_method_detail'] ?? null,
+                'payment_reference' => $data['payment_reference'] ?? $transaction->payment_reference,
+                'payment_proof_path' => $proofPath,
+                'payment_date' => $data['payment_date'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'metadata' => $metadata,
+            ]);
+
+            return $transaction->fresh();
+        });
     }
 
     // ─── Confirm Funding ─────────────────────────────────────────────

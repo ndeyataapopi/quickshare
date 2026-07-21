@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Funding\SubmitPaymentRequest;
 use App\Modules\Funding\Models\FundingTransaction;
+use App\Modules\Funding\Services\FundingService;
 use Illuminate\Support\Facades\Auth;
 
 class FundingController extends Controller
 {
+    public function __construct(protected FundingService $fundingService)
+    {
+    }
+
     public function show(FundingTransaction $transaction)
     {
         $this->authorizeTransaction($transaction);
@@ -38,21 +43,11 @@ class FundingController extends Controller
 
         $validated = $request->validated();
 
-        $proofPath = $request->file('proof_of_payment')->store('funding-payments', 'public');
-
-        $metadata = $transaction->metadata ?? [];
-        $metadata['payer_reference_number'] = $validated['reference_number'] ?? null;
-        $metadata['payer_transaction_number'] = $validated['transaction_number'] ?? null;
-
-        $transaction->update([
-            'payment_method' => $validated['payment_method'],
-            'payment_method_detail' => $validated['payment_method_detail'] ?? null,
-            'payment_reference' => $validated['payment_reference'] ?? $transaction->payment_reference,
-            'payment_proof_path' => $proofPath,
-            'payment_date' => $validated['payment_date'] ?? null,
-            'notes' => $validated['notes'] ?? null,
-            'metadata' => $metadata,
-        ]);
+        $transaction = $this->fundingService->submitPayment(
+            $transaction,
+            $validated,
+            $request->file('proof_of_payment'),
+        );
 
         // Notify admins that a funding payment is awaiting verification
         app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
