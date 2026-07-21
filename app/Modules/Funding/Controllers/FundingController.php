@@ -22,7 +22,7 @@ class FundingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status' => ['sometimes', 'string', 'in:pending,confirmed,cancelled,refunded'],
+            'status' => ['sometimes', 'string', 'in:pending,active,completed,cancelled'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
 

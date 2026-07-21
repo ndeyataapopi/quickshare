@@ -289,7 +289,7 @@ class FundingTest extends TestCase
         $loan1 = $this->createMarketplaceLoan();
         $loan2 = $this->createMarketplaceLoan();
 
-        FundingTransaction::create([
+        $tx1 = FundingTransaction::create([
             'loan_id' => $loan1->id,
             'lender_id' => $this->lender->id,
             'amount' => 3000,
@@ -299,7 +299,7 @@ class FundingTest extends TestCase
             'confirmed_at' => now(),
         ]);
 
-        FundingTransaction::create([
+        $tx2 = FundingTransaction::create([
             'loan_id' => $loan2->id,
             'lender_id' => $this->lender->id,
             'amount' => 4000,
@@ -307,6 +307,28 @@ class FundingTest extends TestCase
             'status' => 'confirmed',
             'transaction_reference' => FundingTransaction::generateReference(),
             'confirmed_at' => now(),
+        ]);
+
+        Investment::create([
+            'loan_id' => $loan1->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx1->id,
+            'amount' => 3000,
+            'interest_rate' => 15.00,
+            'expected_return' => 0,
+            'status' => 'active',
+            'funded_at' => now(),
+        ]);
+
+        Investment::create([
+            'loan_id' => $loan2->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx2->id,
+            'amount' => 4000,
+            'interest_rate' => 15.00,
+            'expected_return' => 0,
+            'status' => 'active',
+            'funded_at' => now(),
         ]);
 
         Sanctum::actingAs($this->lender);
@@ -321,7 +343,7 @@ class FundingTest extends TestCase
     {
         $loan = $this->createMarketplaceLoan(['status' => 'active']);
 
-        FundingTransaction::create([
+        $tx = FundingTransaction::create([
             'loan_id' => $loan->id,
             'lender_id' => $this->lender->id,
             'amount' => 5000,
@@ -332,6 +354,17 @@ class FundingTest extends TestCase
             'confirmed_at' => now(),
         ]);
 
+        Investment::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx->id,
+            'amount' => 5000,
+            'interest_rate' => 15.00,
+            'expected_return' => 5123,
+            'status' => 'active',
+            'funded_at' => now(),
+        ]);
+
         Sanctum::actingAs($this->lender);
 
         $response = $this->getJson('/api/funding/portfolio/summary');
@@ -339,6 +372,45 @@ class FundingTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.total_invested', 5000)
             ->assertJsonPath('data.total_expected_return', 5123)
+            ->assertJsonPath('data.active_investments', 1);
+    }
+
+    public function test_portfolio_summary_uses_investment_table_not_funding_transactions(): void
+    {
+        $loan = $this->createMarketplaceLoan(['status' => 'active']);
+
+        $tx = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 15.00,
+            'expected_return' => 5123,
+            'status' => 'confirmed',
+            'transaction_reference' => FundingTransaction::generateReference(),
+            'confirmed_at' => now(),
+        ]);
+
+        // Create investment with different values to prove summary reads from investments table
+        Investment::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx->id,
+            'amount' => 5000,
+            'interest_rate' => 15.00,
+            'expected_return' => 5400,
+            'actual_return' => 200,
+            'status' => 'active',
+            'funded_at' => now(),
+        ]);
+
+        Sanctum::actingAs($this->lender);
+
+        $response = $this->getJson('/api/funding/portfolio/summary');
+
+        $response->assertOk()
+            ->assertJsonPath('data.total_invested', 5000)
+            ->assertJsonPath('data.total_expected_return', 5400)
+            ->assertJsonPath('data.total_actual_return', 0)
             ->assertJsonPath('data.active_investments', 1);
     }
 

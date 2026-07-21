@@ -371,7 +371,7 @@ class FundingService
 
     public function getLenderPortfolio(User $lender, array $filters = [])
     {
-        $query = FundingTransaction::forLender($lender->id)
+        $query = Investment::forLender($lender->id)
             ->with(['loan:id,reference,approved_amount,total_repayment,status,repayment_date'])
             ->orderBy('created_at', 'desc');
 
@@ -384,19 +384,23 @@ class FundingService
 
     public function getLenderPortfolioSummary(User $lender): array
     {
-        $confirmed = FundingTransaction::forLender($lender->id)->confirmed();
+        $investments = Investment::forLender($lender->id);
 
         return [
-            'total_invested' => round((float) (clone $confirmed)->sum('amount'), 2),
-            'total_expected_return' => round((float) (clone $confirmed)->sum('expected_return'), 2),
-            'active_investments' => (clone $confirmed)
-                ->whereHas('loan', fn ($q) => $q->whereIn('loans.status', ['funded', 'active', 'disbursed']))
+            'total_invested' => round((float) (clone $investments)
+                ->whereIn('status', ['active', 'completed'])
+                ->sum('amount'), 2),
+            'total_expected_return' => round((float) (clone $investments)
+                ->whereIn('status', ['active', 'completed'])
+                ->sum('expected_return'), 2),
+            'total_actual_return' => round((float) (clone $investments)
+                ->where('status', 'completed')
+                ->sum('actual_return'), 2),
+            'active_investments' => (clone $investments)
+                ->where('status', 'active')
                 ->count(),
-            'completed_investments' => (clone $confirmed)
-                ->whereHas('loan', fn ($q) => $q->where('loans.status', 'completed'))
-                ->count(),
-            'defaulted_investments' => (clone $confirmed)
-                ->whereHas('loan', fn ($q) => $q->where('loans.status', 'defaulted'))
+            'completed_investments' => (clone $investments)
+                ->where('status', 'completed')
                 ->count(),
             'pending_transactions' => FundingTransaction::forLender($lender->id)
                 ->where('status', 'pending')
