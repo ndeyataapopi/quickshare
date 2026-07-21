@@ -107,7 +107,7 @@
 
     <div class="row loan-grid">
         @forelse($loans as $loan)
-        <div class="col-md-6 col-lg-4 loan-card" data-status="{{ $loan->status }}" data-purpose="{{ $loan->purpose }}" data-amount="{{ $loan->requested_amount }}" data-funded="{{ $loan->funded_amount ?? 0 }}" data-date="{{ $loan->created_at->timestamp }}">
+        <div class="col-md-6 col-lg-4 loan-card" data-status="{{ $loan->status }}" data-purpose="{{ $loan->purpose }}" data-amount="{{ $loan->display['loan_amount'] }}" data-funded="{{ $loan->display['funded_amount'] }}" data-date="{{ $loan->created_at->timestamp }}">
             <div class="card h-100">
                 <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -130,22 +130,12 @@
                     </div>
                     
                     @php
-                        $target = (float) ($loan->approved_amount ?? $loan->requested_amount);
-                        $funded = (float) ($loan->funded_amount ?? 0);
-                        $remaining = max(0, $target - $funded);
-                        $pct = $target > 0 ? min(100, round(($funded / $target) * 100)) : 0;
                         $minFund = config('loans.min_funding_amount', 500);
-                        
-                        // Risk is derived from the borrower's trust score
-                        $trustScore = (float) $loan->borrower->trust_score;
-                        $riskScore = max(0, 100 - $trustScore);
-                        $riskLevel = \App\Modules\TrustScore\Services\TrustScoreService::riskLevel($loan->borrower);
-                        $riskColor = $riskLevel === 'low' ? 'success' : ($riskLevel === 'medium' ? 'warning' : 'danger');
                     @endphp
                     
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-end">
-                            <h4 class="text-primary mb-1">{{ kpiMoney($target) }}</h4>
+                            <h4 class="text-primary mb-1">{{ kpiMoney($loan->display['loan_amount']) }}</h4>
                             <span class="text-muted small">{{ $loan->loan_term_days }} days</span>
                         </div>
                         <p class="text-muted small mb-2">{{ $loan->purpose }}</p>
@@ -154,12 +144,12 @@
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <div>
                                 <small class="text-muted d-block">Trust Score</small>
-                                <span class="badge badge-info badge-sm">{{ number_format($trustScore, 0) }}/100</span>
+                                <span class="badge badge-info badge-sm">{{ number_format($loan->display['trust_score'], 0) }}/100</span>
                             </div>
                             <div class="text-right">
                                 <small class="text-muted d-block">Risk</small>
-                                <span class="badge badge-{{ $riskColor }} badge-sm">
-                                    <i class="mdi mdi-shield-check mr-1"></i>{{ ucfirst($riskLevel) }}
+                                <span class="badge badge-{{ $loan->display['risk_color'] }} badge-sm">
+                                    <i class="mdi mdi-shield-check mr-1"></i>{{ ucfirst($loan->display['risk_level']) }}
                                 </span>
                             </div>
                         </div>
@@ -167,10 +157,26 @@
 
                     <div class="row small text-muted mb-2">
                         <div class="col-6">
-                            {{ $loan->interest_rate ?? '-' }} %
+                            Flat Fee: {{ kpiMoney($loan->display['total_loan_charge']) }}
                         </div>
                         <div class="col-6">
-                            <i class="mdi mdi-cash-multiple"></i> Exp. Return {{ config('loans.currency_symbol') }}{{ number_format($target + $loan->interest_amount, 2) }}
+                            <i class="mdi mdi-cash-multiple"></i> Exp. Return: {{ kpiMoney($loan->display['expected_return']) }}
+                        </div>
+                    </div>
+                    <div class="row small text-muted mb-2">
+                        <div class="col-6">
+                            Platform Fee: {{ kpiMoney($loan->display['platform_fee']) }}
+                        </div>
+                        <div class="col-6">
+                            Lender Return: {{ kpiMoney($loan->display['lender_return']) }}
+                        </div>
+                    </div>
+                    <div class="row small text-muted mb-2">
+                        <div class="col-6">
+                            Borrower Repayment: {{ kpiMoney($loan->display['borrower_repayment']) }}
+                        </div>
+                        <div class="col-6">
+                            Exp. Profit: {{ kpiMoney($loan->display['expected_profit']) }}
                         </div>
                     </div>
                     
@@ -178,20 +184,20 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between small mb-1">
                             <span>Funded</span>
-                            <span class="font-weight-bold">{{ $pct }}%</span>
+                            <span class="font-weight-bold">{{ $loan->display['progress_percent'] }}%</span>
                         </div>
                         <div class="progress" style="height:8px;">
-                            <div class="progress-bar bg-{{ $pct >= 75 ? 'success' : ($pct >= 50 ? 'warning' : 'info') }}" 
-                                 style="width:{{ $pct }}%; transition: width 0.3s ease;"></div>
+                            <div class="progress-bar bg-{{ $loan->display['progress_percent'] >= 75 ? 'success' : ($loan->display['progress_percent'] >= 50 ? 'warning' : 'info') }}" 
+                                 style="width:{{ $loan->display['progress_percent'] }}%; transition: width 0.3s ease;"></div>
                         </div>
                         <div class="d-flex justify-content-between small text-muted mt-1">
-                            <span>{{ kpiMoney($funded) }}</span>
-                            <span>{{ kpiMoney($remaining) }} left</span>
+                            <span>{{ kpiMoney($loan->display['funded_amount']) }}</span>
+                            <span>{{ kpiMoney($loan->display['remaining_amount']) }} left</span>
                         </div>
                     </div>
                     
                     <!-- Funding Form -->
-                    @if($loan->isOnMarketplace() && $remaining > 0)
+                    @if($loan->isOnMarketplace() && $loan->display['remaining_amount'] > 0)
                     <form action="{{ route('client.marketplace.fund', $loan) }}" method="POST" class="funding-form mt-auto">
                         @csrf
                         <div class="input-group input-group-sm">
@@ -201,7 +207,7 @@
                             <input type="number" name="amount" class="form-control"
                                    placeholder="{{ $minFund }}"
                                    min="{{ $minFund }}" 
-                                   max="{{ $remaining }}" 
+                                   max="{{ $loan->display['remaining_amount'] }}" 
                                    step="0.01" 
                                    required>
                             <div class="input-group-append">
@@ -359,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // View details functionality
     const viewDetailsButtons = document.querySelectorAll('.view-details');
-    const loanDetailsModal = document.getElementById('loanDetailsModal');
+    const loanDetailsModal = $('#loanDetailsModal');
     const loanDetailsContent = document.getElementById('loanDetailsContent');
     const currencySymbol = {{ json_encode(config('loans.currency_symbol')) }};
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -402,8 +408,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const minFund = {{ config('loans.min_funding_amount', 500) }};
 
                 const riskClass = riskBadgeClass(borrower.risk_level);
-                const expectedReturn = loan.expected_return || ((loan.total_repayment || 0) - (loan.platform_fee || 0));
-                const expectedProfit = loan.expected_profit || (expectedReturn - (loan.approved_amount || 0));
+                const expectedReturn = loan.expected_return || 0;
+                const expectedProfit = loan.expected_profit || 0;
                 const scheduleRows = (loan.repayment_schedule || []).map(row => `
                     <tr><td>Installment ${row.installment}</td><td>${row.due_date}</td><td>${formatMoney(row.amount)}</td></tr>
                 `).join('');
@@ -430,13 +436,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             <table class="table table-sm">
                                 <tr><td>Reference:</td><td>${l.reference || '-'}</td></tr>
                                 <tr><td>Purpose:</td><td>${loan.purpose || '-'}</td></tr>
-                                <tr><td>Requested Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
+                                <tr><td>Loan Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
                                 <tr><td>Term:</td><td>${loan.loan_term_days || 0} days</td></tr>
-                                <tr><td>Interest Rate:</td><td>${loan.interest_rate || 0}%</td></tr>
+                                <tr><td>Flat Fee:</td><td>${formatMoney(loan.total_loan_charge || 0)}</td></tr>
                                 <tr><td>Platform Fee:</td><td>${formatMoney(loan.platform_fee)}</td></tr>
-                                <tr><td>Expected Return:</td><td class="text-success">${formatMoney(expectedReturn)}</td></tr>
-                                <tr><td>Expected Profit:</td><td class="text-success">${formatMoney(expectedProfit)}</td></tr>
-                                <tr><td>Total Repayment:</td><td>${formatMoney(loan.total_repayment)}</td></tr>
+                                <tr><td>Lender Return:</td><td class="text-success">${formatMoney(loan.lender_return || 0)}</td></tr>
+                                <tr><td>Expected Return:</td><td class="text-success">${formatMoney(expectedReturn || 0)}</td></tr>
+                                <tr><td>Expected Profit:</td><td class="text-success">${formatMoney(expectedProfit || 0)}</td></tr>
+                                <tr><td>Borrower Repayment:</td><td>${formatMoney(loan.borrower_repayment || loan.total_repayment || 0)}</td></tr>
                             </table>
                         </div>
                     </div>

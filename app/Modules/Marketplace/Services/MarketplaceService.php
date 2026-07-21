@@ -3,6 +3,7 @@
 namespace App\Modules\Marketplace\Services;
 
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\LoanService;
 use App\Modules\Loans\Services\TrustTierService;
 use App\Modules\TrustScore\Services\TrustScoreService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -15,8 +16,10 @@ class MarketplaceService
     const PER_PAGE_DEFAULT = 15;
     const PER_PAGE_MAX = 50;
 
-    public function __construct(protected TrustTierService $trustTierService)
-    {
+    public function __construct(
+        protected TrustTierService $trustTierService,
+        protected LoanService $loanService,
+    ) {
     }
 
     // ─── Listing Query ───────────────────────────────────────────────
@@ -186,10 +189,10 @@ class MarketplaceService
     {
         $borrower = $loan->borrower;
         $trustScore = (float) $borrower->trust_score;
-        $approved = (float) ($loan->approved_amount ?? $loan->requested_amount);
+        $approved = $this->loanService->loanPrincipal($loan);
         $funded = (float) $loan->funded_amount;
-        $remaining = max(0, $approved - $funded);
-        $fundingProgress = $approved > 0 ? round(($funded / $approved) * 100, 2) : 0;
+        $remaining = $this->loanService->remainingFunding($loan);
+        $fundingProgress = $this->loanService->fundingProgress($loan);
 
         // QuickShare loans have one flat bullet repayment on the due date
         $repaymentSchedule = [];
@@ -202,8 +205,10 @@ class MarketplaceService
             ];
         }
 
-        $lenderExpectedReturn = round($approved + (float) $loan->interest_amount, 2);
-        $lenderExpectedProfit = round((float) $loan->interest_amount, 2);
+        $repayment = $this->loanService->repaymentCalculation($loan);
+        $lenderExpectedReturn = $this->loanService->expectedReturnForFunding($loan, $approved);
+        $lenderExpectedProfit = $this->loanService->expectedProfitForFunding($loan, $approved);
+        $totalLoanCharge = round($repayment['amount'] - $repayment['principal'], 2);
 
         $fundingHistory = $loan->fundingTransactions()
             ->confirmed()
@@ -234,6 +239,10 @@ class MarketplaceService
                 'interest_rate' => (float) $loan->interest_rate,
                 'platform_fee' => (float) $loan->platform_fee,
                 'total_repayment' => (float) $loan->total_repayment,
+                'total_loan_charge' => $totalLoanCharge,
+                'flat_fee' => $totalLoanCharge,
+                'lender_return' => $repayment['lender_return'],
+                'borrower_repayment' => $repayment['amount'],
                 'expected_return' => $lenderExpectedReturn,
                 'expected_profit' => $lenderExpectedProfit,
                 'loan_term_days' => $loan->loan_term_days,
