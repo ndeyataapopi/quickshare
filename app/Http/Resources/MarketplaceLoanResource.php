@@ -17,7 +17,7 @@ class MarketplaceLoanResource extends JsonResource
                 'requested' => (float) $this->requested_amount,
                 'approved' => (float) $this->approved_amount,
                 'funded' => (float) $this->funded_amount,
-                'remaining' => max(0, (float) $this->approved_amount - (float) $this->funded_amount),
+                'remaining' => $this->remaining_funding,
             ],
             'terms' => [
                 'interest_rate' => (float) $this->interest_rate,
@@ -26,10 +26,8 @@ class MarketplaceLoanResource extends JsonResource
                 'total_repayment' => (float) $this->total_repayment,
             ],
             'funding_progress' => [
-                'percentage' => $this->approved_amount > 0
-                    ? round(($this->funded_amount / $this->approved_amount) * 100, 2)
-                    : 0,
-                'fully_funded' => (float) $this->funded_amount >= (float) $this->approved_amount,
+                'percentage' => $this->funding_progress,
+                'fully_funded' => $this->funding_progress >= 100,
             ],
             'risk_score' => (float) $this->risk_score,
             'borrower' => [

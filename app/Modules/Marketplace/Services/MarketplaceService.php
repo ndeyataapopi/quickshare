@@ -63,6 +63,7 @@ class MarketplaceService
 
             return [
                 'total_listings' => (clone $marketplace)->count(),
+                'active_funding' => (clone $marketplace)->where('loans.status', 'partially_funded')->count(),
                 'total_value' => round((float) (clone $marketplace)->sum('approved_amount'), 2),
                 'avg_interest_rate' => round((float) (clone $marketplace)->avg('interest_rate'), 2),
                 'avg_trust_score' => round((float) (clone $marketplace)

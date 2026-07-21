@@ -21,7 +21,7 @@ class MarketplaceController extends Controller
 
     public function index()
     {
-        $loans = Loan::whereIn('status', ['marketplace', 'partially_funded'])
+        $loans = Loan::onMarketplace()
             ->where('borrower_id', '!=', Auth::id())
             ->with('borrower:id,first_name,last_name,trust_score')
             ->latest('approved_at')
@@ -33,7 +33,9 @@ class MarketplaceController extends Controller
             return $loan;
         });
 
-        return view('client.marketplace.index', compact('loans'));
+        $stats = $this->marketplaceService->getStats();
+
+        return view('client.marketplace.index', compact('loans', 'stats'));
     }
 
     public function show(Loan $loan): JsonResponse

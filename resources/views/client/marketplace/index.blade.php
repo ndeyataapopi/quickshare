@@ -23,12 +23,12 @@
         <div class="alert alert-danger alert-dismissible fade show"><i class="mdi mdi-alert-circle mr-2"></i>{{ session('error') }}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>
     @endif
     
-    <!-- Marketplace Stats -->
+    <!-- Marketplace Stats (DB-sourced via MarketplaceService::getStats) -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-primary mb-0">{{ formatKpi($loans->count()) }}</h4>
+                    <h4 class="font-weight-bold text-primary mb-0">{{ formatKpi($stats['total_listings'] ?? 0) }}</h4>
                     <small class="text-muted">Available Loans</small>
                 </div>
             </div>
@@ -36,7 +36,7 @@
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-success mb-0">{{ formatKpi($loans->whereIn('status', ['marketplace', 'partially_funded'])->count()) }}</h4>
+                    <h4 class="font-weight-bold text-success mb-0">{{ formatKpi($stats['active_funding'] ?? 0) }}</h4>
                     <small class="text-muted">Active Funding</small>
                 </div>
             </div>
@@ -44,7 +44,7 @@
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-info mb-0">{{ kpiMoney($loans->sum('requested_amount')) }}</h4>
+                    <h4 class="font-weight-bold text-info mb-0">{{ kpiMoney($stats['total_value'] ?? 0) }}</h4>
                     <small class="text-muted">Total Volume</small>
                 </div>
             </div>

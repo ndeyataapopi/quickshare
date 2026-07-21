@@ -223,7 +223,12 @@ class Loan extends Model
 
     public function scopeOnMarketplace($query)
     {
-        return $query->whereIn('loans.status', ['marketplace', 'partially_funded']);
+        return $query
+            ->whereIn('loans.status', ['marketplace', 'partially_funded'])
+            ->where(function ($q) {
+                $q->whereNull('loans.repayment_date')
+                  ->orWhere('loans.repayment_date', '>=', now()->toDateString());
+            });
     }
 
     public function scopePendingReview($query)
