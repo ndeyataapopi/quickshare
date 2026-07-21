@@ -21,12 +21,14 @@ class DisbursementTransaction extends Model
         'transaction_reference',
         'external_reference',
         'payment_method',
+        'payment_proof_path',
         'failure_reason',
         'retry_count',
         'next_retry_at',
         'reconciled_at',
         'reconciled_by',
         'reconciliation_data',
+        'borrower_confirmed_at',
         'ledger_entries',
         'notes',
     ];
@@ -74,6 +76,11 @@ class DisbursementTransaction extends Model
         return $this->status === 'failed';
     }
 
+    public function isPendingBorrowerConfirmation(): bool
+    {
+        return $this->status === 'pending_borrower_confirmation';
+    }
+
     public function isRetried(): bool
     {
         return $this->status === 'retried';
@@ -118,6 +125,11 @@ class DisbursementTransaction extends Model
     public function scopeFailed($query)
     {
         return $query->where('status', 'failed');
+    }
+
+    public function scopePendingBorrowerConfirmation($query)
+    {
+        return $query->where('status', 'pending_borrower_confirmation');
     }
 
     public function scopeNeedsRetry($query)

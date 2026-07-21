@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\DisbursementController;
 use App\Http\Controllers\Borrower\LoanController;
 use App\Http\Controllers\Borrower\RepaymentController;
 use App\Http\Controllers\Client\DashboardController;
@@ -35,6 +36,9 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
         Route::get('/{loan}', [LoanController::class, 'show'])->name('show');
         Route::delete('/{loan}', [LoanController::class, 'cancel'])->name('cancel');
     });
+
+    // Borrower disbursement confirmation (outside kyc_verified - loan already approved)
+    Route::post('/loans/{loan}/confirm-disbursement', [DisbursementController::class, 'borrowerConfirm'])->name('loans.disbursement.confirm');
 
     // ─── Repayments (Borrower) ────────────────────────────────────────
     Route::middleware(['kyc_verified'])->prefix('repayments')->name('repayments.')->group(function () {

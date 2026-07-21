@@ -7,6 +7,8 @@ use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\DisbursementService;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DisbursementControllerTest extends TestCase
@@ -66,7 +68,42 @@ class DisbursementControllerTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_confirm_disbursement(): void
+    public function test_admin_can_confirm_disbursement_with_proof(): void
+    {
+        Storage::fake('private');
+
+        $loan = $this->createFundedLoan();
+
+        $service = app(DisbursementService::class);
+        $service->initiateDisbursement($loan);
+
+        $file = UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($this->admin)
+            ->patch(route('admin.disbursements.confirm', $loan), [
+                'payment_method' => 'bank_transfer',
+                'external_reference' => 'TRX-TEST12345',
+                'payment_proof' => $file,
+            ]);
+
+        $response->assertRedirect(route('admin.disbursements.show', $loan))
+            ->assertSessionHas('success');
+
+        $loan->refresh();
+        $transaction = $loan->disbursements()->latest()->first();
+        $this->assertEquals('awaiting_disbursement', $loan->status);
+        $this->assertDatabaseHas('disbursement_transactions', [
+            'loan_id' => $loan->id,
+            'status' => 'pending_borrower_confirmation',
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST12345',
+        ]);
+
+        $this->assertNotNull($transaction->payment_proof_path);
+        Storage::disk('private')->assertExists($transaction->payment_proof_path);
+    }
+
+    public function test_confirm_disbursement_requires_payment_proof(): void
     {
         $loan = $this->createFundedLoan();
 
@@ -74,9 +111,58 @@ class DisbursementControllerTest extends TestCase
         $service->initiateDisbursement($loan);
 
         $response = $this->actingAs($this->admin)
-            ->patch(route('admin.disbursements.confirm', $loan));
+            ->patch(route('admin.disbursements.confirm', $loan), [
+                'payment_method' => 'bank_transfer',
+                'external_reference' => 'TRX-TEST12345',
+            ]);
 
-        $response->assertRedirect(route('admin.disbursements.show', $loan))
+        $response->assertSessionHasErrors('payment_proof');
+    }
+
+    public function test_confirm_disbursement_requires_external_reference(): void
+    {
+        Storage::fake('private');
+
+        $loan = $this->createFundedLoan();
+
+        $service = app(DisbursementService::class);
+        $service->initiateDisbursement($loan);
+
+        $file = UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf');
+
+        $response = $this->actingAs($this->admin)
+            ->patch(route('admin.disbursements.confirm', $loan), [
+                'payment_method' => 'bank_transfer',
+                'external_reference' => '',
+                'payment_proof' => $file,
+            ]);
+
+        $response->assertSessionHasErrors('external_reference');
+    }
+
+    public function test_borrower_can_confirm_receipt(): void
+    {
+        Storage::fake('private');
+
+        $loan = $this->createFundedLoan();
+
+        $service = app(DisbursementService::class);
+        $service->initiateDisbursement($loan);
+
+        $transaction = $loan->disbursements()->latest()->first();
+        $file = UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf');
+        $proofPath = $file->store('disbursement-proofs', 'private');
+
+        $service->processDisbursement($transaction, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST12345',
+            'payment_proof_path' => $proofPath,
+        ]);
+
+        $response = $this->actingAs($this->borrower)
+            ->post(route('client.loans.disbursement.confirm', $loan));
+
+        $response->assertRedirect(route('client.dashboard'))
             ->assertSessionHas('success');
 
         $loan->refresh();
@@ -86,6 +172,26 @@ class DisbursementControllerTest extends TestCase
             'loan_id' => $loan->id,
             'status' => 'disbursed',
         ]);
+
+        $transaction->refresh();
+        $this->assertNotNull($transaction->borrower_confirmed_at);
+    }
+
+    public function test_borrower_cannot_confirm_non_pending_disbursement(): void
+    {
+        $loan = $this->createFundedLoan();
+
+        $service = app(DisbursementService::class);
+        $service->initiateDisbursement($loan);
+
+        $response = $this->actingAs($this->borrower)
+            ->post(route('client.loans.disbursement.confirm', $loan));
+
+        $response->assertRedirect()
+            ->assertSessionHas('error');
+
+        $loan->refresh();
+        $this->assertEquals('awaiting_disbursement', $loan->status);
     }
 
     public function test_admin_cannot_disburse_non_funded_loan(): void

@@ -64,6 +64,12 @@ class DisbursementController extends Controller
 
     public function confirm(Request $request, Loan $loan)
     {
+        $validated = $request->validate([
+            'payment_method'    => 'required|string|in:bank_transfer,eft,wallet,cash,cheque',
+            'external_reference' => 'required|string|max:64',
+            'payment_proof'     => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
         $transaction = $loan->disbursements()
             ->pendingProcessing()
             ->latest()
@@ -73,11 +79,38 @@ class DisbursementController extends Controller
             return back()->with('error', 'No awaiting disbursement transaction found for this loan.');
         }
 
+        $proofPath = $request->file('payment_proof')->store('disbursement-proofs', 'private');
+
         try {
-            $this->disbursementService->processDisbursement($transaction);
+            $this->disbursementService->processDisbursement($transaction, [
+                'payment_method'     => $validated['payment_method'],
+                'external_reference' => $validated['external_reference'],
+                'payment_proof_path' => $proofPath,
+            ]);
 
             return redirect()->route('admin.disbursements.show', $loan)
-                ->with('success', 'Disbursement confirmed and loan is now active.');
+                ->with('success', 'Outgoing disbursement recorded. Pending borrower confirmation.');
+        } catch (ApiException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function borrowerConfirm(Request $request, Loan $loan)
+    {
+        $transaction = $loan->disbursements()
+            ->pendingBorrowerConfirmation()
+            ->latest()
+            ->first();
+
+        if (! $transaction) {
+            return back()->with('error', 'No disbursement pending your confirmation.');
+        }
+
+        try {
+            $this->disbursementService->confirmReceipt($transaction);
+
+            return redirect()->route('client.dashboard')
+                ->with('success', 'Disbursement confirmed. Loan is now active.');
         } catch (ApiException $e) {
             return back()->with('error', $e->getMessage());
         }

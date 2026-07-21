@@ -153,12 +153,23 @@ class DisbursementTest extends TestCase
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
 
-        $processed = $this->service->processDisbursement($disbursement);
+        $processed = $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
 
-        $this->assertEquals('disbursed', $processed->status);
+        $this->assertEquals('pending_borrower_confirmation', $processed->status);
         $this->assertNotNull($processed->processed_at);
-        $this->assertNotNull($processed->external_reference);
-        $this->assertStringStartsWith('BNK-', $processed->external_reference);
+        $this->assertEquals('TRX-TEST123', $processed->external_reference);
+        $this->assertEquals('bank_transfer', $processed->payment_method);
+        $this->assertEquals('disbursement-proofs/test.pdf', $processed->payment_proof_path);
+
+        // Borrower confirms receipt
+        $confirmed = $this->service->confirmReceipt($processed->fresh());
+
+        $this->assertEquals('disbursed', $confirmed->status);
+        $this->assertNotNull($confirmed->borrower_confirmed_at);
 
         // Loan should be updated to active
         $loan->refresh();
@@ -170,7 +181,11 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
 
         // Try to process again
         $this->expectException(\App\Exceptions\ApiException::class);
@@ -238,7 +253,12 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
 
         $reconciled = $this->service->reconcile(
             $disbursement->fresh(),
@@ -347,7 +367,12 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
 
         Sanctum::actingAs($this->admin);
 
@@ -364,7 +389,12 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
         $this->service->reconcile($disbursement->fresh(), 'admin@test.com');
 
         Sanctum::actingAs($this->admin);
@@ -386,7 +416,12 @@ class DisbursementTest extends TestCase
             'funded_amount' => 5000,
         ]);
         $d1 = $this->service->initiateDisbursement($loan1);
-        $this->service->processDisbursement($d1);
+        $this->service->processDisbursement($d1, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-001',
+            'payment_proof_path' => 'proofs/1.pdf',
+        ]);
+        $this->service->confirmReceipt($d1->fresh());
 
         $loan2 = $this->createFundedLoan([
             'approved_amount' => 10000,
@@ -394,7 +429,12 @@ class DisbursementTest extends TestCase
             'funded_amount' => 10000,
         ]);
         $d2 = $this->service->initiateDisbursement($loan2);
-        $this->service->processDisbursement($d2);
+        $this->service->processDisbursement($d2, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-002',
+            'payment_proof_path' => 'proofs/2.pdf',
+        ]);
+        $this->service->confirmReceipt($d2->fresh());
         $this->service->reconcile($d2->fresh(), 'admin@test.com');
 
         $loan3 = $this->createFundedLoan([

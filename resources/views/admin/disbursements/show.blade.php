@@ -38,7 +38,7 @@
                     <div class="row mb-2">
                         <div class="col-sm-4 text-muted">Status</div>
                         <div class="col-sm-8">
-                            @php $sc=['funded'=>'primary','awaiting_disbursement'=>'info','disbursed'=>'info','active'=>'success']; @endphp
+                            @php $sc=['funded'=>'primary','awaiting_disbursement'=>'info','pending_borrower_confirmation'=>'warning','disbursed'=>'info','active'=>'success']; @endphp
                             <span class="badge badge-{{ $sc[$loan->status] ?? 'secondary' }}">{{ ucfirst(str_replace('_', ' ', $loan->status)) }}</span>
                         </div>
                     </div>
@@ -72,12 +72,15 @@
                 <div class="card-body">
                     <h5 class="card-title text-uppercase mb-3">Disbursement Transaction</h5>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Reference</div><div class="col-sm-8 font-weight-bold">{{ $disbursement->transaction_reference }}</div></div>
-                    <div class="row mb-2"><div class="col-sm-4 text-muted">Status</div><div class="col-sm-8"><span class="badge badge-{{ $disbursement->isAwaiting() ? 'info' : ($disbursement->isDisbursed() ? 'success' : ($disbursement->isFailed() ? 'danger' : 'secondary')) }}">{{ ucfirst(str_replace('_', ' ', $disbursement->status)) }}</span></div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Status</div><div class="col-sm-8"><span class="badge badge-{{ $disbursement->isAwaiting() ? 'info' : ($disbursement->isPendingBorrowerConfirmation() ? 'warning' : ($disbursement->isDisbursed() ? 'success' : ($disbursement->isFailed() ? 'danger' : 'secondary'))) }}">{{ ucfirst(str_replace('_', ' ', $disbursement->status)) }}</span></div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Gross Amount</div><div class="col-sm-8">N$ {{ number_format($disbursement->gross_amount, 2) }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Platform Fee</div><div class="col-sm-8">N$ {{ number_format($disbursement->platform_fee, 2) }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Net to Borrower</div><div class="col-sm-8 font-weight-bold text-primary">N$ {{ number_format($disbursement->net_amount, 2) }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payment Method</div><div class="col-sm-8">{{ ucfirst(str_replace('_', ' ', $disbursement->payment_method ?? 'bank_transfer')) }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">External Reference</div><div class="col-sm-8">{{ $disbursement->external_reference ?: '—' }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payment Proof</div><div class="col-sm-8">@if($disbursement->payment_proof_path)<a href="{{ route('admin.disbursements.show', $loan) }}" class="text-primary"><i class="mdi mdi-file-check"></i> View Proof</a>@else — @endif</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Processed At</div><div class="col-sm-8">{{ $disbursement->processed_at ? $disbursement->processed_at->format('M j, Y H:i') : '—' }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Borrower Confirmed</div><div class="col-sm-8">{{ $disbursement->borrower_confirmed_at ? $disbursement->borrower_confirmed_at->format('M j, Y H:i') : '—' }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Reconciled</div><div class="col-sm-8">{{ $disbursement->reconciled_at ? $disbursement->reconciled_at->format('M j, Y H:i') . ' by ' . $disbursement->reconciled_by : '—' }}</div></div>
 
                     @if($disbursement->ledger_entries)
@@ -119,15 +122,37 @@
                     </form>
                     @elseif($loan->status === 'awaiting_disbursement')
                     <div class="alert alert-warning p-2 small mb-2">
-                        Confirm once the funds have been transferred to the borrower. This will mark the disbursement as complete and activate the loan.
+                        Record the outgoing payment details below. The borrower will be notified to confirm receipt.
                     </div>
-                    <form method="POST" action="{{ route('admin.disbursements.confirm', $loan) }}">
+                    <form method="POST" action="{{ route('admin.disbursements.confirm', $loan) }}" enctype="multipart/form-data">
                         @csrf @method('PATCH')
+                        <div class="form-group mb-2">
+                            <label class="small font-weight-bold">Payment Method</label>
+                            <select name="payment_method" class="form-control form-control-sm" required>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="eft">EFT</option>
+                                <option value="wallet">Wallet</option>
+                                <option value="cash">Cash</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="small font-weight-bold">Reference Number</label>
+                            <input type="text" name="external_reference" class="form-control form-control-sm" placeholder="e.g. TRX-12345678" required>
+                        </div>
+                        <div class="form-group mb-2">
+                            <label class="small font-weight-bold">Payment Proof (PDF/JPG/PNG, max 5MB)</label>
+                            <input type="file" name="payment_proof" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png" required>
+                        </div>
                         <button type="submit" class="btn btn-success btn-block"
-                            onclick="return confirm('Confirm disbursement and activate loan?')">
-                            <i class="mdi mdi-check mr-1"></i> Confirm & Activate Loan
+                            onclick="return confirm('Record outgoing disbursement? Borrower will be notified to confirm receipt.')">
+                            <i class="mdi mdi-send-check mr-1"></i> Record Outgoing Disbursement
                         </button>
                     </form>
+                    @elseif($loan->status === 'pending_borrower_confirmation')
+                    <div class="alert alert-info p-2 small mb-2">
+                        Outgoing disbursement recorded. Waiting for borrower to confirm receipt.
+                    </div>
                     @elseif($loan->status === 'active')
                     <div class="alert alert-success p-2 small mb-2">
                         Disbursement has been processed and the loan is active.
