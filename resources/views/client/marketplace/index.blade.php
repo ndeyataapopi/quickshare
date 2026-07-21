@@ -160,7 +160,7 @@
                             Flat Fee: {{ kpiMoney($loan->display['total_loan_charge']) }}
                         </div>
                         <div class="col-6">
-                            <i class="mdi mdi-cash-multiple"></i> Exp. Return: {{ kpiMoney($loan->display['expected_return']) }}
+                            <i class="mdi mdi-cash-multiple"></i> Return: {{ kpiMoney($loan->display['expected_return']) }}
                         </div>
                     </div>
                     <div class="row small text-muted mb-2">
@@ -169,14 +169,6 @@
                         </div>
                         <div class="col-6">
                             Lender Return: {{ kpiMoney($loan->display['lender_return']) }}
-                        </div>
-                    </div>
-                    <div class="row small text-muted mb-2">
-                        <div class="col-6">
-                            Borrower Repayment: {{ kpiMoney($loan->display['borrower_repayment']) }}
-                        </div>
-                        <div class="col-6">
-                            Exp. Profit: {{ kpiMoney($loan->display['expected_profit']) }}
                         </div>
                     </div>
                     
