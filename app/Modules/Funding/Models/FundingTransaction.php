@@ -9,6 +9,7 @@ use App\Traits\HasActivityLog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FundingTransaction extends Model
 {
@@ -63,6 +64,11 @@ class FundingTransaction extends Model
     public function lender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'lender_id');
+    }
+
+    public function investment(): HasOne
+    {
+        return $this->hasOne(Investment::class);
     }
 
     // ─── Status Helpers ──────────────────────────────────────────────

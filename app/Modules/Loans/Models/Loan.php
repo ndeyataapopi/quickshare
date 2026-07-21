@@ -104,6 +104,11 @@ class Loan extends Model
         return $this->hasMany(FundingTransaction::class);
     }
 
+    public function investments(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Funding\Models\Investment::class);
+    }
+
     public function disbursements(): HasMany
     {
         return $this->hasMany(DisbursementTransaction::class);

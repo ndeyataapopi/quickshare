@@ -4,6 +4,7 @@ namespace Tests\Feature\Funding;
 
 use App\Models\User;
 use App\Modules\Funding\Models\FundingTransaction;
+use App\Modules\Funding\Models\Investment;
 use App\Modules\Funding\Services\FundingService;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Repayments\Models\Repayment;
@@ -568,5 +569,191 @@ class FundingTest extends TestCase
         ]);
 
         $this->assertCount(1, $loan->fresh()->fundingTransactions);
+    }
+
+    // ─── Investment Creation Tests ──────────────────────────────────
+
+    public function test_confirm_funding_creates_investment_record(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $this->assertDatabaseHas('investments', [
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $transaction->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'actual_return' => 0,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_confirm_funding_sets_funded_at_timestamp(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $investment = Investment::where('funding_transaction_id', $transaction->id)->first();
+        $this->assertNotNull($investment);
+        $this->assertNotNull($investment->funded_at);
+    }
+
+    public function test_multiple_lenders_each_get_investment_records(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $lender2 = User::factory()->active()->create(['trust_score' => 80.00]);
+        $this->assignClientRole($lender2);
+
+        $tx1 = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $tx2 = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $lender2->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($tx1, $this->lender);
+        $this->service->confirmFunding($tx2, $this->lender);
+
+        $this->assertEquals(2, Investment::where('loan_id', $loan->id)->count());
+        $this->assertDatabaseHas('investments', [
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx1->id,
+        ]);
+        $this->assertDatabaseHas('investments', [
+            'lender_id' => $lender2->id,
+            'funding_transaction_id' => $tx2->id,
+        ]);
+    }
+
+    public function test_funding_transaction_has_investment_relationship(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $transaction->refresh();
+        $this->assertNotNull($transaction->investment);
+        $this->assertEquals(5000, (float) $transaction->investment->amount);
+    }
+
+    public function test_loan_has_investments_relationship(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $loan->refresh();
+        $this->assertCount(1, $loan->investments);
+    }
+
+    public function test_user_has_investments_relationship(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $this->assertCount(1, $this->lender->fresh()->investments);
+    }
+
+    public function test_fully_funded_loan_has_correct_investment_data(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 5000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $loan->refresh();
+        $this->assertEquals('funded', $loan->status);
+        $this->assertEquals(5000, (float) $loan->funded_amount);
+        $this->assertEquals(0, $this->service->getRemainingFunding($loan));
+
+        $investment = Investment::where('loan_id', $loan->id)->first();
+        $this->assertNotNull($investment);
+        $this->assertEquals('active', $investment->status);
+        $this->assertEquals(5400, (float) $investment->expected_return);
     }
 }

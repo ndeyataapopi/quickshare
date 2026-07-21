@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Modules\Funding\Events\FundingCompleted;
 use App\Modules\Funding\Models\FundingTransaction;
+use App\Modules\Funding\Models\Investment;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\LoanService;
 use App\Modules\Marketplace\Services\MarketplaceService;
@@ -177,6 +178,19 @@ class FundingService
             ];
 
             $transaction->update($updateData);
+
+            // Create investment record for the lender's portfolio
+            Investment::create([
+                'loan_id' => $loan->id,
+                'lender_id' => $transaction->lender_id,
+                'funding_transaction_id' => $transaction->id,
+                'amount' => (float) $transaction->amount,
+                'interest_rate' => (float) $transaction->interest_rate,
+                'expected_return' => (float) $transaction->expected_return,
+                'actual_return' => 0,
+                'status' => 'active',
+                'funded_at' => now(),
+            ]);
 
             // Notify lender that payment was approved
             $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
