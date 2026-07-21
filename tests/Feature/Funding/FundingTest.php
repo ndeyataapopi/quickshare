@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Funding\Services\FundingService;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Repayments\Models\Repayment;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -153,6 +154,11 @@ class FundingTest extends TestCase
         $loan->refresh();
         $this->assertEquals('funded', $loan->status);
         $this->assertEquals(0, $this->service->getRemainingFunding($loan));
+
+        $repayment = Repayment::forLoan($loan->id)->first();
+        $this->assertNotNull($repayment);
+        $this->assertEquals('pending', $repayment->status);
+        $this->assertEquals($loan->total_repayment, $repayment->amount);
     }
 
     // ─── Overfunding Protection ──────────────────────────────────────

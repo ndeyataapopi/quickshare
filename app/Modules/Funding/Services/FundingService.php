@@ -9,6 +9,7 @@ use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\LoanService;
 use App\Modules\Marketplace\Services\MarketplaceService;
+use App\Modules\Repayments\Services\RepaymentService;
 use Illuminate\Support\Facades\DB;
 
 class FundingService
@@ -16,6 +17,7 @@ class FundingService
     public function __construct(
         protected MarketplaceService $marketplaceService,
         protected LoanService $loanService,
+        protected RepaymentService $repaymentService,
     ) {
     }
 
@@ -189,9 +191,20 @@ class FundingService
                 ]
             );
 
-            // If the loan is now fully funded, notify the borrower and all lenders
+            // If the loan is now fully funded, create the pending repayment schedule
+            // and notify the borrower and all lenders
             if ($newStatus === 'funded') {
                 FundingCompleted::dispatch($loan->id, $newFundedAmount);
+
+                try {
+                    $this->repaymentService->createRepaymentSchedule($loan);
+                } catch (ApiException $e) {
+                    // Schedule may already exist; ignore duplicate
+                    Log::info('Repayment schedule already exists for loan', [
+                        'loan_id' => $loan->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
                 $notificationService->queue(
                     $loan->borrower,

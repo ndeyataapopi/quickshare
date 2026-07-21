@@ -149,6 +149,7 @@ class Repayment extends Model
     public function scopeShouldBeOverdue($query)
     {
         return $query->whereIn('status', ['pending', 'partial'])
+            ->whereHas('loan', fn ($q) => $q->where('status', 'active'))
             ->whereDate('due_date', '<', today());
     }
 
