@@ -329,6 +329,7 @@
     <script src="{{ asset('assets/extra-libs/datatables.net-bs4/js/dataTables.responsive.min.js') }}"></script>
     <script src="{{ asset('dist/js/pages/datatable/datatable-basic.init.js') }}"></script>
 
+    @stack('scripts')
 
 </body>
 </html>

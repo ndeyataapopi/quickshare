@@ -224,7 +224,9 @@
                     
                     <!-- Quick Actions -->
                     <div class="mt-2 text-center">
-                        <button class="btn btn-link btn-sm text-primary view-details"
+                        <button type="button" class="btn btn-link btn-sm text-primary view-details"
+                                data-toggle="modal"
+                                data-target="#loanDetailsModal"
                                 data-id="{{ $loan->id }}"
                                 data-url="{{ route('client.marketplace.show', $loan) }}">
                             <i class="mdi mdi-eye mr-1"></i>View Details
@@ -269,9 +271,11 @@
         </div>
     </div>
 </div>
+@endsection
 
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+$(function() {
     const loanCards = document.querySelectorAll('.loan-card');
     const filterSelects = document.querySelectorAll('.filter-select');
     const sortSelect = document.querySelector('.sort-select');
@@ -356,8 +360,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // View details functionality
-    const viewDetailsButtons = document.querySelectorAll('.view-details');
-    const loanDetailsModal = $('#loanDetailsModal');
     const loanDetailsContent = document.getElementById('loanDetailsContent');
     const currencySymbol = {{ json_encode(config('loans.currency_symbol')) }};
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -370,125 +372,126 @@ document.addEventListener('DOMContentLoaded', function() {
         return level === 'low' ? 'success' : (level === 'medium' ? 'warning' : 'danger');
     }
 
-    viewDetailsButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const url = this.dataset.url;
+    $('#loanDetailsModal').on('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        if (! button || ! button.dataset.url) {
+            loanDetailsContent.innerHTML = '<div class="alert alert-danger">Unable to determine loan URL.</div>';
+            return;
+        }
+        const url = button.dataset.url;
+
+        loanDetailsContent.innerHTML = `
+            <div class="text-center py-4">
+                <i class="mdi mdi-loading mdi-spin" style="font-size: 48px;"></i>
+                <p class="mt-2">Loading loan details...</p>
+            </div>
+        `;
+
+        fetch(url, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            if (! response.ok) throw new Error('Could not load loan details.');
+            return response.json();
+        })
+        .then(data => {
+            const l = data.listing || data;
+            const borrower = l.borrower || {};
+            const loan = l.loan || {};
+            const funding = l.funding || {};
+            const remaining = parseFloat(funding.remaining_amount || 0);
+            const progress = funding.progress_percent || 0;
+            const canFund = ['marketplace', 'partially_funded'].includes(funding.status) && remaining > 0;
+            const fundUrl = url + '/fund';
+            const minFund = {{ config('loans.min_funding_amount', 500) }};
+
+            const riskClass = riskBadgeClass(borrower.risk_level);
+            const expectedReturn = loan.expected_return || 0;
+            const expectedProfit = loan.expected_profit || 0;
+            const scheduleRows = (loan.repayment_schedule || []).map(row => `
+                <tr><td>Installment ${row.installment}</td><td>${row.due_date}</td><td>${formatMoney(row.amount)}</td></tr>
+            `).join('');
+            const historyRows = (l.funding_history || []).length
+                ? (l.funding_history || []).map(row => `
+                    <tr><td>${row.lender_hash || 'Lender'}</td><td>${formatMoney(row.amount)}</td><td>${row.confirmed_at || '-'}</td></tr>
+                `).join('')
+                : '<tr><td colspan="3" class="text-muted text-center">No confirmed contributions yet.</td></tr>';
 
             loanDetailsContent.innerHTML = `
-                <div class="text-center py-4">
-                    <i class="mdi mdi-loading mdi-spin" style="font-size: 48px;"></i>
-                    <p class="mt-2">Loading loan details...</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Borrower Information</h6>
+                        <table class="table table-sm">
+                            <tr><td>Borrower Name:</td><td>${borrower.name || '-'}</td></tr>
+                            <tr><td>Trust Score:</td><td><span class="badge badge-info">${borrower.trust_score || 0}/100</span></td></tr>
+                            <tr><td>Trust Tier:</td><td>${ucfirst(borrower.trust_tier || '-')}</td></tr>
+                            <tr><td>Risk Level:</td><td><span class="badge badge-${riskClass}">${ucfirst(borrower.risk_level || 'high')}</span></td></tr>
+                            <tr><td>Repayment Probability:</td><td>${borrower.repayment_probability || 0}%</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Loan Details</h6>
+                        <table class="table table-sm">
+                            <tr><td>Reference:</td><td>${l.reference || '-'}</td></tr>
+                            <tr><td>Purpose:</td><td>${loan.purpose || '-'}</td></tr>
+                            <tr><td>Loan Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
+                            <tr><td>Term:</td><td>${loan.loan_term_days || 0} days</td></tr>
+                            <tr><td>Flat Fee:</td><td>${formatMoney(loan.total_loan_charge || 0)}</td></tr>
+                            <tr><td>Platform Fee:</td><td>${formatMoney(loan.platform_fee)}</td></tr>
+                            <tr><td>Lender Return:</td><td class="text-success">${formatMoney(loan.lender_return || 0)}</td></tr>
+                            <tr><td>Expected Return:</td><td class="text-success">${formatMoney(expectedReturn || 0)}</td></tr>
+                            <tr><td>Expected Profit:</td><td class="text-success">${formatMoney(expectedProfit || 0)}</td></tr>
+                            <tr><td>Borrower Repayment:</td><td>${formatMoney(loan.borrower_repayment || loan.total_repayment || 0)}</td></tr>
+                        </table>
+                    </div>
                 </div>
+                <div class="mt-3">
+                    <h6>Funding Progress</h6>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar bg-${progress >= 75 ? 'success' : (progress >= 50 ? 'warning' : 'info')}" style="width: ${progress}%;">${progress}%</div>
+                    </div>
+                    <small class="text-muted">${formatMoney(funding.funded_amount)} funded &bull; ${formatMoney(remaining)} remaining</small>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <h6>Repayment Schedule</h6>
+                        <table class="table table-sm table-striped">
+                            <thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th></tr></thead>
+                            <tbody>${scheduleRows}</tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Funding History</h6>
+                        <table class="table table-sm table-striped">
+                            <thead><tr><th>Lender</th><th>Amount</th><th>Confirmed</th></tr></thead>
+                            <tbody>${historyRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+                ${canFund ? `
+                <div class="mt-4">
+                    <h6>Fund This Loan</h6>
+                    <form action="${fundUrl}" method="POST" class="funding-form">
+                        <input type="hidden" name="_token" value="${csrfToken}">
+                        <div class="input-group">
+                            <div class="input-group-prepend"><span class="input-group-text">${currencySymbol}</span></div>
+                            <input type="number" name="amount" class="form-control" placeholder="${minFund}" min="${minFund}" max="${remaining.toFixed(2)}" step="0.01" required>
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-primary"><i class="mdi mdi-plus"></i> Fund</button>
+                            </div>
+                        </div>
+                        <small class="text-muted">Min: ${currencySymbol}${minFund}</small>
+                    </form>
+                </div>
+                ` : '<div class="alert alert-secondary mt-3 mb-0">This loan is not currently available for funding.</div>'}
             `;
 
-            fetch(url, {
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => {
-                if (! response.ok) throw new Error('Could not load loan details.');
-                return response.json();
-            })
-            .then(data => {
-                const l = data.listing || data;
-                const borrower = l.borrower || {};
-                const loan = l.loan || {};
-                const funding = l.funding || {};
-                const remaining = parseFloat(funding.remaining_amount || 0);
-                const progress = funding.progress_percent || 0;
-                const canFund = ['marketplace', 'partially_funded'].includes(funding.status) && remaining > 0;
-                const fundUrl = url + '/fund';
-                const minFund = {{ config('loans.min_funding_amount', 500) }};
-
-                const riskClass = riskBadgeClass(borrower.risk_level);
-                const expectedReturn = loan.expected_return || 0;
-                const expectedProfit = loan.expected_profit || 0;
-                const scheduleRows = (loan.repayment_schedule || []).map(row => `
-                    <tr><td>Installment ${row.installment}</td><td>${row.due_date}</td><td>${formatMoney(row.amount)}</td></tr>
-                `).join('');
-                const historyRows = (l.funding_history || []).length
-                    ? (l.funding_history || []).map(row => `
-                        <tr><td>${row.lender_hash || 'Lender'}</td><td>${formatMoney(row.amount)}</td><td>${row.confirmed_at || '-'}</td></tr>
-                    `).join('')
-                    : '<tr><td colspan="3" class="text-muted text-center">No confirmed contributions yet.</td></tr>';
-
-                loanDetailsContent.innerHTML = `
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Borrower Information</h6>
-                            <table class="table table-sm">
-                                <tr><td>Borrower Name:</td><td>${borrower.name || '-'}</td></tr>
-                                <tr><td>Trust Score:</td><td><span class="badge badge-info">${borrower.trust_score || 0}/100</span></td></tr>
-                                <tr><td>Trust Tier:</td><td>${ucfirst(borrower.trust_tier || '-')}</td></tr>
-                                <tr><td>Risk Level:</td><td><span class="badge badge-${riskClass}">${ucfirst(borrower.risk_level || 'high')}</span></td></tr>
-                                <tr><td>Repayment Probability:</td><td>${borrower.repayment_probability || 0}%</td></tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Loan Details</h6>
-                            <table class="table table-sm">
-                                <tr><td>Reference:</td><td>${l.reference || '-'}</td></tr>
-                                <tr><td>Purpose:</td><td>${loan.purpose || '-'}</td></tr>
-                                <tr><td>Loan Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
-                                <tr><td>Term:</td><td>${loan.loan_term_days || 0} days</td></tr>
-                                <tr><td>Flat Fee:</td><td>${formatMoney(loan.total_loan_charge || 0)}</td></tr>
-                                <tr><td>Platform Fee:</td><td>${formatMoney(loan.platform_fee)}</td></tr>
-                                <tr><td>Lender Return:</td><td class="text-success">${formatMoney(loan.lender_return || 0)}</td></tr>
-                                <tr><td>Expected Return:</td><td class="text-success">${formatMoney(expectedReturn || 0)}</td></tr>
-                                <tr><td>Expected Profit:</td><td class="text-success">${formatMoney(expectedProfit || 0)}</td></tr>
-                                <tr><td>Borrower Repayment:</td><td>${formatMoney(loan.borrower_repayment || loan.total_repayment || 0)}</td></tr>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <h6>Funding Progress</h6>
-                        <div class="progress mb-2" style="height: 20px;">
-                            <div class="progress-bar bg-${progress >= 75 ? 'success' : (progress >= 50 ? 'warning' : 'info')}" style="width: ${progress}%;">${progress}%</div>
-                        </div>
-                        <small class="text-muted">${formatMoney(funding.funded_amount)} funded &bull; ${formatMoney(remaining)} remaining</small>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <h6>Repayment Schedule</h6>
-                            <table class="table table-sm table-striped">
-                                <thead><tr><th>Installment</th><th>Due Date</th><th>Amount</th></tr></thead>
-                                <tbody>${scheduleRows}</tbody>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Funding History</h6>
-                            <table class="table table-sm table-striped">
-                                <thead><tr><th>Lender</th><th>Amount</th><th>Confirmed</th></tr></thead>
-                                <tbody>${historyRows}</tbody>
-                            </table>
-                        </div>
-                    </div>
-                    ${canFund ? `
-                    <div class="mt-4">
-                        <h6>Fund This Loan</h6>
-                        <form action="${fundUrl}" method="POST" class="funding-form">
-                            <input type="hidden" name="_token" value="${csrfToken}">
-                            <div class="input-group">
-                                <div class="input-group-prepend"><span class="input-group-text">${currencySymbol}</span></div>
-                                <input type="number" name="amount" class="form-control" placeholder="${minFund}" min="${minFund}" max="${remaining.toFixed(2)}" step="0.01" required>
-                                <div class="input-group-append">
-                                    <button type="submit" class="btn btn-primary"><i class="mdi mdi-plus"></i> Fund</button>
-                                </div>
-                            </div>
-                            <small class="text-muted">Min: ${currencySymbol}${minFund}</small>
-                        </form>
-                    </div>
-                    ` : '<div class="alert alert-secondary mt-3 mb-0">This loan is not currently available for funding.</div>'}
-                `;
-
-                attachFundingValidation(loanDetailsContent);
-            })
-            .catch(error => {
-                loanDetailsContent.innerHTML = `
-                    <div class="alert alert-danger">${error.message || 'Unable to load loan details.'}</div>
-                `;
-            });
-
-            loanDetailsModal.modal('show');
+            attachFundingValidation(loanDetailsContent);
+        })
+        .catch(error => {
+            loanDetailsContent.innerHTML = `
+                <div class="alert alert-danger">${error.message || 'Unable to load loan details.'}</div>
+            `;
         });
     });
 
@@ -535,4 +538,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 30000);
 });
 </script>
-@endsection
+@endpush
