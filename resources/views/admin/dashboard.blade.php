@@ -104,6 +104,65 @@
         </div>
     </div>
 
+    <div class="row">
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Platform Earnings</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-cash-multiple text-success"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($earningsSummary['total_earnings'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">ROI: {{ $earningsSummary['roi'] ?? 0 }}%</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Total Revenue</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-chart-line text-info"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($revenueStats['total_revenue'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">Today: {{ formatCurrencyShort($revenueStats['revenue_today'] ?? 0) }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Platform Fees</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-percent text-primary"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($revenueStats['total_platform_fees'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">This month: {{ formatCurrencyShort($revenueStats['revenue_this_month'] ?? 0) }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Total Invested</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-bank text-warning"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($earningsSummary['total_invested'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">Expected: {{ formatCurrencyShort($earningsSummary['total_expected_return'] ?? 0) }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ============================================================== -->
     <!-- Quick Actions Row  -->
     <!-- ============================================================== -->

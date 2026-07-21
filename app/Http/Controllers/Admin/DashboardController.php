@@ -7,11 +7,19 @@ use App\Models\ActivityLog;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\KYC\Models\KycSubmission;
 use App\Modules\Admin\Models\FraudFlag;
+use App\Modules\Admin\Services\AdminDashboardService;
+use App\Modules\Funding\Services\EarningsService;
 use App\Models\User;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        protected AdminDashboardService $dashboardService,
+        protected EarningsService $earningsService
+    ) {
+    }
+
     public function index()
     {
         $stats = [
@@ -22,13 +30,17 @@ class DashboardController extends Controller
             'pending_kyc'   => KycSubmission::where('status', 'pending')->count(),
             'fraud_alerts'  => FraudFlag::where('status', 'open')->count(),
         ];
-        
+
+        $earningsSummary = $this->earningsService->getPlatformEarningsSummary();
+        $revenueStats = $this->dashboardService->getRevenueStats();
+        $chartData = $this->dashboardService->getChartData();
+
         $recentLoans = Loan::with('borrower:id,first_name,last_name')->latest()->take(10)->get();
         $recentActivity = ActivityLog::with('user:id,first_name,last_name')
             ->latest()
             ->take(10)
             ->get();
-        
-        return view('admin.dashboard', compact('stats', 'recentLoans', 'recentActivity'));
+
+        return view('admin.dashboard', compact('stats', 'earningsSummary', 'revenueStats', 'chartData', 'recentLoans', 'recentActivity'));
     }
 }

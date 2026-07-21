@@ -24,11 +24,11 @@
         $defaultedLoans  = $user->loans()->where('status', 'defaulted')->count();
         $totalBorrowed   = $user->loans()->whereNotNull('approved_amount')->sum('approved_amount');
         $totalRepaid     = $user->repayments()->where('status', 'completed')->sum('amount');
-        $totalInvested   = $user->fundingTransactions()->where('status', 'confirmed')->sum('amount');
-        $totalExpected   = $user->fundingTransactions()->where('status', 'confirmed')->sum('expected_return');
+        $totalInvested   = $earningsSummary['total_invested'] ?? 0;
+        $totalExpected   = $earningsSummary['total_expected_return'] ?? 0;
+        $totalEarnings   = $earningsSummary['total_earnings'] ?? 0;
         $score           = (float) $user->trust_score;
         $tier            = \App\Modules\TrustScore\Services\TrustScoreService::getTier($score);
-        $totalEarnings   = $totalExpected - $totalInvested;
         $repaymentRate   = $totalLoans > 0 ? round(($completedLoans / $totalLoans) * 100, 1) : 0;
     @endphp
 
@@ -222,7 +222,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">ROI</td>
-                                    <td class="font-weight-bold text-info">{{ $totalInvested > 0 ? round(($totalEarnings / $totalInvested) * 100, 1) : 0 }}%</td>
+                                    <td class="font-weight-bold text-info">{{ $earningsSummary['roi'] ?? 0 }}%</td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Trust Score</td>
@@ -484,33 +484,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    const financialDataQuarter = @json($financialDataQuarter ?? ['labels' => [], 'borrowed' => [], 'invested' => [], 'earnings' => []]);
+    const financialDataYear = @json($financialDataYear ?? ['labels' => [], 'borrowed' => [], 'invested' => [], 'earnings' => []]);
+    const financialDataMonth = @json($financialData ?? ['labels' => [], 'borrowed' => [], 'invested' => [], 'earnings' => []]);
+
     function updateOverviewChart(period) {
-        let labels, borrowedData, investedData, earningsData;
-        
+        let chartData;
         switch(period) {
-            case 'quarter':
-                labels = ['Q1', 'Q2', 'Q3', 'Q4'];
-                borrowedData = [15000, 22000, 18000, 25000];
-                investedData = [10000, 15000, 12000, 18000];
-                earningsData = [800, 1500, 1200, 2000];
-                break;
-            case 'year':
-                labels = ['2020', '2021', '2022', '2023', '2024'];
-                borrowedData = [30000, 45000, 60000, 75000, 90000];
-                investedData = [20000, 30000, 40000, 55000, 70000];
-                earningsData = [2000, 3500, 5000, 7000, 9000];
-                break;
-            default: // month
-                labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                borrowedData = [5000, 8000, 12000, 10000, 15000, 18000];
-                investedData = [3000, 5000, 7000, 9000, 12000, 14000];
-                earningsData = [200, 350, 500, 800, 1200, 1500];
+            case 'quarter': chartData = financialDataQuarter; break;
+            case 'year':    chartData = financialDataYear; break;
+            default:        chartData = financialDataMonth;
         }
-        
-        overviewChart.data.labels = labels;
-        overviewChart.data.datasets[0].data = borrowedData;
-        overviewChart.data.datasets[1].data = investedData;
-        overviewChart.data.datasets[2].data = earningsData;
+        overviewChart.data.labels = chartData.labels;
+        overviewChart.data.datasets[0].data = chartData.borrowed;
+        overviewChart.data.datasets[1].data = chartData.invested;
+        overviewChart.data.datasets[2].data = chartData.earnings;
         overviewChart.update();
     }
     

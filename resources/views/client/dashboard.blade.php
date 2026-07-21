@@ -85,7 +85,7 @@
                             <h2 class="mb-0 display-6"><span class="font-normal">{{ $loans->where('status', 'active')->count() }}</span></h2>
                         </div>
                     </div>
-                    <small class="text-muted">Total: {{ formatCurrencyShort($loans->sum('requested_amount')) }}</small>
+                    <small class="text-muted">Total: {{ formatCurrencyShort($totalLoansAmount ?? 0) }}</small>
                 </div>
             </div>
         </div>
@@ -99,7 +99,7 @@
                             <h2 class="mb-0 display-6"><span class="font-normal">{{ $investments->count() }}</span></h2>
                         </div>
                     </div>
-                    <small class="text-muted">Total: {{ formatCurrencyShort($investments->sum('amount')) }}</small>
+                    <small class="text-muted">Total: {{ formatCurrencyShort($totalInvested ?? 0) }}</small>
                 </div>
             </div>
         </div>
@@ -110,10 +110,10 @@
                     <div class="d-flex align-items-center mb-2 mt-4">
                         <h2 class="mb-0 display-5"><i class="mdi mdi-wallet text-warning"></i></h2>
                         <div class="ml-auto">
-                            <h2 class="mb-0 display-6"><span class="font-normal">{{ $earnings->count() }}</span></h2>
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ $activeInvestmentsCount ?? 0 }}</span></h2>
                         </div>
                     </div>
-                    <small class="text-muted">Total: {{ formatCurrencyShort($earnings->sum('actual_return')) }}</small>
+                    <small class="text-muted">Total: {{ formatCurrencyShort($totalEarnings ?? 0) }}</small>
                 </div>
             </div>
         </div>
