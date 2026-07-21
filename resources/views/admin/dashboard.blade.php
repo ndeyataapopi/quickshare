@@ -169,10 +169,21 @@
                                     @foreach($recentLoans as $loan)
                                     <tr>
                                         <td>{{ $loan->reference }}</td>
-                                        <td>N$ {{ number_format($loan->amount) }}</td>
+                                        <td>N$ {{ number_format((float) ($loan->approved_amount ?? $loan->requested_amount)) }}</td>
                                         <td>
-                                            <span class="badge badge-{{ $loan->status === 'approved' ? 'success' : ($loan->status === 'pending' ? 'warning' : ($loan->status === 'active' ? 'primary' : 'secondary')) }}">
-                                                {{ ucfirst($loan->status) }}
+                                            @php
+                                                $badgeClass = match($loan->status) {
+                                                    'marketplace', 'partially_funded', 'funded' => 'success',
+                                                    'pending_review' => 'warning',
+                                                    'active', 'disbursed' => 'primary',
+                                                    'cancelled' => 'danger',
+                                                    'defaulted', 'overdue' => 'danger',
+                                                    'completed' => 'info',
+                                                    default => 'secondary',
+                                                };
+                                            @endphp
+                                            <span class="badge badge-{{ $badgeClass }}">
+                                                {{ ucfirst(str_replace('_', ' ', $loan->status)) }}
                                             </span>
                                         </td>
                                         <td>{{ $loan->created_at->format('M j, Y') }}</td>

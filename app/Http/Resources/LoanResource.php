@@ -40,6 +40,7 @@ class LoanResource extends JsonResource
             'timestamps' => [
                 'submitted_at' => $this->submitted_at?->toIso8601String(),
                 'approved_at' => $this->approved_at?->toIso8601String(),
+                'rejected_at' => $this->rejected_at?->toIso8601String(),
                 'disbursed_at' => $this->disbursed_at?->toIso8601String(),
                 'completed_at' => $this->completed_at?->toIso8601String(),
                 'created_at' => $this->created_at->toIso8601String(),

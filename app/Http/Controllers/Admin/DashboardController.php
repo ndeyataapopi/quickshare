@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\KYC\Models\KycSubmission;
 use App\Modules\Admin\Models\FraudFlag;
@@ -22,8 +23,11 @@ class DashboardController extends Controller
             'fraud_alerts'  => FraudFlag::where('status', 'open')->count(),
         ];
         
-        $recentLoans = Loan::latest()->take(10)->get();
-        $recentActivity = collect([]);
+        $recentLoans = Loan::with('borrower:id,first_name,last_name')->latest()->take(10)->get();
+        $recentActivity = ActivityLog::with('user:id,first_name,last_name')
+            ->latest()
+            ->take(10)
+            ->get();
         
         return view('admin.dashboard', compact('stats', 'recentLoans', 'recentActivity'));
     }

@@ -238,6 +238,7 @@ class LoanService
                 'status' => 'cancelled',
                 'reviewed_by' => $reviewer->id,
                 'rejection_reason' => $reason,
+                'rejected_at' => now(),
             ]);
 
             event(new LoanRejected($loan->id, $loan->borrower, $reason));
