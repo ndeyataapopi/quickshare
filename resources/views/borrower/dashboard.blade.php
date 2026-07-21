@@ -27,14 +27,14 @@
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Total Borrowed</h5>
-                <h2 class="font-bold">N$ {{ number_format(auth()->user()->loans()->whereNotIn('status',['cancelled'])->sum('requested_amount')) }}</h2>
+                <h2 class="font-bold">{{ formatCurrencyShort(auth()->user()->loans()->whereNotIn('status',['cancelled'])->sum('requested_amount')) }}</h2>
                 <i class="mdi mdi-bank text-warning float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Total Repaid</h5>
-                <h2 class="font-bold">N$ {{ number_format(auth()->user()->repayments()->where('status','paid')->sum('amount')) }}</h2>
+                <h2 class="font-bold">{{ formatCurrencyShort(auth()->user()->repayments()->where('status','paid')->sum('amount')) }}</h2>
                 <i class="mdi mdi-check-circle text-success float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>

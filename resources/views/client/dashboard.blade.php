@@ -85,7 +85,7 @@
                             <h2 class="mb-0 display-6"><span class="font-normal">{{ $loans->where('status', 'active')->count() }}</span></h2>
                         </div>
                     </div>
-                    <small class="text-muted">Total: N$ {{ number_format($loans->sum('requested_amount')) }}</small>
+                    <small class="text-muted">Total: {{ formatCurrencyShort($loans->sum('requested_amount')) }}</small>
                 </div>
             </div>
         </div>
@@ -99,7 +99,7 @@
                             <h2 class="mb-0 display-6"><span class="font-normal">{{ $investments->count() }}</span></h2>
                         </div>
                     </div>
-                    <small class="text-muted">Total: N$ {{ number_format($investments->sum('amount')) }}</small>
+                    <small class="text-muted">Total: {{ formatCurrencyShort($investments->sum('amount')) }}</small>
                 </div>
             </div>
         </div>
@@ -113,7 +113,7 @@
                             <h2 class="mb-0 display-6"><span class="font-normal">{{ $earnings->count() }}</span></h2>
                         </div>
                     </div>
-                    <small class="text-muted">Total: N$ {{ number_format($earnings->sum('actual_return')) }}</small>
+                    <small class="text-muted">Total: {{ formatCurrencyShort($earnings->sum('actual_return')) }}</small>
                 </div>
             </div>
         </div>

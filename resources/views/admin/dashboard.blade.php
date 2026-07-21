@@ -83,7 +83,7 @@
                     <div class="d-flex align-items-center mb-2 mt-4">
                         <h2 class="mb-0 display-5"><i class="mdi mdi-trending-up text-info"></i></h2>
                         <div class="ml-auto">
-                            <h2 class="mb-0 display-6"><span class="font-normal">N$ {{ number_format($stats['total_funded']) }}</span></h2>
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($stats['total_funded']) }}</span></h2>
                         </div>
                     </div>
                 </div>
