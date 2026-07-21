@@ -23,7 +23,7 @@ return [
         'max_amount' => env('LOAN_MAX_AMOUNT', 1500.00),
         'min_term_days' => env('LOAN_MIN_TERM_DAYS', 7),
         'max_term_days' => env('LOAN_MAX_TERM_DAYS', 30),
-        'max_active_loans' => env('LOAN_MAX_ACTIVE_LOANS', 1),
+        'max_active_loans' => env('LOAN_MAX_ACTIVE_LOANS', 5),
     ],
 
     'trust_tiers' => [
