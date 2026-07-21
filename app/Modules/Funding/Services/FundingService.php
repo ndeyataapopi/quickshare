@@ -291,26 +291,32 @@ class FundingService
             throw new ApiException('Only pending funding transactions can be rejected.', 422);
         }
 
-        $transaction->update([
-            'status' => 'cancelled',
-            'admin_verified_at' => now(),
-            'admin_verified_by' => $admin?->id,
-            'admin_notes' => $reason,
-        ]);
+        return DB::transaction(function () use ($transaction, $admin, $reason) {
+            $transaction->update([
+                'status' => 'rejected',
+                'rejected_at' => now(),
+                'admin_verified_at' => now(),
+                'admin_verified_by' => $admin?->id,
+                'admin_notes' => $reason,
+            ]);
 
-        app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
-            $transaction->lender,
-            'funding_payment_rejected',
-            [
-                'loan_id' => $transaction->loan_id,
-                'reference' => $transaction->loan->reference,
-                'amount' => (float) $transaction->amount,
-                'reason' => $reason,
-                'transaction_id' => $transaction->id,
-            ]
-        );
+            // Clear marketplace cache so the freed funding slot is reflected
+            $this->marketplaceService->clearListingCache($transaction->loan_id);
 
-        return $transaction->fresh();
+            app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
+                $transaction->lender,
+                'funding_payment_rejected',
+                [
+                    'loan_id' => $transaction->loan_id,
+                    'reference' => $transaction->loan->reference,
+                    'amount' => (float) $transaction->amount,
+                    'reason' => $reason,
+                    'transaction_id' => $transaction->id,
+                ]
+            );
+
+            return $transaction->fresh();
+        });
     }
 
     // ─── Request More Information ──────────────────────────────────────

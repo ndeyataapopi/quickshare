@@ -47,7 +47,15 @@
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-danger mb-0">{{ formatKpi($stats['cancelled']) }}</h4>
+                    <h4 class="font-weight-bold text-danger mb-0">{{ formatKpi($stats['rejected']) }}</h4>
+                    <small class="text-muted">Rejected</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body py-3">
+                    <h4 class="font-weight-bold text-secondary mb-0">{{ formatKpi($stats['cancelled']) }}</h4>
                     <small class="text-muted">Cancelled</small>
                 </div>
             </div>
@@ -72,6 +80,7 @@
                     <option value="">All Statuses</option>
                     <option value="pending" {{ request('status')==='pending'?'selected':'' }}>Pending</option>
                     <option value="confirmed" {{ request('status')==='confirmed'?'selected':'' }}>Confirmed</option>
+                    <option value="rejected" {{ request('status')==='rejected'?'selected':'' }}>Rejected</option>
                     <option value="cancelled" {{ request('status')==='cancelled'?'selected':'' }}>Cancelled</option>
                 </select>
                 <button type="submit" class="btn btn-primary mb-2">Filter</button>
@@ -99,7 +108,7 @@
                             <td>N$ {{ number_format($t->amount, 2) }}</td>
                             <td>N$ {{ number_format($t->expected_return, 2) }}</td>
                             <td>
-                                @php $sc=['pending'=>'warning','confirmed'=>'success','cancelled'=>'danger','refunded'=>'secondary']; @endphp
+                                @php $sc=['pending'=>'warning','confirmed'=>'success','rejected'=>'danger','cancelled'=>'secondary','refunded'=>'secondary']; @endphp
                                 <span class="badge badge-{{ $sc[$t->status] ?? 'secondary' }}">{{ ucfirst($t->status) }}</span>
                             </td>
                             <td>{{ $t->created_at->format('M j, Y') }}</td>

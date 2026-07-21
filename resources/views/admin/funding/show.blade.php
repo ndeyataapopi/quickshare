@@ -35,7 +35,7 @@
                     <div class="row mb-2">
                         <div class="col-sm-4 text-muted">Status</div>
                         <div class="col-sm-8">
-                            @php $sc=['pending'=>'warning','confirmed'=>'success','cancelled'=>'danger','refunded'=>'secondary']; @endphp
+                            @php $sc=['pending'=>'warning','confirmed'=>'success','rejected'=>'danger','cancelled'=>'secondary','refunded'=>'secondary']; @endphp
                             <span class="badge badge-{{ $sc[$transaction->status] ?? 'secondary' }}">{{ ucfirst($transaction->status) }}</span>
                         </div>
                     </div>
@@ -51,6 +51,9 @@
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Created</div><div class="col-sm-8">{{ $transaction->created_at->format('M j, Y g:i A') }}</div></div>
                     @if($transaction->confirmed_at)
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Confirmed At</div><div class="col-sm-8">{{ $transaction->confirmed_at->format('M j, Y g:i A') }}</div></div>
+                    @endif
+                    @if($transaction->rejected_at)
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Rejected At</div><div class="col-sm-8">{{ $transaction->rejected_at->format('M j, Y g:i A') }}</div></div>
                     @endif
                     @if($transaction->admin_notes)
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Admin Notes</div><div class="col-sm-8 small">{{ $transaction->admin_notes }}</div></div>

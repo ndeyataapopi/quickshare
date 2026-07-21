@@ -28,6 +28,7 @@ class FundingTransaction extends Model
         'expected_return',
         'status',
         'confirmed_at',
+        'rejected_at',
         'transaction_reference',
         'payment_method',
         'payment_method_detail',
@@ -48,6 +49,7 @@ class FundingTransaction extends Model
             'interest_rate' => 'decimal:2',
             'expected_return' => 'decimal:2',
             'confirmed_at' => 'datetime',
+            'rejected_at' => 'datetime',
             'payment_date' => 'datetime',
             'admin_verified_at' => 'datetime',
             'metadata' => 'array',
@@ -86,6 +88,11 @@ class FundingTransaction extends Model
     public function isCancelled(): bool
     {
         return $this->status === 'cancelled';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
     }
 
     public function isRefunded(): bool

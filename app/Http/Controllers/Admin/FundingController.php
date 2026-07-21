@@ -33,6 +33,7 @@ class FundingController extends Controller
             'total'            => FundingTransaction::count(),
             'pending'          => FundingTransaction::where('status', 'pending')->count(),
             'confirmed'        => FundingTransaction::where('status', 'confirmed')->count(),
+            'rejected'         => FundingTransaction::where('status', 'rejected')->count(),
             'cancelled'        => FundingTransaction::where('status', 'cancelled')->count(),
             'total_confirmed'  => FundingTransaction::where('status', 'confirmed')->sum('amount'),
         ];
