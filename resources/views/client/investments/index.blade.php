@@ -143,8 +143,13 @@
                                         <div>
                                             <strong>{{ kpiMoney($investment->amount) }}</strong>
                                             @if($investment->interest_rate)
-                                                <br><small class="text-muted">{{ $investment->interest_rate }}% p.a.</small>
+                                                <br><small class="text-muted">{{ $investment->interest_rate }}%</small>
                                             @endif
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>{{ $investment->interest_rate }} }}%</strong>
                                         </div>
                                     </td>
                                     <td>
