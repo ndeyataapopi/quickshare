@@ -38,8 +38,8 @@
                     <div class="row mb-2">
                         <div class="col-sm-4 text-muted">Status</div>
                         <div class="col-sm-8">
-                            @php $sc=['funded'=>'primary','disbursed'=>'info','active'=>'success']; @endphp
-                            <span class="badge badge-{{ $sc[$loan->status] ?? 'secondary' }}">{{ ucfirst($loan->status) }}</span>
+                            @php $sc=['funded'=>'primary','awaiting_disbursement'=>'info','disbursed'=>'info','active'=>'success']; @endphp
+                            <span class="badge badge-{{ $sc[$loan->status] ?? 'secondary' }}">{{ ucfirst(str_replace('_', ' ', $loan->status)) }}</span>
                         </div>
                     </div>
                 </div>
@@ -65,6 +65,40 @@
                 </div>
             </div>
             @endif
+
+            @php $disbursement = $loan->disbursements->sortByDesc('created_at')->first(); @endphp
+            @if($disbursement)
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase mb-3">Disbursement Transaction</h5>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Reference</div><div class="col-sm-8 font-weight-bold">{{ $disbursement->transaction_reference }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Status</div><div class="col-sm-8"><span class="badge badge-{{ $disbursement->isAwaiting() ? 'info' : ($disbursement->isDisbursed() ? 'success' : ($disbursement->isFailed() ? 'danger' : 'secondary')) }}">{{ ucfirst(str_replace('_', ' ', $disbursement->status)) }}</span></div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Gross Amount</div><div class="col-sm-8">N$ {{ number_format($disbursement->gross_amount, 2) }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Platform Fee</div><div class="col-sm-8">N$ {{ number_format($disbursement->platform_fee, 2) }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Net to Borrower</div><div class="col-sm-8 font-weight-bold text-primary">N$ {{ number_format($disbursement->net_amount, 2) }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">External Reference</div><div class="col-sm-8">{{ $disbursement->external_reference ?: '—' }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Processed At</div><div class="col-sm-8">{{ $disbursement->processed_at ? $disbursement->processed_at->format('M j, Y H:i') : '—' }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Reconciled</div><div class="col-sm-8">{{ $disbursement->reconciled_at ? $disbursement->reconciled_at->format('M j, Y H:i') . ' by ' . $disbursement->reconciled_by : '—' }}</div></div>
+
+                    @if($disbursement->ledger_entries)
+                    <h6 class="text-uppercase font-weight-bold mt-4 mb-3">Ledger Entries</h6>
+                    <table class="table table-sm">
+                        <thead><tr><th>Account</th><th>Debit</th><th>Credit</th><th>Description</th></tr></thead>
+                        <tbody>
+                            @foreach($disbursement->ledger_entries as $entry)
+                            <tr>
+                                <td>{{ $entry['account'] ?? '—' }}</td>
+                                <td>N$ {{ number_format($entry['debit'] ?? 0, 2) }}</td>
+                                <td>N$ {{ number_format($entry['credit'] ?? 0, 2) }}</td>
+                                <td>{{ $entry['description'] ?? '—' }}</td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    @endif
+                </div>
+            </div>
+            @endif
         </div>
 
         <div class="col-md-4">
@@ -73,19 +107,19 @@
                     <h5 class="card-title text-uppercase mb-3">Disbursement Actions</h5>
                     @if($loan->status === 'funded')
                     <div class="alert alert-info p-2 small">
-                        Transfer N$ <strong>{{ number_format($loan->approved_amount ?? $loan->requested_amount, 2) }}</strong>
-                        to borrower's bank account, then mark as disbursed.
+                        Create a disbursement transaction for N$ <strong>{{ number_format($loan->approved_amount ?? $loan->requested_amount, 2) }}</strong>.
+                        The borrower will receive the net amount after the platform fee.
                     </div>
                     <form method="POST" action="{{ route('admin.disbursements.disburse', $loan) }}" class="mb-2">
                         @csrf
                         <button type="submit" class="btn btn-primary btn-block"
-                            onclick="return confirm('Mark this loan as disbursed?')">
-                            <i class="mdi mdi-send mr-1"></i> Mark as Disbursed
+                            onclick="return confirm('Initiate disbursement and record ledger entries?')">
+                            <i class="mdi mdi-send mr-1"></i> Initiate Disbursement
                         </button>
                     </form>
-                    @elseif($loan->status === 'disbursed')
+                    @elseif($loan->status === 'awaiting_disbursement')
                     <div class="alert alert-warning p-2 small mb-2">
-                        Confirm once funds have been successfully received by the borrower.
+                        Confirm once the funds have been transferred to the borrower. This will mark the disbursement as complete and activate the loan.
                     </div>
                     <form method="POST" action="{{ route('admin.disbursements.confirm', $loan) }}">
                         @csrf @method('PATCH')
@@ -94,6 +128,10 @@
                             <i class="mdi mdi-check mr-1"></i> Confirm & Activate Loan
                         </button>
                     </form>
+                    @elseif($loan->status === 'active')
+                    <div class="alert alert-success p-2 small mb-2">
+                        Disbursement has been processed and the loan is active.
+                    </div>
                     @else
                     <p class="text-muted small">No actions available for current status.</p>
                     @endif

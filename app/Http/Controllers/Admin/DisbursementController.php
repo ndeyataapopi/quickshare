@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Modules\Loans\Models\Loan;
-use App\Modules\Loans\Services\LoanService;
+use App\Modules\Loans\Services\DisbursementService;
 use Illuminate\Http\Request;
 
 class DisbursementController extends Controller
 {
-    public function __construct(private LoanService $loanService) {}
+    public function __construct(private DisbursementService $disbursementService) {}
 
     public function index(Request $request)
     {
@@ -51,24 +52,34 @@ class DisbursementController extends Controller
             return back()->with('error', 'This loan cannot be disbursed in its current state.');
         }
 
-        $loan->update([
-            'status'       => 'disbursed',
-            'disbursed_at' => now(),
-        ]);
+        try {
+            $transaction = $this->disbursementService->initiateDisbursement($loan);
 
-        return redirect()->route('admin.disbursements.show', $loan)
-            ->with('success', 'Loan marked as disbursed. Confirm once funds are sent to borrower.');
+            return redirect()->route('admin.disbursements.show', $loan)
+                ->with('success', "Disbursement initiated: {$transaction->transaction_reference}. Confirm once funds are sent to borrower.");
+        } catch (ApiException $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function confirm(Request $request, Loan $loan)
     {
-        if ($loan->status !== 'disbursed') {
-            return back()->with('error', 'Loan must be in disbursed state to confirm.');
+        $transaction = $loan->disbursements()
+            ->pendingProcessing()
+            ->latest()
+            ->first();
+
+        if (! $transaction) {
+            return back()->with('error', 'No awaiting disbursement transaction found for this loan.');
         }
 
-        $loan->update(['status' => 'active']);
+        try {
+            $this->disbursementService->processDisbursement($transaction);
 
-        return redirect()->route('admin.disbursements.show', $loan)
-            ->with('success', 'Disbursement confirmed. Loan is now active.');
+            return redirect()->route('admin.disbursements.show', $loan)
+                ->with('success', 'Disbursement confirmed and loan is now active.');
+        } catch (ApiException $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 }

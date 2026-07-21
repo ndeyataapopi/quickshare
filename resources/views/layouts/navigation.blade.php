@@ -124,7 +124,7 @@
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding-payments.*')) active @endif" href="{{ route('admin.funding-payments.index') }}">
                         <i class="mdi mdi-bank-transfer-in"></i>
-                        <span class="hide-menu">Funding Payments</span>
+                        <span class="hide-menu">Payments</span>
                     </a>
                 </li>
                 @endrole
