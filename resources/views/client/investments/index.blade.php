@@ -149,7 +149,7 @@
                                     </td>
                                     <td>
                                         <div>
-                                            <strong>{{ $investment->interest_rate }} }}%</strong>
+                                            <strong>{{ $investment->interest_rate }}%</strong>
                                         </div>
                                     </td>
                                     <td>
