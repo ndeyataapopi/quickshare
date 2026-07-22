@@ -48,6 +48,12 @@
                         <span class="hide-menu">Dashboard</span>
                     </a>
                 </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.operations')) active @endif" href="{{ route('admin.operations') }}">
+                        <i class="mdi mdi-clipboard-check-outline"></i>
+                        <span class="hide-menu">Operations</span>
+                    </a>
+                </li>
                 @can('manage_users')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.users.*')) active @endif" href="{{ route('admin.users.index') }}">

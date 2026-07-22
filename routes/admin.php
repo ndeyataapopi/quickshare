@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SystemStatusController;
+use App\Http\Controllers\Admin\OperationsDashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
@@ -24,6 +25,9 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
 
     // ─── Dashboard ────────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // ─── Operations Dashboard ─────────────────────────────────────────
+    Route::get('/operations', [OperationsDashboardController::class, 'index'])->name('operations');
 
     Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('impersonate.start');
 
