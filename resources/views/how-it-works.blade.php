@@ -1,78 +1,138 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>How It Works - {{ config('app.name') }}</title>
-    <link rel="stylesheet" href="{{ asset('dist/css/style.min.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/5.3.45/css/materialdesignicons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <style>body{font-family:'Nunito',sans-serif;} .hero-section{background:linear-gradient(135deg,#4f9ef8 0%,#7c3aed 100%);padding:80px 0;} .step-badge{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:16px;margin:0 auto 12px;}</style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background:rgba(0,0,0,.15);position:absolute;width:100%;z-index:10;">
-        <div class="container">
-            <a class="navbar-brand font-weight-bold" href="{{ url('/') }}"><span class="badge badge-light text-primary mr-1" style="font-size:14px">QS</span> QuickShare</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#nav"><span class="navbar-toggler-icon"></span></button>
-            <div class="collapse navbar-collapse" id="nav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item"><a class="nav-link" href="{{ url('/') }}">Home</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="{{ route('how-it-works') }}">How It Works</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ route('faq') }}">FAQ</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Login</a></li>
-                    <li class="nav-item"><a class="nav-link btn btn-light text-primary px-3 ml-2 rounded" href="{{ route('register') }}">Get Started</a></li>
-                </ul>
+@extends('layouts.public')
+
+@section('title', 'How It Works')
+@section('description', 'Learn how QuickShare works — a transparent four-step process for borrowers and lenders on Namibia's peer-to-peer lending platform.')
+
+@section('content')
+<!-- PAGE HERO -->
+<section class="page-hero">
+    <div class="container">
+        <h1>How QuickShare Works</h1>
+        <p>
+            A transparent four-step process for both borrowers and lenders —
+            from registration to repayment.
+        </p>
+    </div>
+</section>
+
+<!-- FOR BORROWERS -->
+<section style="background:white;">
+    <div class="container">
+        <div class="section-header">
+            <span>For Borrowers</span>
+            <h2>Borrowing on QuickShare</h2>
+            <p>From registration to receiving funds — a transparent process designed for Namibian borrowers.</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h4>Create Account</h4>
+                <p>Register with your Namibian ID and complete KYC verification to activate your profile.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h4>Request a Loan</h4>
+                <p>Specify the amount and repayment period. Your interest rate is calculated based on your trust score.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h4>Get Reviewed</h4>
+                <p>Administrators review your request. Approved loans are listed on the marketplace for lenders to fund.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h4>Receive & Repay</h4>
+                <p>Once funded, the loan is disbursed. Repay on schedule to build your trust score for better rates.</p>
             </div>
         </div>
-    </nav>
-    <section class="hero-section text-white text-center"><div class="container pt-5"><h1 class="display-4 font-weight-bold mb-3">How QuickShare Works</h1><p class="lead mb-0">Simple, transparent, and secure peer-to-peer lending in 4 easy steps.</p></div></section>
+    </div>
+</section>
 
-    <section class="py-5 bg-white">
-        <div class="container">
-            <h3 class="text-center font-weight-bold mb-5">For Borrowers</h3>
-            <div class="row text-center">
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-primary">1</div><i class="mdi mdi-account-plus text-primary" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Create Account</h6><p class="text-muted small">Sign up and complete KYC to build your profile.</p></div>
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-success">2</div><i class="mdi mdi-file-document text-success" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Request Loan</h6><p class="text-muted small">Specify amount and repayment period.</p></div>
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-info">3</div><i class="mdi mdi-cash text-info" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Get Funded</h6><p class="text-muted small">Lenders fund your request. Receive money directly.</p></div>
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-warning">4</div><i class="mdi mdi-calendar-check text-warning" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Repay Flexibly</h6><p class="text-muted small">Repay and build your trust score for better rates.</p></div>
+<!-- FOR LENDERS -->
+<section style="background:linear-gradient(to bottom,#f8fafc,#eef4ff);">
+    <div class="container">
+        <div class="section-header">
+            <span>For Lenders</span>
+            <h2>Lending on QuickShare</h2>
+            <p>Browse the marketplace, fund verified borrowers, and earn returns from repayments.</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h4>Create Account</h4>
+                <p>Register and complete KYC verification to activate your lender profile.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <h4>Browse Marketplace</h4>
+                <p>View approved loan requests with borrower trust scores, amounts, and expected returns.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <h4>Fund Loans</h4>
+                <p>Choose loans that match your risk appetite. Fund from N${{ number_format(config('loan.marketplace.min_funding_amount'), 0) }} per loan.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">4</div>
+                <h4>Earn Returns</h4>
+                <p>Receive repayments with interest as borrowers repay. Track your portfolio in your dashboard.</p>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <section class="py-5 bg-light">
-        <div class="container">
-            <h3 class="text-center font-weight-bold mb-5">For Lenders</h3>
-            <div class="row text-center">
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-primary">1</div><i class="mdi mdi-account-plus text-primary" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Create Account</h6><p class="text-muted small">Sign up and verify your identity.</p></div>
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-success">2</div><i class="mdi mdi-store text-success" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Browse Marketplace</h6><p class="text-muted small">Filter loans by risk, return, and trust score.</p></div>
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-info">3</div><i class="mdi mdi-bank-transfer text-info" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Fund Loans</h6><p class="text-muted small">Contribute to loans that match your risk appetite.</p></div>
-                <div class="col-6 col-md-3 mb-4"><div class="step-badge bg-warning">4</div><i class="mdi mdi-trending-up text-warning" style="font-size:36px"></i><h6 class="font-weight-bold mt-2">Earn Returns</h6><p class="text-muted small">Receive repayments with interest to your account.</p></div>
+<!-- TRUST SCORE SYSTEM -->
+<section style="background:white;">
+    <div class="container">
+        <div class="section-header">
+            <span>Trust Score System</span>
+            <h2>Build Your Score, Unlock Better Rates</h2>
+            <p>
+                Our trust score system ensures responsible borrowing and lending.
+                Build your score through repayment history, KYC verification, and referral credibility
+                to access better rates and higher loan limits.
+            </p>
+        </div>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon" style="background:linear-gradient(135deg,#c084fc,#a78bfa);"><i class="fa-solid fa-medal" aria-hidden="true"></i></div>
+                <h3>Bronze</h3>
+                <p>Score 0–49. Entry-level access with the highest rates. Maximum loan: N${{ number_format(config('loan.trust_tiers.bronze.maximum_loan'), 0) }}.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:linear-gradient(135deg,#d1d5db,#9ca3af);"><i class="fa-solid fa-medal" aria-hidden="true"></i></div>
+                <h3>Silver</h3>
+                <p>Score 50–69. Standard rates with increased limits. Maximum loan: N${{ number_format(config('loan.trust_tiers.silver.maximum_loan'), 0) }}.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:linear-gradient(135deg,#facc15,#eab308);"><i class="fa-solid fa-medal" aria-hidden="true"></i></div>
+                <h3>Gold</h3>
+                <p>Score 70–84. Preferred rates with improved funding visibility. Maximum loan: N${{ number_format(config('loan.trust_tiers.gold.maximum_loan'), 0) }}.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon" style="background:linear-gradient(135deg,#22d3ee,#06b6d4);"><i class="fa-solid fa-medal" aria-hidden="true"></i></div>
+                <h3>Platinum</h3>
+                <p>Score 85–100. Premium access, lowest rates, top funding priority. Maximum loan: N${{ number_format(config('loan.trust_tiers.platinum.maximum_loan'), 0) }}.</p>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <section class="py-5 bg-white">
-        <div class="container">
-            <h3 class="text-center font-weight-bold mb-5">Trust Score System</h3>
-            <div class="row justify-content-center">
-                <div class="col-md-8">
-                    <p class="text-muted text-center mb-4">Our proprietary trust score ensures responsible borrowing and lending. Build your score to access better rates and higher loan limits.</p>
-                    <div class="row">
-                        <div class="col-6 col-md-3 text-center mb-3"><div class="badge badge-secondary px-3 py-2 mb-2" style="font-size:14px">Bronze</div><div class="text-muted small">0–49 · Basic access</div></div>
-                        <div class="col-6 col-md-3 text-center mb-3"><div class="badge badge-light px-3 py-2 mb-2" style="font-size:14px;border:1px solid #ccc">Silver</div><div class="text-muted small">50–69 · Standard rates</div></div>
-                        <div class="col-6 col-md-3 text-center mb-3"><div class="badge badge-warning px-3 py-2 mb-2" style="font-size:14px">Gold</div><div class="text-muted small">70–84 · Preferred rates</div></div>
-                        <div class="col-6 col-md-3 text-center mb-3"><div class="badge badge-primary px-3 py-2 mb-2" style="font-size:14px">Platinum</div><div class="text-muted small">85–100 · Premium</div></div>
-                    </div>
-                </div>
-            </div>
+<!-- CTA -->
+<section class="cta">
+    <div class="container">
+        <h2>Ready to Get Started?</h2>
+        <p>Whether you need to borrow or want to lend to verified Namibian borrowers, QuickShare gives you a secure and transparent platform.</p>
+        <div class="hero-buttons" style="justify-content:center;">
+            <a href="{{ route('register') }}" class="btn btn-primary">
+                Become a Borrower
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            </a>
+            <a href="{{ route('register') }}" class="btn btn-outline">
+                <i class="fa-solid fa-hand-holding-dollar" aria-hidden="true"></i>
+                Become a Lender
+            </a>
         </div>
-    </section>
-
-    <section class="py-5 text-center text-white" style="background:linear-gradient(135deg,#4f9ef8 0%,#7c3aed 100%)">
-        <div class="container"><h3 class="font-weight-bold mb-3">Ready to Get Started?</h3><a href="{{ route('register') }}" class="btn btn-light btn-lg text-primary font-weight-bold px-5">Create Your Account</a></div>
-    </section>
-
-    <footer class="bg-dark text-white py-4 text-center"><small>&copy; {{ date('Y') }} QuickShare. All rights reserved.</small></footer>
-    <script src="{{ asset('dist/js/jquery.min.js') }}"></script>
-    <script src="{{ asset('dist/js/bootstrap.bundle.min.js') }}"></script>
-</body>
-</html>
+    </div>
+</section>
+@endsection

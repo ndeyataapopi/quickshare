@@ -3,7 +3,41 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>QuickShare - Smart Peer-to-Peer Lending for Namibia</title>
+    <title>QuickShare — Peer-to-Peer Lending for Namibia</title>
+    <meta name="description" content="QuickShare is a Namibian peer-to-peer lending platform connecting borrowers and lenders. Borrow money quickly or fund verified borrowers and earn returns." />
+    <meta name="keywords" content="peer-to-peer lending, Namibia, fintech, P2P lending, borrow money, lend money, QuickShare, Namibian loans" />
+    <meta name="author" content="QuickShare Namibia" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{{ url('/') }}" />
+
+    <!-- OpenGraph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="QuickShare — Peer-to-Peer Lending for Namibia" />
+    <meta property="og:description" content="A Namibian peer-to-peer lending platform connecting borrowers and lenders with trust, transparency, and technology." />
+    <meta property="og:url" content="{{ url('/') }}" />
+    <meta property="og:site_name" content="QuickShare" />
+    <meta property="og:locale" content="en_NA" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="QuickShare — Peer-to-Peer Lending for Namibia" />
+    <meta name="twitter:description" content="A Namibian peer-to-peer lending platform connecting borrowers and lenders with trust, transparency, and technology." />
+
+    <!-- Schema.org -->
+    <script type="application/ld+json">
+    {
+        "@@context": "https://schema.org",
+        "@@type": "Organization",
+        "name": "QuickShare",
+        "description": "A Namibian peer-to-peer lending platform connecting borrowers and lenders.",
+        "url": "{{ url('/') }}",
+        "foundingDate": "2026",
+        "address": {
+            "@@type": "PostalAddress",
+            "addressCountry": "NA"
+        }
+    }
+    </script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -729,56 +763,56 @@
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar" id="navbar">
+<nav class="navbar" id="navbar" role="navigation" aria-label="Main navigation">
     <div class="container nav-wrapper">
 
-        <a href="/" class="logo">
+        <a href="{{ route('home') }}" class="logo" aria-label="QuickShare home">
             <div class="logo-icon">
-                <i class="fa-solid fa-bolt"></i>
+                <i class="fa-solid fa-bolt" aria-hidden="true"></i>
             </div>
             QuickShare
         </a>
 
         <div class="nav-links">
-            <a href="#features">Features</a>
-            <a href="#how">How It Works</a>
-            <a href="#trust">Trust & Security</a>
-            <a href="#faq">FAQ</a>
-            <a href="#contact">Contact</a>
+            <a href="{{ route('home') }}#features">Features</a>
+            <a href="{{ route('how-it-works') }}">How It Works</a>
+            <a href="{{ route('home') }}#trust">Trust & Security</a>
+            <a href="{{ route('faq') }}">FAQ</a>
+            <a href="{{ route('contact') }}">Contact</a>
         </div>
 
         <div class="nav-buttons">
 
             @auth
-            <a href="/register" class="btn btn-primary">
+            <a href="{{ route('dashboard') }}" class="btn btn-primary">
                 Dashboard
-                <i class="fa-solid fa-arrow-right"></i>
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
             </a>
             @else
-            <a href="/login" class="btn btn-outline">Login</a>
-            <a href="/register" class="btn btn-primary">
+            <a href="{{ route('login') }}" class="btn btn-outline">Login</a>
+            <a href="{{ route('register') }}" class="btn btn-primary">
                 Get Started
-                <i class="fa-solid fa-arrow-right"></i>
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
             </a>
             @endauth
         </div>
 
-        <div class="menu-toggle" id="menuToggle">
-            <i class="fa-solid fa-bars"></i>
+        <div class="menu-toggle" id="menuToggle" role="button" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobileMenu" tabindex="0">
+            <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </div>
 
         <div class="mobile-menu" id="mobileMenu">
-            <a href="#features">Features</a>
-            <a href="#how">How It Works</a>
-            <a href="#trust">Trust & Security</a>
-            <a href="#faq">FAQ</a>
-            <a href="#contact">Contact</a>
+            <a href="{{ route('home') }}#features">Features</a>
+            <a href="{{ route('how-it-works') }}">How It Works</a>
+            <a href="{{ route('home') }}#trust">Trust & Security</a>
+            <a href="{{ route('faq') }}">FAQ</a>
+            <a href="{{ route('contact') }}">Contact</a>
 
             @auth
-            <a href="/register" style="color:var(--primary);font-weight:600;">Dashboard</a>
+            <a href="{{ route('dashboard') }}" style="color:var(--primary);font-weight:600;">Dashboard</a>
             @else
-            <a href="/login" style="color:var(--primary);font-weight:600;">Login</a>
-            <a href="/register" style="color:var(--primary);font-weight:600;">Get Started</a>
+            <a href="{{ route('login') }}" style="color:var(--primary);font-weight:600;">Login</a>
+            <a href="{{ route('register') }}" style="color:var(--primary);font-weight:600;">Get Started</a>
             @endauth
         </div>
 
@@ -794,42 +828,43 @@
 
             <h1>
                 The Smart Way To
-                <span>Borrow & Invest</span>
+                <span>Borrow & Lend</span>
                 In Namibia
             </h1>
 
             <p>
-                QuickShare is a modern peer-to-peer lending platform built for Namibians.
-                Borrow money quickly, fund verified borrowers securely, and grow your
-                financial opportunities with a trusted digital ecosystem.
+                QuickShare is a Namibian peer-to-peer lending platform that connects
+                borrowers directly with lenders. Borrow money quickly with transparent
+                rates, or fund verified borrowers and earn returns — all backed by
+                KYC verification and a trust score system.
             </p>
 
             <div class="hero-buttons">
-                <a href="/register" class="btn btn-primary">
-                    Create Account
-                    <i class="fa-solid fa-arrow-right"></i>
+                <a href="{{ route('register') }}" class="btn btn-primary">
+                    Become a Borrower
+                    <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
                 </a>
 
-                <a href="#how" class="btn btn-outline">
-                    <i class="fa-solid fa-circle-play"></i>
-                    How It Works
+                <a href="{{ route('register') }}" class="btn btn-outline">
+                    <i class="fa-solid fa-hand-holding-dollar" aria-hidden="true"></i>
+                    Become a Lender
                 </a>
             </div>
 
             <div class="hero-stats">
 
                 <div class="stat">
-                    <h3>N$2.4M+</h3>
-                    <p>Loans Funded</p>
+                    <h3>{{ $stats['total_funded_formatted'] }}</h3>
+                    <p>Total Funded</p>
                 </div>
 
                 <div class="stat">
-                    <h3>3,500+</h3>
+                    <h3>{{ number_format($stats['verified_users']) }}</h3>
                     <p>Verified Users</p>
                 </div>
 
                 <div class="stat">
-                    <h3>96%</h3>
+                    <h3>{{ $stats['repayment_rate'] > 0 ? $stats['repayment_rate'] . '%' : '—' }}</h3>
                     <p>Repayment Rate</p>
                 </div>
 
@@ -841,44 +876,44 @@
 
             <div class="dashboard-top">
                 <div style="color:white;font-weight:700;">
-                    QuickShare Wallet
+                    Lender Dashboard
                 </div>
 
                 <div style="color:#94a3b8;">
-                    Live Dashboard
+                    Portfolio Overview
                 </div>
             </div>
 
             <div class="balance-card">
-                <small>Available Balance</small>
-                <h2>N$ 45,280</h2>
+                <small>Total Portfolio Value</small>
+                <h2>{{ config('loan.general.currency_symbol', 'N$') }} {{ number_format($stats['total_funded_amount'], 2, '.', ',') }}</h2>
 
                 <div style="display:flex;justify-content:space-between;">
-                    <span>Investor Account</span>
-                    <span>+18.2%</span>
+                    <span>Lender Account</span>
+                    <span>{{ $stats['active_lenders'] }} Active Lenders</span>
                 </div>
             </div>
 
             <div class="loan-cards">
 
                 <div class="loan-card">
-                    <h4>Loan Funding</h4>
+                    <h4>Loans Funded</h4>
 
                     <div class="progress">
-                        <span style="width:72%;"></span>
+                        <span style="width:{{ $stats['total_loans'] > 0 ? min(100, round(($stats['loans_funded'] / $stats['total_loans']) * 100)) : 0 }}%;"></span>
                     </div>
 
-                    <strong>N$72,000 / N$100,000</strong>
+                    <strong>{{ $stats['loans_funded'] }} / {{ $stats['total_loans'] }}</strong>
                 </div>
 
                 <div class="loan-card">
-                    <h4>Trust Score</h4>
+                    <h4>Avg Trust Score</h4>
 
                     <div class="progress">
-                        <span style="width:91%;background:linear-gradient(135deg,#14b8a6,#10b981);"></span>
+                        <span style="width:{{ min(100, round($stats['average_trust_score'])) }}%;background:linear-gradient(135deg,#14b8a6,#10b981);"></span>
                     </div>
 
-                    <strong>91% Platinum</strong>
+                    <strong>{{ number_format($stats['average_trust_score'], 1) }} / 100</strong>
                 </div>
 
             </div>
@@ -896,10 +931,11 @@
 
         <div class="section-header">
             <span>Why QuickShare</span>
-            <h2>Built For Modern African Finance</h2>
+            <h2>Built For Modern Namibian Finance</h2>
             <p>
-                Designed with the feel of a premium fintech platform while blending perfectly
-                with modern admin systems like Ample Admin for a seamless user experience.
+                A peer-to-peer lending platform designed for Namibians — connecting
+                borrowers and lenders directly with transparent rates, KYC verification,
+                and a trust score system.
             </p>
         </div>
 
@@ -939,8 +975,8 @@
                 <h3>Earn Competitive Returns</h3>
 
                 <p>
-                    Lenders can diversify investments across verified borrowers
-                    and earn attractive returns directly from repayments.
+                    Lenders can fund multiple verified borrowers across the marketplace
+                    and earn returns directly from repayments.
                 </p>
             </div>
 
@@ -949,11 +985,11 @@
                     <i class="fa-solid fa-wallet"></i>
                 </div>
 
-                <h3>Integrated Digital Wallet</h3>
+                <h3>Integrated & Digital P2P</h3>
 
                 <p>
-                    Deposit, withdraw, repay, and manage investments
-                    from a centralized QuickShare wallet experience.
+                    Borrow, repay, and manage your lending portfolio
+                    from a centralized QuickShare platform experience.
                 </p>
             </div>
 
@@ -962,11 +998,11 @@
                     <i class="fa-solid fa-users"></i>
                 </div>
 
-                <h3>Community Trust System</h3>
+                <h3>Trust Score System</h3>
 
                 <p>
-                    Referral credibility and repayment behavior help
-                    build a stronger financial community ecosystem.
+                    Repayment history, KYC verification, and referral credibility
+                    build your trust score — unlocking better rates and higher limits.
                 </p>
             </div>
 
@@ -975,11 +1011,11 @@
                     <i class="fa-solid fa-mobile-screen"></i>
                 </div>
 
-                <h3>Mobile Friendly</h3>
+                <h3>Namibian Platform</h3>
 
                 <p>
-                    Fully responsive and optimized for mobile-first usage,
-                    perfect for Namibian users on the go.
+                    Built specifically for Namibians — with local currency (N$),
+                    national ID verification, and a marketplace tailored to local needs.
                 </p>
             </div>
 
@@ -998,7 +1034,7 @@
             <span>How It Works</span>
             <h2>Simple. Fast. Transparent.</h2>
             <p>
-                QuickShare makes borrowing and investing easy with a modern digital workflow.
+                QuickShare makes borrowing and lending easy with a transparent digital marketplace.
             </p>
         </div>
 
@@ -1014,25 +1050,25 @@
 
             <div class="step">
                 <div class="step-number">2</div>
-                <h4>Request or Fund</h4>
+                <h4>Request or Browse</h4>
                 <p>
-                    Borrowers request loans while lenders browse opportunities.
+                    Borrowers request loans. Lenders browse the marketplace and choose loans to fund.
                 </p>
             </div>
 
             <div class="step">
                 <div class="step-number">3</div>
-                <h4>Smart Matching</h4>
+                <h4>Get Funded</h4>
                 <p>
-                    Our system intelligently matches trusted borrowers and investors.
+                    Once a loan is fully funded, it is disbursed to the borrower. Lenders track their portfolio.
                 </p>
             </div>
 
             <div class="step">
                 <div class="step-number">4</div>
-                <h4>Grow Your Score</h4>
+                <h4>Repay & Earn</h4>
                 <p>
-                    Repay on time and unlock better limits, rates, and platform benefits.
+                    Borrowers repay on schedule and build their trust score. Lenders receive repayments with returns.
                 </p>
             </div>
 
@@ -1068,7 +1104,7 @@
 
                     <li>
                         <i class="fa-solid fa-circle-check"></i>
-                        Advanced KYC and borrower verification
+                        KYC verification & borrower identity checks
                     </li>
 
                     <li>
@@ -1083,7 +1119,12 @@
 
                     <li>
                         <i class="fa-solid fa-circle-check"></i>
-                        Diversified lender investment model
+                        Manual loan review by platform administrators
+                    </li>
+
+                    <li>
+                        <i class="fa-solid fa-circle-check"></i>
+                        Lenders can fund multiple borrowers to spread risk
                     </li>
                 </ul>
 
@@ -1148,53 +1189,79 @@
         <div class="faq-wrapper">
 
             <div class="faq-item active">
-                <div class="faq-question">
+                <div class="faq-question" role="button" aria-expanded="true" tabindex="0">
                     What is QuickShare?
-                    <i class="fa-solid fa-chevron-down"></i>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
                 </div>
 
                 <div class="faq-answer">
                     <p>
-                        QuickShare is a Namibian peer-to-peer lending platform connecting borrowers and lenders through a secure digital ecosystem.
+                        QuickShare is a Namibian peer-to-peer lending platform that connects borrowers directly with lenders. Borrowers request loans, lenders fund them, and repayments are tracked transparently.
                     </p>
                 </div>
             </div>
 
             <div class="faq-item">
-                <div class="faq-question">
+                <div class="faq-question" role="button" aria-expanded="false" tabindex="0">
                     How quickly can I get funded?
-                    <i class="fa-solid fa-chevron-down"></i>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
                 </div>
 
                 <div class="faq-answer">
                     <p>
-                        Funding times depend on your trust score, verification status, and lender availability. Many requests can be funded within hours.
+                        Funding times depend on your trust score, verification status, and lender interest in your loan. Loans are reviewed by administrators before being listed on the marketplace.
                     </p>
                 </div>
             </div>
 
             <div class="faq-item">
-                <div class="faq-question">
+                <div class="faq-question" role="button" aria-expanded="false" tabindex="0">
                     Is QuickShare secure?
-                    <i class="fa-solid fa-chevron-down"></i>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
                 </div>
 
                 <div class="faq-answer">
                     <p>
-                        Yes. We use secure encryption, identity verification, and fraud monitoring systems to protect users and transactions.
+                        Yes. We use SSL encryption, KYC identity verification, and fraud monitoring to protect users and transactions. Sensitive data is encrypted at rest.
                     </p>
                 </div>
             </div>
 
             <div class="faq-item">
-                <div class="faq-question">
+                <div class="faq-question" role="button" aria-expanded="false" tabindex="0">
                     Can lenders fund multiple borrowers?
-                    <i class="fa-solid fa-chevron-down"></i>
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
                 </div>
 
                 <div class="faq-answer">
                     <p>
-                        Absolutely. Diversifying investments across multiple borrowers helps reduce risk exposure.
+                        Yes. Lenders can browse the marketplace and fund multiple borrowers to spread risk across different loans and trust score tiers.
+                    </p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" role="button" aria-expanded="false" tabindex="0">
+                    What happens if a borrower defaults?
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </div>
+
+                <div class="faq-answer">
+                    <p>
+                        Our collections process works to recover funds. The borrower's trust score is negatively impacted, and overdue repayments are tracked. Lending carries risk and returns are not guaranteed.
+                    </p>
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question" role="button" aria-expanded="false" tabindex="0">
+                    How does the trust score work?
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </div>
+
+                <div class="faq-answer">
+                    <p>
+                        Your trust score is based on repayment history, KYC verification, account age, and referral credibility. Higher scores unlock better rates and higher loan limits across Bronze, Silver, Gold, and Platinum tiers.
                     </p>
                 </div>
             </div>
@@ -1211,18 +1278,25 @@
     <div class="container">
 
         <h2>
-            Ready To Join The Financial Future?
+            Start Your QuickShare Journey Today
         </h2>
 
         <p>
-            Whether you need quick funding or want to grow your money through smart lending,
-            QuickShare gives Namibians a secure and modern fintech experience.
+            Whether you need to borrow money or want to lend to verified Namibian borrowers,
+            QuickShare gives you a secure and transparent peer-to-peer lending experience.
         </p>
 
-        <a href="/register" class="btn btn-primary">
-            Get Started Today
-            <i class="fa-solid fa-arrow-right"></i>
-        </a>
+        <div class="hero-buttons" style="justify-content:center;">
+            <a href="{{ route('register') }}" class="btn btn-primary">
+                Become a Borrower
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            </a>
+
+            <a href="{{ route('register') }}" class="btn btn-outline">
+                <i class="fa-solid fa-hand-holding-dollar" aria-hidden="true"></i>
+                Become a Lender
+            </a>
+        </div>
 
     </div>
 
@@ -1239,53 +1313,53 @@
 
                 <div class="footer-logo">
                     <div class="logo-icon">
-                        <i class="fa-solid fa-bolt"></i>
+                        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
                     </div>
                     QuickShare
                 </div>
 
                 <p>
-                    A modern Namibian fintech platform transforming peer-to-peer lending
+                    A Namibian peer-to-peer lending platform connecting borrowers and lenders
                     with trust, transparency, and technology.
                 </p>
 
                 <div class="socials">
-                    <a href="#"><i class="fab fa-facebook-f"></i></a>
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                    <a href="#"><i class="fab fa-x-twitter"></i></a>
-                    <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f" aria-hidden="true"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram" aria-hidden="true"></i></a>
+                    <a href="#" aria-label="X (Twitter)"><i class="fab fa-x-twitter" aria-hidden="true"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
                 </div>
 
             </div>
 
             <div class="footer-links">
                 <h4>Platform</h4>
-                <a href="#">How It Works</a>
-                <a href="#">Trust Score</a>
-                <a href="#">Security</a>
-                <a href="#">Contact Us</a>
+                <a href="{{ route('how-it-works') }}">How It Works</a>
+                <a href="{{ route('borrow') }}">Borrow</a>
+                <a href="{{ route('lend') }}">Lend</a>
+                <a href="{{ route('home') }}#trust">Trust Score</a>
             </div>
 
             <div class="footer-links">
                 <h4>Company</h4>
-                <a href="#">About Us</a>
-                <a href="#">Careers</a>
-                <a href="#">Blog</a>
-                <a href="#">Contact</a>
+                <a href="{{ route('about') }}">About Us</a>
+                <a href="{{ route('contact') }}">Contact</a>
+                <a href="{{ route('faq') }}">FAQ</a>
+                <a href="{{ route('support') }}">Support</a>
             </div>
 
             <div class="footer-links">
                 <h4>Legal</h4>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-                <a href="#">Compliance</a>
-                <a href="#">Support</a>
+                <a href="{{ route('privacy') }}">Privacy Policy</a>
+                <a href="{{ route('terms') }}">Terms of Service</a>
+                <a href="{{ route('compliance') }}">Compliance</a>
+                <a href="{{ route('support') }}">Help Center</a>
             </div>
 
         </div>
 
         <div class="footer-bottom">
-            © 2026 QuickShare Namibia. All Rights Reserved.
+            © {{ date('Y') }} QuickShare Namibia. All Rights Reserved.
         </div>
 
     </div>
@@ -1310,14 +1384,24 @@
     const mobileMenu = document.getElementById('mobileMenu');
 
     if(menuToggle && mobileMenu){
-        menuToggle.addEventListener('click', () => {
-            mobileMenu.classList.toggle('active');
+        const toggleMenu = () => {
+            const isActive = mobileMenu.classList.toggle('active');
+            menuToggle.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+        };
+
+        menuToggle.addEventListener('click', toggleMenu);
+        menuToggle.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter' || e.key === ' '){
+                e.preventDefault();
+                toggleMenu();
+            }
         });
 
         // Close menu when clicking on a link
         mobileMenu.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
                 mobileMenu.classList.remove('active');
+                menuToggle.setAttribute('aria-expanded', 'false');
             });
         });
     }
@@ -1326,10 +1410,19 @@
     const faqItems = document.querySelectorAll('.faq-item');
 
     faqItems.forEach(item => {
-        item.querySelector('.faq-question').addEventListener('click', () => {
+        const question = item.querySelector('.faq-question');
 
-            item.classList.toggle('active');
+        const toggleFaq = () => {
+            const isActive = item.classList.toggle('active');
+            question.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+        };
 
+        question.addEventListener('click', toggleFaq);
+        question.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter' || e.key === ' '){
+                e.preventDefault();
+                toggleFaq();
+            }
         });
     });
 

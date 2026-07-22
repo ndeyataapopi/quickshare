@@ -11,8 +11,14 @@ Route::get('/about', [PublicController::class, 'about'])->name('about');
 Route::get('/how-it-works', [PublicController::class, 'howItWorks'])->name('how-it-works');
 Route::get('/faq', [PublicController::class, 'faq'])->name('faq');
 Route::get('/contact', [PublicController::class, 'contact'])->name('contact');
+Route::post('/contact', [PublicController::class, 'submitContact'])->name('contact.submit');
 Route::get('/privacy-policy', [PublicController::class, 'privacy'])->name('privacy');
 Route::get('/terms-and-conditions', [PublicController::class, 'terms'])->name('terms');
+Route::get('/borrow', [PublicController::class, 'borrow'])->name('borrow');
+Route::get('/lend', [PublicController::class, 'lend'])->name('lend');
+Route::get('/support', [PublicController::class, 'support'])->name('support');
+Route::get('/compliance', [PublicController::class, 'compliance'])->name('compliance');
+Route::get('/sitemap.xml', [PublicController::class, 'sitemap'])->name('sitemap');
 
 // ─── Generic Dashboard Redirect (role-based) ──────────────────────────────────
 Route::get('/dashboard', function () {
