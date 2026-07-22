@@ -20,7 +20,7 @@
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Active Loans</h5>
-                <h2 class="font-bold">{{ $loans->where('status','active')->count() }}</h2>
+                <h2 class="font-bold">{{ $activeLoansCount ?? 0 }}</h2>
                 <i class="mdi mdi-cash text-info float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
@@ -34,7 +34,7 @@
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Total Repaid</h5>
-                <h2 class="font-bold">{{ formatCurrencyShort($repayments->where('status','paid')->sum('amount')) }}</h2>
+                <h2 class="font-bold">{{ formatCurrencyShort($totalRepaid ?? 0) }}</h2>
                 <i class="mdi mdi-check-circle text-success float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>

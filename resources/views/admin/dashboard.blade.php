@@ -206,6 +206,32 @@
     </div>
 
     <!-- ============================================================== -->
+    <!-- Charts Row  -->
+    <!-- ============================================================== -->
+    <div class="row">
+        <div class="col-md-12 col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase mb-3">Loans Over Time (30 Days)</h5>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="loansOverTimeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12 col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase mb-3">Revenue by Month</h5>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="revenueByMonthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
     <!-- Recent Loans & Activity Row  -->
     <!-- ============================================================== -->
     <div class="row">
@@ -297,4 +323,80 @@
 <!-- ============================================================== -->
 <!-- End Container fluid  -->
 <!-- ============================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    @php
+        $loansOverTime = $chartData['loans_over_time'] ?? [];
+        $revenueByMonth = $chartData['revenue_by_month'] ?? [];
+    @endphp
+
+    // Loans Over Time Chart
+    const loansCtx = document.getElementById('loansOverTimeChart');
+    if (loansCtx) {
+        const loansData = @json($loansOverTime);
+        new Chart(loansCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: loansData.map(function(d) { return d.date; }),
+                datasets: [{
+                    label: 'Loan Count',
+                    data: loansData.map(function(d) { return d.count; }),
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Total Amount (N$)',
+                    data: loansData.map(function(d) { return d.amount; }),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: { beginAtZero: true, position: 'left' },
+                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    // Revenue by Month Chart
+    const revenueCtx = document.getElementById('revenueByMonthChart');
+    if (revenueCtx) {
+        const revenueData = @json($revenueByMonth);
+        new Chart(revenueCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: revenueData.map(function(d) { return d.month; }),
+                datasets: [{
+                    label: 'Platform Fees (N$)',
+                    data: revenueData.map(function(d) { return d.platform_fees; }),
+                    backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: function(value) { return 'N$ ' + value.toLocaleString(); } }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 @endsection

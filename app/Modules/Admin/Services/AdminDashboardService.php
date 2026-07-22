@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Services;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Modules\Admin\Models\FraudFlag;
 use App\Modules\Collections\Models\CollectionLog;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\KYC\Models\KycSubmission;
@@ -36,7 +37,7 @@ class AdminDashboardService
     {
         return [
             'total_loans' => Loan::count(),
-            'active_loans' => Loan::where('status', 'active')->count(),
+            'active_loans' => Loan::whereIn('status', ['active', 'disbursed'])->count(),
             'total_users' => User::count(),
             'active_users' => User::where('status', 'active')->count(),
             'total_repayments' => Repayment::where('status', 'paid')->count(),
@@ -44,6 +45,8 @@ class AdminDashboardService
             'pending_loans' => Loan::where('status', 'pending_review')->count(),
             'overdue_loans' => Loan::where('status', 'overdue')->count(),
             'defaulted_loans' => Loan::where('status', 'defaulted')->count(),
+            'total_funded' => round((float) Loan::sum('funded_amount'), 2),
+            'fraud_alerts' => FraudFlag::where('status', 'open')->count(),
         ];
     }
 

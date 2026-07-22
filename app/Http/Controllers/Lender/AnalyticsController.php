@@ -33,12 +33,14 @@ class AnalyticsController extends Controller
         $completedLoans = $user->loans()->where('status', 'completed')->count();
         $defaultedLoans = $user->loans()->where('status', 'defaulted')->count();
         $totalBorrowed = $user->loans()->whereNotNull('approved_amount')->sum('approved_amount');
-        $totalRepaid = $user->repayments()->where('status', 'completed')->sum('amount');
+        $totalRepaid = $user->repayments()->where('status', 'paid')->sum('amount');
         $score = (float) $user->trust_score;
         $tier = \App\Modules\TrustScore\Services\TrustScoreService::getTier($score);
         $repaymentRate = $totalLoans > 0 ? round(($completedLoans / $totalLoans) * 100, 1) : 0;
 
         $recentLoans = $user->loans()->latest()->take(5)->get();
+        $recentInvestments = $user->investments()->with('loan')->latest()->take(5)->get();
+        $recentRepayments = $user->repayments()->with('loan')->latest()->take(5)->get();
 
         return view('client.analytics', compact(
             'earningsSummary',
@@ -57,7 +59,9 @@ class AnalyticsController extends Controller
             'score',
             'tier',
             'repaymentRate',
-            'recentLoans'
+            'recentLoans',
+            'recentInvestments',
+            'recentRepayments'
         ));
     }
 

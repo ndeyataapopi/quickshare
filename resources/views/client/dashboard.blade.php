@@ -82,7 +82,7 @@
                     <div class="d-flex align-items-center mb-2 mt-4">
                         <h2 class="mb-0 display-5"><i class="mdi mdi-cash text-primary"></i></h2>
                         <div class="ml-auto">
-                            <h2 class="mb-0 display-6"><span class="font-normal">{{ $loans->where('status', 'active')->count() }}</span></h2>
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ $activeLoansCount ?? 0 }}</span></h2>
                         </div>
                     </div>
                     <small class="text-muted">Total: {{ formatCurrencyShort($totalLoansAmount ?? 0) }}</small>
@@ -113,7 +113,7 @@
                             <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($totalEarnings ?? 0) }}</span></h2>
                         </div>
                     </div>
-                    <small class="text-muted">{{ $activeInvestmentsCount ?? 0 }} active investments</small>
+                    <small class="text-muted">ROI: {{ $earningsSummary['roi'] ?? 0 }}%</small>
                 </div>
             </div>
         </div>

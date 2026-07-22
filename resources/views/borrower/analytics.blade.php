@@ -12,28 +12,28 @@
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Total Borrowed</h5>
-                <h2 class="font-bold">N$ {{ number_format(auth()->user()->loans()->sum('requested_amount')) }}</h2>
+                <h2 class="font-bold">N$ {{ number_format($totalBorrowed ?? 0) }}</h2>
                 <i class="mdi mdi-cash-multiple text-primary float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Total Repaid</h5>
-                <h2 class="font-bold">N$ {{ number_format(auth()->user()->repayments()->where('status','paid')->sum('amount')) }}</h2>
+                <h2 class="font-bold">N$ {{ number_format($totalRepaid ?? 0) }}</h2>
                 <i class="mdi mdi-check-all text-success float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Active Loans</h5>
-                <h2 class="font-bold">{{ auth()->user()->loans()->where('status','active')->count() }}</h2>
+                <h2 class="font-bold">{{ $activeLoansCount ?? 0 }}</h2>
                 <i class="mdi mdi-bank text-info float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Overdue Repayments</h5>
-                <h2 class="font-bold">{{ auth()->user()->repayments()->where('status','overdue')->count() }}</h2>
+                <h2 class="font-bold">{{ $overdueRepayments ?? 0 }}</h2>
                 <i class="mdi mdi-alert text-danger float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
@@ -45,7 +45,6 @@
                 <div class="card-body">
                     <h5 class="card-title">Loans by Status</h5>
                     @php
-                        $loansByStatus = auth()->user()->loans()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total','status');
                         $statusColors = ['active'=>'success','completed'=>'primary','pending_review'=>'warning','defaulted'=>'danger','cancelled'=>'secondary','marketplace'=>'info'];
                     @endphp
                     @foreach($loansByStatus as $status => $count)
@@ -67,7 +66,6 @@
                 <div class="card-body">
                     <h5 class="card-title">Repayments by Status</h5>
                     @php
-                        $repByStatus = auth()->user()->repayments()->selectRaw('status, count(*) as total, sum(amount) as total_amount')->groupBy('status')->get();
                         $repColors = ['paid'=>'success','pending'=>'warning','overdue'=>'danger','partial'=>'info'];
                     @endphp
                     <div class="table-responsive">
@@ -95,10 +93,10 @@
                 <div class="card-body">
                     <h5 class="card-title">Trust Score Progress</h5>
                     <div class="d-flex align-items-center">
-                        <span class="display-4 font-bold text-primary mr-3">{{ auth()->user()->trust_score ?? 0 }}</span>
+                        <span class="display-4 font-bold text-primary mr-3">{{ $score ?? 0 }}</span>
                         <div class="flex-grow-1">
                             <div class="progress" style="height:14px">
-                                <div class="progress-bar bg-primary" style="width:{{ auth()->user()->trust_score ?? 0 }}%"></div>
+                                <div class="progress-bar bg-primary" style="width:{{ $score ?? 0 }}%"></div>
                             </div>
                             <small class="text-muted mt-1 d-block">Higher scores unlock better interest rates</small>
                         </div>

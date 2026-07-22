@@ -45,25 +45,4 @@ class DashboardController extends Controller
             'totalLoansAmount', 'activeLoansCount'
         ));
     }
-
-    // //lender
-    // public function index()
-    // {
-    //     // $user = Auth::user();
-    //     $investments = $user->investments()->whereHas('loan', fn($q) => $q->where('status', 'active'))->latest()->take(5)->get();
-    //     $earnings = $user->investments()->latest()->take(5)->get();
-        
-    //     return view('lender.dashboard', compact('user', 'investments', 'earnings'));
-    // }
-
-    // //borrower
-    // public function index()
-    // {
-    //     // $user = Auth::user();
-    //     $loans = $user->loans()->latest()->take(5)->get();
-    //     $repayments = $user->repayments()->latest()->take(5)->get();
-    //     $trustScore = $user->trustScore;
-        
-    //     return view('borrower.dashboard', compact('user', 'loans', 'repayments', 'trustScore'));
-    // }
 }

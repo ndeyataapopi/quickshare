@@ -63,13 +63,12 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Recent Investments</h5>
-                    @php $recentInv = auth()->user()->fundingTransactions()->with('loan')->latest()->take(5)->get(); @endphp
-                    @if($recentInv->count())
+                    @if($investments->count())
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead><tr><th>Loan</th><th>Amount</th><th>Status</th></tr></thead>
                             <tbody>
-                            @foreach($recentInv as $inv)
+                            @foreach($investments as $inv)
                             <tr>
                                 <td>{{ $inv->loan->reference ?? '#'.$inv->loan_id }}</td>
                                 <td>N$ {{ number_format($inv->amount) }}</td>

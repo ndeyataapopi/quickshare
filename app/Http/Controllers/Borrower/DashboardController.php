@@ -22,6 +22,8 @@ class DashboardController extends Controller
         $trustScore = $user->trustScore;
 
         $activeLoans = $user->loans()->where('status', 'active')->get();
+        $activeLoansCount = $user->loans()->whereIn('status', ['active', 'disbursed'])->count();
+        $totalRepaid = $user->repayments()->where('status', 'paid')->sum('amount');
         $totalOutstanding = 0;
         foreach ($activeLoans as $loan) {
             $loanRepayments = Repayment::forLoan($loan->id)
@@ -63,6 +65,8 @@ class DashboardController extends Controller
             'repayments',
             'trustScore',
             'totalOutstanding',
+            'activeLoansCount',
+            'totalRepaid',
             'upcomingRepayments',
             'repaymentChartLabels',
             'repaymentChartData',

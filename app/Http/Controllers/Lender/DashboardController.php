@@ -18,7 +18,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         $investments = $user->investments()
-            ->whereHas('loan', fn($q) => $q->where('status', 'active'))
+            ->with('loan')
             ->latest()
             ->take(5)
             ->get();
