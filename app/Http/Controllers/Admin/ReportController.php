@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\LoanFinancialSummaryService;
 use App\Modules\Repayments\Models\Repayment;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Models\User;
@@ -11,6 +12,10 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
+    public function __construct(
+        private LoanFinancialSummaryService $summaryService,
+    ) {}
+
     public function index(Request $request)
     {
         $period = $request->input('period', 'month');
@@ -42,6 +47,7 @@ class ReportController extends Controller
             'repayments' => $this->getRepaymentsReport($dateFrom, $dateTo),
             'funding' => $this->getFundingReport($dateFrom, $dateTo),
             'users' => $this->getUsersReport($dateFrom, $dateTo),
+            'reconciliation' => $this->getReconciliationReport($dateFrom, $dateTo),
             default => [],
         };
 
@@ -91,5 +97,30 @@ class ReportController extends Controller
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->latest()
             ->paginate(20);
+    }
+
+    private function getReconciliationReport($dateFrom, $dateTo)
+    {
+        $loans = Loan::whereIn('status', ['active', 'completed', 'defaulted'])
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return $loans->map(function (Loan $loan) {
+            $summary = $this->summaryService->generate($loan);
+            $recon = $summary['reconciliation'];
+
+            return [
+                'loan_id' => $loan->id,
+                'reference' => $loan->reference,
+                'borrower' => $loan->borrower?->first_name . ' ' . $loan->borrower?->last_name,
+                'status' => $loan->status,
+                'money_in' => $recon['money_in'],
+                'money_out' => $recon['money_out'],
+                'platform_revenue' => $recon['platform_revenue'],
+                'reconciled' => $recon['reconciled'],
+                'discrepancies' => count($recon['discrepancies']),
+            ];
+        });
     }
 }

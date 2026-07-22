@@ -33,6 +33,7 @@ class FundingController extends Controller
             'total'            => FundingTransaction::count(),
             'pending'          => FundingTransaction::where('status', 'pending')->count(),
             'confirmed'        => FundingTransaction::where('status', 'confirmed')->count(),
+            'rejected'         => FundingTransaction::where('status', 'rejected')->count(),
             'cancelled'        => FundingTransaction::where('status', 'cancelled')->count(),
             'total_confirmed'  => FundingTransaction::where('status', 'confirmed')->sum('amount'),
         ];
@@ -48,15 +49,31 @@ class FundingController extends Controller
 
     public function confirm(Request $request, FundingTransaction $transaction)
     {
-        $this->fundingService->confirmFunding($transaction);
-        return redirect()->route('admin.funding.show', $transaction)
-            ->with('success', 'Funding transaction confirmed.');
+        $this->fundingService->confirmFunding($transaction, $request->user(), $request->input('admin_notes'));
+        return redirect()->route('admin.funding-payments.show', $transaction)
+            ->with('success', 'Funding transaction confirmed and applied to the loan.');
+    }
+
+    public function reject(Request $request, FundingTransaction $transaction)
+    {
+        $request->validate(['reason' => ['required', 'string', 'max:2000']]);
+        $this->fundingService->rejectFunding($transaction, $request->user(), $request->input('reason'));
+        return redirect()->route('admin.funding-payments.show', $transaction)
+            ->with('success', 'Funding transaction rejected and the lender has been notified.');
+    }
+
+    public function requestInfo(Request $request, FundingTransaction $transaction)
+    {
+        $request->validate(['message' => ['required', 'string', 'max:2000']]);
+        $this->fundingService->requestFundingInfo($transaction, $request->user(), $request->input('message'));
+        return redirect()->route('admin.funding-payments.show', $transaction)
+            ->with('success', 'A request for more information has been sent to the lender.');
     }
 
     public function cancel(Request $request, FundingTransaction $transaction)
     {
         $this->fundingService->cancelFunding($transaction);
-        return redirect()->route('admin.funding.index')
+        return redirect()->route('admin.funding-payments.index')
             ->with('success', 'Funding transaction cancelled.');
     }
 }

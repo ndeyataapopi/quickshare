@@ -48,6 +48,12 @@
                         <span class="hide-menu">Dashboard</span>
                     </a>
                 </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.operations')) active @endif" href="{{ route('admin.operations') }}">
+                        <i class="mdi mdi-clipboard-check-outline"></i>
+                        <span class="hide-menu">Operations</span>
+                    </a>
+                </li>
                 @can('manage_users')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.users.*')) active @endif" href="{{ route('admin.users.index') }}">
@@ -74,7 +80,7 @@
                 @endcan
                 @can('manage_funding')
                 <li class="sidebar-item">
-                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding.*')) active @endif" href="{{ route('admin.funding.index') }}">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding-payments.*')) active @endif" href="{{ route('admin.funding-payments.index') }}">
                         <i class="mdi mdi-bank-transfer-in"></i>
                         <span class="hide-menu">Funding / Escrow</span>
                     </a>
@@ -120,6 +126,14 @@
                     </a>
                 </li>
                 @endcan
+                @role('admin')
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.funding-payments.*')) active @endif" href="{{ route('admin.funding-payments.index') }}">
+                        <i class="mdi mdi-bank-transfer-in"></i>
+                        <span class="hide-menu">Payments</span>
+                    </a>
+                </li>
+                @endrole
                 @can('view_reports')
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.reports.*')) active @endif" href="{{ route('admin.reports.index') }}">
@@ -133,6 +147,12 @@
                     <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.settings.*')) active @endif" href="{{ route('admin.settings.index') }}">
                         <i class="mdi mdi-settings"></i>
                         <span class="hide-menu">Settings</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.system-status.*')) active @endif" href="{{ route('admin.system-status.index') }}">
+                        <i class="mdi mdi-heart-pulse"></i>
+                        <span class="hide-menu">System Status</span>
                     </a>
                 </li>
                 @endrole

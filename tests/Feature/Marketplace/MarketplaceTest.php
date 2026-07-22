@@ -47,6 +47,7 @@ class MarketplaceTest extends TestCase
             'total_repayment' => 10546,
             'funded_amount' => 0,
             'loan_term_days' => 60,
+            'repayment_date' => now()->addDays(60)->toDateString(),
             'status' => 'marketplace',
             'risk_score' => 65.00,
             'submitted_at' => now(),
@@ -83,6 +84,36 @@ class MarketplaceTest extends TestCase
         $result = $this->service->getListings();
 
         $this->assertEquals(1, $result->total());
+    }
+
+    public function test_expired_loans_are_excluded(): void
+    {
+        $this->createMarketplaceLoan(['repayment_date' => now()->subDay()->toDateString()]);
+        $this->createMarketplaceLoan();
+
+        $result = $this->service->getListings();
+
+        $this->assertEquals(1, $result->total());
+    }
+
+    public function test_expired_loan_single_listing_returns_null(): void
+    {
+        $loan = $this->createMarketplaceLoan(['repayment_date' => now()->subDay()->toDateString()]);
+
+        $listing = $this->service->getListing($loan->id);
+
+        $this->assertNull($listing);
+    }
+
+    public function test_stats_exclude_expired_loans(): void
+    {
+        $this->createMarketplaceLoan(['approved_amount' => 10000, 'repayment_date' => now()->subDay()->toDateString()]);
+        $this->createMarketplaceLoan(['approved_amount' => 20000]);
+
+        $stats = $this->service->getStats();
+
+        $this->assertEquals(1, $stats['total_listings']);
+        $this->assertEquals(20000.00, $stats['total_value']);
     }
 
     // ─── Filter Tests ────────────────────────────────────────────────

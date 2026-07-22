@@ -88,6 +88,11 @@ return [
         'password_reset' => ['email', 'database'],
         'fraud_alert' => ['email'],
         'kyc_submitted' => ['email', 'database'],
+        'funding_payment_submitted' => ['email', 'database'],
+        'funding_payment_approved' => ['email', 'database'],
+        'funding_payment_rejected' => ['email', 'database'],
+        'funding_payment_info_requested' => ['email', 'database'],
+        'disbursement_rejected' => ['email', 'database'],
     ],
 
 ];

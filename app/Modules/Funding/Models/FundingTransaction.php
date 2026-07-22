@@ -9,6 +9,7 @@ use App\Traits\HasActivityLog;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FundingTransaction extends Model
 {
@@ -27,7 +28,16 @@ class FundingTransaction extends Model
         'expected_return',
         'status',
         'confirmed_at',
+        'rejected_at',
         'transaction_reference',
+        'payment_method',
+        'payment_method_detail',
+        'payment_reference',
+        'payment_proof_path',
+        'payment_date',
+        'admin_verified_at',
+        'admin_verified_by',
+        'admin_notes',
         'notes',
         'metadata',
     ];
@@ -39,6 +49,9 @@ class FundingTransaction extends Model
             'interest_rate' => 'decimal:2',
             'expected_return' => 'decimal:2',
             'confirmed_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'payment_date' => 'datetime',
+            'admin_verified_at' => 'datetime',
             'metadata' => 'array',
         ];
     }
@@ -53,6 +66,11 @@ class FundingTransaction extends Model
     public function lender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'lender_id');
+    }
+
+    public function investment(): HasOne
+    {
+        return $this->hasOne(Investment::class);
     }
 
     // ─── Status Helpers ──────────────────────────────────────────────
@@ -70,6 +88,11 @@ class FundingTransaction extends Model
     public function isCancelled(): bool
     {
         return $this->status === 'cancelled';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
     }
 
     public function isRefunded(): bool

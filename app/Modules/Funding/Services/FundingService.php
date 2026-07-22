@@ -5,19 +5,26 @@ namespace App\Modules\Funding\Services;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Modules\Funding\Events\FundingCompleted;
-use App\Modules\Funding\Events\LoanFunded;
-use App\Modules\Funding\Jobs\ProcessFundingJob;
+use App\Modules\Funding\Events\FundingInitiated;
+use App\Modules\Funding\Events\FundingPaymentApproved;
+use App\Modules\Funding\Events\FundingPaymentRejected;
+use App\Modules\Funding\Events\FundingPaymentSubmitted;
+use App\Modules\Funding\Events\InvestmentCreated;
 use App\Modules\Funding\Models\FundingTransaction;
+use App\Modules\Funding\Models\Investment;
 use App\Modules\Loans\Models\Loan;
-use App\Modules\Loans\Services\TrustTierService;
+use App\Modules\Loans\Services\LoanService;
 use App\Modules\Marketplace\Services\MarketplaceService;
+use App\Modules\Repayments\Services\RepaymentService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FundingService
 {
     public function __construct(
         protected MarketplaceService $marketplaceService,
-        protected TrustTierService $trustTierService,
+        protected LoanService $loanService,
+        protected RepaymentService $repaymentService,
     ) {
     }
 
@@ -40,7 +47,7 @@ class FundingService
                 throw new ApiException('This loan is no longer available for funding.', 422);
             }
 
-            // Recalculate remaining with locked data
+            // Recalculate remaining with locked data (only confirmed funding counts)
             $remaining = $this->getRemainingFunding($lockedLoan);
 
             if ($amount > $remaining) {
@@ -50,7 +57,7 @@ class FundingService
                 );
             }
 
-            // Create funding transaction
+            // Create funding transaction (payment pending admin verification)
             $lenderReturnPercent = $this->lenderReturnPercent($lockedLoan);
             $transaction = FundingTransaction::create([
                 'loan_id' => $lockedLoan->id,
@@ -62,28 +69,7 @@ class FundingService
                 'transaction_reference' => FundingTransaction::generateReference(),
             ]);
 
-            // Update loan funded amount immediately
-            $newFundedAmount = (float) $lockedLoan->funded_amount + $amount;
-            $targetAmount = (float) ($lockedLoan->approved_amount ?? $lockedLoan->requested_amount);
-
-            // Determine new status
-            $newStatus = $this->determineLoanStatus($newFundedAmount, $targetAmount);
-
-            $lockedLoan->update([
-                'funded_amount' => $newFundedAmount,
-                'status' => $newStatus,
-            ]);
-
-            // Dispatch async job for processing
-            ProcessFundingJob::dispatch($transaction->id);
-
-            // Fire funding event
-            LoanFunded::dispatch($lockedLoan->id, $lender, $amount);
-
-            // If fully funded, fire completion event
-            if ($newStatus === 'funded') {
-                FundingCompleted::dispatch($lockedLoan->id, $newFundedAmount);
-            }
+            FundingInitiated::dispatch($transaction->fresh(), $lender);
 
             // Clear marketplace cache
             $this->marketplaceService->clearListingCache($lockedLoan->id);
@@ -100,7 +86,7 @@ class FundingService
             throw new ApiException('Funding amount must be greater than 0.', 422);
         }
 
-        $minFunding = config('loans.min_funding_amount', 100);
+        $minFunding = config('loan.marketplace.min_funding_amount', 100);
         if ($amount < $minFunding) {
             throw new ApiException("Minimum funding amount is {$minFunding}.", 422);
         }
@@ -148,44 +134,223 @@ class FundingService
 
     protected function calculateExpectedReturn(float $amount, Loan $loan, float $lenderReturnPercent): float
     {
-        $termDays = $loan->loan_term_days;
-        $dailyRate = $lenderReturnPercent / 365 / 100;
-
-        // Simple interest calculation for lender's portion
-        $interest = round($amount * $dailyRate * $termDays, 2);
-
-        return round($amount + $interest, 2);
+        return $this->loanService->expectedReturnForFunding($loan, $amount);
     }
 
     protected function lenderReturnPercent(Loan $loan): float
     {
-        $score = (float) $loan->risk_score;
-
-        return $this->trustTierService->forScore($score)['lender_return_percent'];
+        return $this->loanService->lenderReturnPercentForLoan($loan);
     }
 
     // ─── Remaining Funding ───────────────────────────────────────────
 
     public function getRemainingFunding(Loan $loan): float
     {
-        $target = (float) ($loan->approved_amount ?? $loan->requested_amount);
-        $funded = (float) $loan->funded_amount;
+        return $this->loanService->remainingFunding($loan);
+    }
 
-        return max(0, round($target - $funded, 2));
+    // ─── Submit Payment Proof ────────────────────────────────────────
+
+    public function submitPayment(FundingTransaction $transaction, array $data, $proofFile): FundingTransaction
+    {
+        if (! $transaction->isPending()) {
+            throw new ApiException('This funding transaction cannot be updated.', 422);
+        }
+
+        return DB::transaction(function () use ($transaction, $data, $proofFile) {
+            $proofPath = $proofFile->store('funding-payments', 'public');
+
+            $metadata = $transaction->metadata ?? [];
+            $metadata['payer_reference_number'] = $data['reference_number'] ?? null;
+            $metadata['payer_transaction_number'] = $data['transaction_number'] ?? null;
+
+            $transaction->update([
+                'payment_method' => $data['payment_method'],
+                'payment_method_detail' => $data['payment_method_detail'] ?? null,
+                'payment_reference' => $data['payment_reference'] ?? $transaction->payment_reference,
+                'payment_proof_path' => $proofPath,
+                'payment_date' => $data['payment_date'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'metadata' => $metadata,
+            ]);
+
+            FundingPaymentSubmitted::dispatch($transaction->fresh());
+
+            return $transaction->fresh();
+        });
     }
 
     // ─── Confirm Funding ─────────────────────────────────────────────
 
-    public function confirmFunding(FundingTransaction $transaction): FundingTransaction
-    {
+    public function confirmFunding(
+        FundingTransaction $transaction,
+        ?User $admin = null,
+        ?string $notes = null,
+    ): FundingTransaction {
         if (! $transaction->isPending()) {
             throw new ApiException('Transaction is not in pending state.', 422);
         }
 
+        return DB::transaction(function () use ($transaction, $admin, $notes) {
+            $loan = Loan::lockForUpdate()->find($transaction->loan_id);
+
+            if (! $loan) {
+                throw new ApiException('Loan not found.', 404);
+            }
+
+            // Apply the funding to the loan
+            $newFundedAmount = (float) $loan->funded_amount + (float) $transaction->amount;
+            $targetAmount = (float) ($loan->approved_amount ?? $loan->requested_amount);
+            $newStatus = $this->determineLoanStatus($newFundedAmount, $targetAmount);
+
+            $loan->update([
+                'funded_amount' => $newFundedAmount,
+                'status' => $newStatus,
+            ]);
+
+            $updateData = [
+                'status' => 'confirmed',
+                'confirmed_at' => now(),
+                'admin_verified_at' => now(),
+                'admin_verified_by' => $admin?->id,
+                'admin_notes' => $notes ?: $transaction->admin_notes,
+            ];
+
+            $transaction->update($updateData);
+
+            // Create investment record for the lender's portfolio
+            $investment = Investment::create([
+                'loan_id' => $loan->id,
+                'lender_id' => $transaction->lender_id,
+                'funding_transaction_id' => $transaction->id,
+                'amount' => (float) $transaction->amount,
+                'interest_rate' => (float) $transaction->interest_rate,
+                'expected_return' => (float) $transaction->expected_return,
+                'actual_return' => 0,
+                'status' => 'active',
+                'funded_at' => now(),
+            ]);
+
+            InvestmentCreated::dispatch($investment);
+            FundingPaymentApproved::dispatch($transaction->fresh(), $admin);
+
+            // Notify lender that payment was approved
+            $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
+            $notificationService->queue(
+                $transaction->lender,
+                'funding_payment_approved',
+                [
+                    'loan_id' => $loan->id,
+                    'reference' => $loan->reference,
+                    'amount' => (float) $transaction->amount,
+                    'transaction_id' => $transaction->id,
+                ]
+            );
+
+            // If the loan is now fully funded, notify the borrower and all lenders.
+            // Repayment schedule is created when the borrower confirms disbursement (Stage 7.1).
+            if ($newStatus === 'funded') {
+                FundingCompleted::dispatch($loan->id, $newFundedAmount);
+
+                $notificationService->queue(
+                    $loan->borrower,
+                    'loan_funded',
+                    [
+                        'loan_id' => $loan->id,
+                        'reference' => $loan->reference,
+                        'amount' => $newFundedAmount,
+                    ]
+                );
+
+                foreach ($loan->fundingTransactions()->confirmed()->with('lender')->get() as $funding) {
+                    $notificationService->queue(
+                        $funding->lender,
+                        'loan_funded',
+                        [
+                            'loan_id' => $loan->id,
+                            'reference' => $loan->reference,
+                            'amount' => (float) $funding->amount,
+                        ]
+                    );
+                }
+            }
+
+            // Clear marketplace cache
+            $this->marketplaceService->clearListingCache($loan->id);
+
+            return $transaction->fresh();
+        });
+    }
+
+    // ─── Reject Funding ────────────────────────────────────────────────
+
+    public function rejectFunding(
+        FundingTransaction $transaction,
+        ?User $admin = null,
+        ?string $reason = null,
+    ): FundingTransaction {
+        if (! $transaction->isPending()) {
+            throw new ApiException('Only pending funding transactions can be rejected.', 422);
+        }
+
+        return DB::transaction(function () use ($transaction, $admin, $reason) {
+            $transaction->update([
+                'status' => 'rejected',
+                'rejected_at' => now(),
+                'admin_verified_at' => now(),
+                'admin_verified_by' => $admin?->id,
+                'admin_notes' => $reason,
+            ]);
+
+            FundingPaymentRejected::dispatch($transaction->fresh(), $admin, $reason);
+
+            // Clear marketplace cache so the freed funding slot is reflected
+            $this->marketplaceService->clearListingCache($transaction->loan_id);
+
+            app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
+                $transaction->lender,
+                'funding_payment_rejected',
+                [
+                    'loan_id' => $transaction->loan_id,
+                    'reference' => $transaction->loan->reference,
+                    'amount' => (float) $transaction->amount,
+                    'reason' => $reason,
+                    'transaction_id' => $transaction->id,
+                ]
+            );
+
+            return $transaction->fresh();
+        });
+    }
+
+    // ─── Request More Information ──────────────────────────────────────
+
+    public function requestFundingInfo(
+        FundingTransaction $transaction,
+        ?User $admin = null,
+        ?string $message = null,
+    ): FundingTransaction {
+        if (! $transaction->isPending()) {
+            throw new ApiException('Only pending funding transactions can be marked for review.', 422);
+        }
+
         $transaction->update([
-            'status' => 'confirmed',
-            'confirmed_at' => now(),
+            'admin_verified_at' => now(),
+            'admin_verified_by' => $admin?->id,
+            'admin_notes' => $message,
         ]);
+
+        app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
+            $transaction->lender,
+            'funding_payment_info_requested',
+            [
+                'loan_id' => $transaction->loan_id,
+                'reference' => $transaction->loan->reference,
+                'amount' => (float) $transaction->amount,
+                'message' => $message,
+                'transaction_id' => $transaction->id,
+            ]
+        );
 
         return $transaction->fresh();
     }
@@ -198,35 +363,19 @@ class FundingService
             throw new ApiException('Only pending transactions can be cancelled.', 422);
         }
 
-        return DB::transaction(function () use ($transaction) {
-            // Lock the loan
-            $loan = Loan::lockForUpdate()->find($transaction->loan_id);
+        $transaction->update(['status' => 'cancelled']);
 
-            // Reverse the funded amount
-            $newFundedAmount = max(0, (float) $loan->funded_amount - (float) $transaction->amount);
-            $targetAmount = (float) ($loan->approved_amount ?? $loan->requested_amount);
+        // Clear cache so the marketplace reflects the freed funding slot
+        $this->marketplaceService->clearListingCache($transaction->loan_id);
 
-            $newStatus = $this->determineLoanStatus($newFundedAmount, $targetAmount);
-
-            $loan->update([
-                'funded_amount' => $newFundedAmount,
-                'status' => $newStatus,
-            ]);
-
-            $transaction->update(['status' => 'cancelled']);
-
-            // Clear cache
-            $this->marketplaceService->clearListingCache($loan->id);
-
-            return $transaction->fresh();
-        });
+        return $transaction->fresh();
     }
 
     // ─── Portfolio Queries ─────────────────────────────────────────
 
     public function getLenderPortfolio(User $lender, array $filters = [])
     {
-        $query = FundingTransaction::forLender($lender->id)
+        $query = Investment::forLender($lender->id)
             ->with(['loan:id,reference,approved_amount,total_repayment,status,repayment_date'])
             ->orderBy('created_at', 'desc');
 
@@ -239,24 +388,7 @@ class FundingService
 
     public function getLenderPortfolioSummary(User $lender): array
     {
-        $confirmed = FundingTransaction::forLender($lender->id)->confirmed();
-
-        return [
-            'total_invested' => round((float) (clone $confirmed)->sum('amount'), 2),
-            'total_expected_return' => round((float) (clone $confirmed)->sum('expected_return'), 2),
-            'active_investments' => (clone $confirmed)
-                ->whereHas('loan', fn ($q) => $q->whereIn('loans.status', ['funded', 'active', 'disbursed']))
-                ->count(),
-            'completed_investments' => (clone $confirmed)
-                ->whereHas('loan', fn ($q) => $q->where('loans.status', 'completed'))
-                ->count(),
-            'defaulted_investments' => (clone $confirmed)
-                ->whereHas('loan', fn ($q) => $q->where('loans.status', 'defaulted'))
-                ->count(),
-            'pending_transactions' => FundingTransaction::forLender($lender->id)
-                ->where('status', 'pending')
-                ->count(),
-        ];
+        return app(EarningsService::class)->getLenderPortfolioSummary($lender);
     }
 
     // ─── Loan Funding Details ────────────────────────────────────────

@@ -22,7 +22,7 @@ class ProcessLoanDisbursement implements ShouldQueue
                 'loan_id' => $event->loanId,
                 'amount' => $event->amount,
             ],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
 
         // Get the loan

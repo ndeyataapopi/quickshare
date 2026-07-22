@@ -17,19 +17,9 @@
 </div>
 <div class="page-content container-fluid">
     @php
-        $user = auth()->user();
-        $totalLoans      = $user->loans()->count();
-        $activeLoans     = $user->loans()->whereIn('status', ['active', 'disbursed'])->count();
-        $completedLoans  = $user->loans()->where('status', 'completed')->count();
-        $defaultedLoans  = $user->loans()->where('status', 'defaulted')->count();
-        $totalBorrowed   = $user->loans()->whereNotNull('approved_amount')->sum('approved_amount');
-        $totalRepaid     = $user->repayments()->where('status', 'completed')->sum('amount');
-        $totalInvested   = $user->fundingTransactions()->where('status', 'confirmed')->sum('amount');
-        $totalExpected   = $user->fundingTransactions()->where('status', 'confirmed')->sum('expected_return');
-        $score           = (float) $user->trust_score;
-        $tier            = \App\Modules\TrustScore\Services\TrustScoreService::getTier($score);
-        $totalEarnings   = $totalExpected - $totalInvested;
-        $repaymentRate   = $totalLoans > 0 ? round(($completedLoans / $totalLoans) * 100, 1) : 0;
+        $totalInvested   = $earningsSummary['total_invested'] ?? 0;
+        $totalExpected   = $earningsSummary['total_expected_return'] ?? 0;
+        $totalEarnings   = $earningsSummary['total_earnings'] ?? 0;
     @endphp
 
     <!-- Enhanced Analytics Stats -->
@@ -119,9 +109,9 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="card-title text-uppercase mb-0">Trust Score History</h6>
-                        <button class="btn btn-sm btn-outline-info" id="refreshTrustScore">
-                            <i class="mdi mdi-refresh"></i>
-                        </button>
+                        <a href="{{ route('client.trust-score.index') }}" class="btn btn-sm btn-outline-info">
+                            <i class="mdi mdi-information"></i>
+                        </a>
                     </div>
                     <div style="height: 350px; position: relative;">
                         <canvas id="trustScoreChart"></canvas>
@@ -222,7 +212,7 @@
                                 </tr>
                                 <tr>
                                     <td class="text-muted">ROI</td>
-                                    <td class="font-weight-bold text-info">{{ $totalInvested > 0 ? round(($totalEarnings / $totalInvested) * 100, 1) : 0 }}%</td>
+                                    <td class="font-weight-bold text-info">{{ $earningsSummary['roi'] ?? 0 }}%</td>
                                 </tr>
                                 <tr>
                                     <td class="text-muted">Trust Score</td>
@@ -252,8 +242,7 @@
                             <button class="btn btn-outline-primary" data-activity="repayments">Repayments</button>
                         </div>
                     </div>
-                    @php $recentLoans = $user->loans()->latest()->take(5)->get(); @endphp
-                    @if($recentLoans->isEmpty())
+                    @if($recentLoans->isEmpty() && $recentInvestments->isEmpty() && $recentRepayments->isEmpty())
                         <div class="text-center py-4">
                             <i class="mdi mdi-cash-usd text-muted" style="font-size:48px;"></i>
                             <p class="text-muted mt-2">No activity yet. <a href="{{ route('client.loans.create') }}">Apply for a loan</a> or <a href="{{ route('client.marketplace.index') }}">browse investments</a>.</p>
@@ -274,30 +263,34 @@
                             <tbody>
                                 @foreach($recentLoans as $loan)
                                 <tr data-activity="loans">
-                                    <td>
-                                        <span class="badge badge-primary">Loan</span>
-                                    </td>
-                                    <td>
-                                        <strong>{{ $loan->reference }}</strong>
-                                        @if($loan->purpose)
-                                            <br><small class="text-muted">{{ $loan->purpose }}</small>
-                                        @endif
+                                    <td><span class="badge badge-primary">Loan</span></td>
+                                    <td><strong>{{ $loan->reference }}</strong>
+                                        @if($loan->purpose)<br><small class="text-muted">{{ $loan->purpose }}</small>@endif
                                     </td>
                                     <td>{{ kpiMoney($loan->requested_amount) }}</td>
-                                    <td>
-                                        <span class="badge badge-{{ ['pending_review'=>'warning','marketplace'=>'info','active'=>'primary','completed'=>'success','defaulted'=>'danger','cancelled'=>'secondary'][$loan->status] ?? 'secondary' }}">
-                                            {{ ucwords(str_replace('_',' ',$loan->status)) }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {{ $loan->created_at->format('M j, Y') }}
-                                        <br><small class="text-muted">{{ $loan->created_at->diffForHumans() }}</small>
-                                    </td>
-                                    <td>
-                                        <a href="{{ route('client.loans.show', $loan) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="mdi mdi-eye"></i>
-                                        </a>
-                                    </td>
+                                    <td><span class="badge badge-{{ ['pending_review'=>'warning','marketplace'=>'info','active'=>'primary','completed'=>'success','defaulted'=>'danger','cancelled'=>'secondary'][$loan->status] ?? 'secondary' }}">{{ ucwords(str_replace('_',' ',$loan->status)) }}</span></td>
+                                    <td>{{ $loan->created_at->format('M j, Y') }}</td>
+                                    <td><a href="{{ route('client.loans.show', $loan) }}" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-eye"></i></a></td>
+                                </tr>
+                                @endforeach
+                                @foreach($recentInvestments as $inv)
+                                <tr data-activity="investments" style="display:none;">
+                                    <td><span class="badge badge-success">Investment</span></td>
+                                    <td><strong>{{ $inv->loan->reference ?? '#'.$inv->loan_id }}</strong></td>
+                                    <td>{{ kpiMoney($inv->amount) }}</td>
+                                    <td><span class="badge badge-{{ $inv->status === 'active' ? 'primary' : ($inv->status === 'completed' ? 'success' : 'secondary') }}">{{ ucfirst($inv->status) }}</span></td>
+                                    <td>{{ $inv->created_at->format('M j, Y') }}</td>
+                                    <td><a href="{{ route('client.investments.index') }}" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-eye"></i></a></td>
+                                </tr>
+                                @endforeach
+                                @foreach($recentRepayments as $repayment)
+                                <tr data-activity="repayments" style="display:none;">
+                                    <td><span class="badge badge-warning">Repayment</span></td>
+                                    <td><strong>{{ $repayment->loan->reference ?? '#'.$repayment->loan_id }}</strong></td>
+                                    <td>{{ kpiMoney($repayment->amount) }}</td>
+                                    <td><span class="badge badge-{{ $repayment->status === 'paid' ? 'success' : ($repayment->status === 'overdue' ? 'danger' : 'warning') }}">{{ ucfirst($repayment->status) }}</span></td>
+                                    <td>{{ $repayment->created_at->format('M j, Y') }}</td>
+                                    <td><a href="{{ route('client.repayments.index') }}" class="btn btn-sm btn-outline-primary"><i class="mdi mdi-eye"></i></a></td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -484,33 +477,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    const financialDataQuarter = @json($financialDataQuarter ?? ['labels' => [], 'borrowed' => [], 'invested' => [], 'earnings' => []]);
+    const financialDataYear = @json($financialDataYear ?? ['labels' => [], 'borrowed' => [], 'invested' => [], 'earnings' => []]);
+    const financialDataMonth = @json($financialData ?? ['labels' => [], 'borrowed' => [], 'invested' => [], 'earnings' => []]);
+
     function updateOverviewChart(period) {
-        let labels, borrowedData, investedData, earningsData;
-        
+        let chartData;
         switch(period) {
-            case 'quarter':
-                labels = ['Q1', 'Q2', 'Q3', 'Q4'];
-                borrowedData = [15000, 22000, 18000, 25000];
-                investedData = [10000, 15000, 12000, 18000];
-                earningsData = [800, 1500, 1200, 2000];
-                break;
-            case 'year':
-                labels = ['2020', '2021', '2022', '2023', '2024'];
-                borrowedData = [30000, 45000, 60000, 75000, 90000];
-                investedData = [20000, 30000, 40000, 55000, 70000];
-                earningsData = [2000, 3500, 5000, 7000, 9000];
-                break;
-            default: // month
-                labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                borrowedData = [5000, 8000, 12000, 10000, 15000, 18000];
-                investedData = [3000, 5000, 7000, 9000, 12000, 14000];
-                earningsData = [200, 350, 500, 800, 1200, 1500];
+            case 'quarter': chartData = financialDataQuarter; break;
+            case 'year':    chartData = financialDataYear; break;
+            default:        chartData = financialDataMonth;
         }
-        
-        overviewChart.data.labels = labels;
-        overviewChart.data.datasets[0].data = borrowedData;
-        overviewChart.data.datasets[1].data = investedData;
-        overviewChart.data.datasets[2].data = earningsData;
+        overviewChart.data.labels = chartData.labels;
+        overviewChart.data.datasets[0].data = chartData.borrowed;
+        overviewChart.data.datasets[1].data = chartData.invested;
+        overviewChart.data.datasets[2].data = chartData.earnings;
         overviewChart.update();
     }
     
@@ -525,78 +506,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const activity = this.dataset.activity;
             
-            // Filter activity rows (simplified - in real app would fetch different data)
             activityRows.forEach(row => {
-                row.style.display = activity === 'loans' ? '' : 'none';
+                row.style.display = row.dataset.activity === activity ? '' : 'none';
             });
-            
-            if (activity !== 'loans') {
-                // Show loading message for other tabs
-                const tbody = document.querySelector('.activity-table tbody');
-                if (tbody.querySelector('.loading-message')) return;
-                
-                const loadingRow = document.createElement('tr');
-                loadingRow.className = 'loading-message';
-                loadingRow.innerHTML = `
-                    <td colspan="6" class="text-center py-4">
-                        <i class="mdi mdi-loading mdi-spin"></i>
-                        <p class="mt-2 text-muted">Loading ${activity} data...</p>
-                    </td>
-                `;
-                tbody.appendChild(loadingRow);
-                
-                setTimeout(() => {
-                    loadingRow.remove();
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" class="text-center py-4">
-                                <p class="text-muted">No ${activity} activity in the selected period.</p>
-                            </td>
-                        </tr>
-                    `;
-                }, 1000);
-            }
         });
     });
-    
-    // Refresh Trust Score button
-    document.getElementById('refreshTrustScore').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i>';
-        
-        setTimeout(() => {
-            // Simulate score update
-            const newScore = Math.min(100, {{ $score }} + Math.random() * 2);
-            const currentData = trustScoreChart.data.datasets[0].data;
-            currentData[currentData.length - 1] = newScore;
-            trustScoreChart.update();
-            
-            this.disabled = false;
-            this.innerHTML = '<i class="mdi mdi-refresh"></i>';
-            
-            showToast('Trust score updated successfully!');
-        }, 1500);
-    });
-    
-    // Toast notification helper
-    function showToast(message) {
-        const toast = document.createElement('div');
-        toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
-        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        toast.innerHTML = `<i class="mdi mdi-check-circle mr-2"></i>${message} <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>`;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 4000);
-    }
-    
-    // Auto-refresh data every 5 minutes
-    setInterval(() => {
-        console.log('Refreshing analytics data...');
-        // In a real implementation, this would fetch updated data from the server
-    }, 300000);
 });
 </script>
 @endsection

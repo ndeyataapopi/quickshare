@@ -21,10 +21,10 @@
         <div class="col-md-3">
             <div class="card text-center border-success">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-success mb-0">{{ kpiMoney($totalEarnings ?? 0) }}</h4>
+                    <h4 class="font-weight-bold text-success mb-0">{{ kpiMoney($summary['total_earnings'] ?? 0) }}</h4>
                     <small class="text-muted">Total Earnings</small>
                     <div class="mt-2">
-                        <small class="text-success"><i class="mdi mdi-trending-up"></i> +18.2%</small>
+                        <small class="text-{{ ($summary['growth_rate'] ?? 0) >= 0 ? 'success' : 'danger' }}"><i class="mdi mdi-trending-{{ ($summary['growth_rate'] ?? 0) >= 0 ? 'up' : 'down' }}"></i> {{ ($summary['growth_rate'] ?? 0) >= 0 ? '+' : '' }}{{ $summary['growth_rate'] ?? 0 }}%</small>
                     </div>
                 </div>
             </div>
@@ -32,10 +32,10 @@
         <div class="col-md-3">
             <div class="card text-center border-primary">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-primary mb-0">{{ kpiMoney($totalInvested ?? 0) }}</h4>
+                    <h4 class="font-weight-bold text-primary mb-0">{{ kpiMoney($summary['total_invested'] ?? 0) }}</h4>
                     <small class="text-muted">Total Invested</small>
                     <div class="mt-2">
-                        <small class="text-info"><i class="mdi mdi-percent"></i> {{ $totalInvested > 0 ? round((($totalEarnings ?? 0) / $totalInvested) * 100, 1) : 0 }}% ROI</small>
+                        <small class="text-info"><i class="mdi mdi-percent"></i> {{ $summary['roi'] ?? 0 }}% ROI</small>
                     </div>
                 </div>
             </div>
@@ -43,10 +43,10 @@
         <div class="col-md-3">
             <div class="card text-center border-warning">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-warning mb-0">{{ kpiMoney(($totalEarnings ?? 0) / 12) }}</h4>
+                    <h4 class="font-weight-bold text-warning mb-0">{{ kpiMoney($summary['monthly_average'] ?? 0) }}</h4>
                     <small class="text-muted">Monthly Average</small>
                     <div class="mt-2">
-                        <small class="text-muted"><i class="mdi mdi-calendar"></i> Last 12 months</small>
+                        <small class="text-muted"><i class="mdi mdi-calendar"></i> Based on completed investments</small>
                     </div>
                 </div>
             </div>
@@ -54,10 +54,10 @@
         <div class="col-md-3">
             <div class="card text-center border-info">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-info mb-0">{{ $activeCount ?? 0 }}</h4>
+                    <h4 class="font-weight-bold text-info mb-0">{{ $summary['active_count'] ?? 0 }}</h4>
                     <small class="text-muted">Active Investments</small>
                     <div class="mt-2">
-                        <small class="text-muted">{{ isset($earnings) ? $earnings->count() : 0 }} total</small>
+                        <small class="text-muted">{{ $summary['completed_count'] ?? 0 }} completed</small>
                     </div>
                 </div>
             </div>
@@ -180,8 +180,9 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="{{ ($e->actual_return - $e->amount) / $e->amount >= 0.15 ? 'text-success' : (($e->actual_return - $e->amount) / $e->amount >= 0.10 ? 'text-warning' : 'text-info') }}">
-                                            <strong>{{ round((($e->actual_return - $e->amount) / $e->amount) * 100, 1) }}%</strong>
+                                        @php $roi = $e->amount > 0 ? round((($e->actual_return - $e->amount) / $e->amount) * 100, 1) : 0; @endphp
+                                        <div class="{{ $roi >= 15 ? 'text-success' : ($roi >= 10 ? 'text-warning' : 'text-info') }}">
+                                            <strong>{{ $roi }}%</strong>
                                         </div>
                                     </td>
                                     <td>
@@ -301,25 +302,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    const earningsDataQuarter = @json($earningsDataQuarter ?? ['labels' => [], 'data' => []]);
+    const earningsDataYear = @json($earningsDataYear ?? ['labels' => [], 'data' => []]);
+    const earningsDataMonth = @json($earningsData ?? ['labels' => [], 'data' => []]);
+
     function updateEarningsChart(period) {
-        let labels, data;
-        
+        let chartData;
         switch(period) {
-            case 'quarter':
-                labels = ['Q1', 'Q2', 'Q3', 'Q4'];
-                data = [4500, 5600, 5200, 6200];
-                break;
-            case 'year':
-                labels = ['2020', '2021', '2022', '2023', '2024'];
-                data = [15000, 18000, 22000, 25000, 28000];
-                break;
-            default: // month
-                labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-                data = [1200, 1500, 1800, 1400, 2000, 2200];
+            case 'quarter': chartData = earningsDataQuarter; break;
+            case 'year':    chartData = earningsDataYear; break;
+            default:        chartData = earningsDataMonth;
         }
-        
-        earningsChart.data.labels = labels;
-        earningsChart.data.datasets[0].data = data;
+        earningsChart.data.labels = chartData.labels;
+        earningsChart.data.datasets[0].data = chartData.data;
         earningsChart.update();
     }
     

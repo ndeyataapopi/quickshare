@@ -1,0 +1,26 @@
+# QuickShare Laravel Queue Worker (SystemD)
+# Copy to /etc/systemd/system/quickshare-worker.service
+# Adjust user/group/paths for your server.
+
+[Unit]
+Description=QuickShare Queue Worker
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/html/quickshare
+ExecStart=/usr/bin/php /var/www/html/quickshare/artisan queue:work --queue=notifications,default --sleep=3 --tries=3 --max-jobs=1000 --max-time=3600
+Restart=always
+RestartSec=5
+StartLimitInterval=60s
+StartLimitBurst=3
+StandardOutput=append:/var/www/html/quickshare/storage/logs/worker.log
+StandardError=append:/var/www/html/quickshare/storage/logs/worker.log
+
+# Make sure the worker can read the .env file and write logs
+# If your web server runs as a different user, change User/Group above.
+
+[Install]
+WantedBy=multi-user.target

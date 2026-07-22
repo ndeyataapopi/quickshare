@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Borrower;
 
+use App\Exceptions\ApiException;
 use App\Http\Controllers\Controller;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\LoanAgreementService;
@@ -91,7 +92,13 @@ class LoanController extends Controller
         $validated['ip_address'] = $request->ip();
         $validated['user_agent'] = $request->userAgent();
 
-        $loan = $this->loanService->createLoan(Auth::user(), $validated);
+        try {
+            $loan = $this->loanService->createLoan(Auth::user(), $validated);
+        } catch (ApiException $e) {
+            return back()
+                ->with('error', $e->getMessage())
+                ->withInput();
+        }
 
         return redirect()->route('client.loans.show', $loan)->with('success', 'Loan request submitted successfully.');
     }

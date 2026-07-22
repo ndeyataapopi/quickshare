@@ -3,6 +3,8 @@
 namespace App\Modules\Repayments\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Modules\Loans\Events\LoanDefaulted;
 use App\Modules\Repayments\Jobs\CheckOverdueRepaymentsJob;
 use App\Modules\Repayments\Models\Repayment;
 use App\Modules\Repayments\Services\RepaymentService;
@@ -134,6 +136,8 @@ class RepaymentAdminController extends Controller
         $loan = $repayment->loan;
         $loan->update(['status' => 'defaulted']);
 
+        LoanDefaulted::dispatch($loan->fresh(), $repayment->id);
+
         return $this->success([
             'repayment' => $repayment->fresh(),
             'loan_status' => $loan->fresh()->status,
@@ -160,6 +164,21 @@ class RepaymentAdminController extends Controller
             'penalty' => 0,
             'notes' => ($repayment->notes ? $repayment->notes . "\n" : '') .
                 'Penalty of ' . $waivedAmount . ' waived by admin on ' . now()->toDateString(),
+        ]);
+
+        ActivityLog::create([
+            'user_id' => $repayment->borrower_id,
+            'actor_id' => auth()->id(),
+            'action' => 'repayment.penalty_waived',
+            'description' => "Penalty of R{$waivedAmount} waived for repayment #{$repayment->id} on loan #{$repayment->loan_id}",
+            'subject_type' => Repayment::class,
+            'subject_id' => $repayment->id,
+            'loan_id' => $repayment->loan_id,
+            'repayment_id' => $repayment->id,
+            'amount' => (float) $waivedAmount,
+            'metadata' => ['admin_id' => auth()->id()],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
         ]);
 
         return $this->success([

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->decimal('platform_fee', 12, 2)->default(0);  // Platform fee portion
             
             // Status tracking
-            $table->enum('status', ['pending', 'partial', 'paid', 'overdue', 'defaulted'])->default('pending');
+            $table->enum('status', ['pending', 'partial', 'paid', 'overdue', 'defaulted', 'pending_approval', 'rejected'])->default('pending');
             
             // Schedule tracking
             $table->date('due_date');
@@ -32,6 +32,7 @@ return new class extends Migration
             $table->string('transaction_reference', 32)->unique();
             $table->string('external_reference', 64)->nullable();
             $table->string('payment_method', 32)->default('bank_transfer');
+            $table->string('payment_proof_path')->nullable();
             $table->text('notes')->nullable();
             $table->json('metadata')->nullable();
             

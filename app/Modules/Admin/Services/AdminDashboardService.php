@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Services;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Modules\Admin\Models\FraudFlag;
 use App\Modules\Collections\Models\CollectionLog;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\KYC\Models\KycSubmission;
@@ -36,7 +37,7 @@ class AdminDashboardService
     {
         return [
             'total_loans' => Loan::count(),
-            'active_loans' => Loan::where('status', 'active')->count(),
+            'active_loans' => Loan::whereIn('status', ['active', 'disbursed'])->count(),
             'total_users' => User::count(),
             'active_users' => User::where('status', 'active')->count(),
             'total_repayments' => Repayment::where('status', 'paid')->count(),
@@ -44,6 +45,8 @@ class AdminDashboardService
             'pending_loans' => Loan::where('status', 'pending_review')->count(),
             'overdue_loans' => Loan::where('status', 'overdue')->count(),
             'defaulted_loans' => Loan::where('status', 'defaulted')->count(),
+            'total_funded' => round((float) Loan::sum('funded_amount'), 2),
+            'fraud_alerts' => FraudFlag::where('status', 'open')->count(),
         ];
     }
 
@@ -65,39 +68,70 @@ class AdminDashboardService
 
     protected function getAvgKycProcessingTime(): ?float
     {
-        $avgHours = KycSubmission::where('status', 'approved')
+        $submissions = KycSubmission::where('status', 'approved')
             ->whereNotNull('reviewed_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, reviewed_at)) as avg_hours')
-            ->value('avg_hours');
+            ->get(['created_at', 'reviewed_at']);
 
-        return $avgHours ? round($avgHours, 1) : null;
+        if ($submissions->isEmpty()) {
+            return null;
+        }
+
+        $totalHours = $submissions->sum(function ($submission) {
+            return $submission->created_at->diffInHours($submission->reviewed_at);
+        });
+
+        return round($totalHours / $submissions->count(), 1);
     }
 
     // ─── Loan Stats ────────────────────────────────────────────────────
 
     public function getLoanStats(): array
     {
-        $loans = Loan::query();
+        $statusCounts = Loan::query()
+            ->selectRaw("
+                SUM(status = 'draft') as draft,
+                SUM(status = 'pending_review') as pending_review,
+                SUM(status = 'marketplace') as marketplace,
+                SUM(status = 'partially_funded') as partially_funded,
+                SUM(status = 'funded') as funded,
+                SUM(status = 'awaiting_disbursement') as awaiting_disbursement,
+                SUM(status = 'active') as active,
+                SUM(status = 'overdue') as overdue,
+                SUM(status = 'completed') as completed,
+                SUM(status = 'defaulted') as defaulted,
+                SUM(status = 'cancelled') as cancelled
+            ")
+            ->first();
+
+        $totals = Loan::query()
+            ->selectRaw('
+                COALESCE(SUM(requested_amount), 0) as total_requested,
+                COALESCE(SUM(approved_amount), 0) as total_approved,
+                COALESCE(SUM(funded_amount), 0) as total_funded,
+                COALESCE(AVG(approved_amount), 0) as avg_loan_amount,
+                COALESCE(AVG(interest_rate), 0) as avg_interest_rate
+            ')
+            ->first();
 
         return [
             'by_status' => [
-                'draft' => (clone $loans)->where('status', 'draft')->count(),
-                'pending_review' => (clone $loans)->where('status', 'pending_review')->count(),
-                'marketplace' => (clone $loans)->where('status', 'marketplace')->count(),
-                'partially_funded' => (clone $loans)->where('status', 'partially_funded')->count(),
-                'funded' => (clone $loans)->where('status', 'funded')->count(),
-                'awaiting_disbursement' => (clone $loans)->where('status', 'awaiting_disbursement')->count(),
-                'active' => (clone $loans)->where('status', 'active')->count(),
-                'overdue' => (clone $loans)->where('status', 'overdue')->count(),
-                'completed' => (clone $loans)->where('status', 'completed')->count(),
-                'defaulted' => (clone $loans)->where('status', 'defaulted')->count(),
-                'cancelled' => (clone $loans)->where('status', 'cancelled')->count(),
+                'draft' => (int) $statusCounts->draft,
+                'pending_review' => (int) $statusCounts->pending_review,
+                'marketplace' => (int) $statusCounts->marketplace,
+                'partially_funded' => (int) $statusCounts->partially_funded,
+                'funded' => (int) $statusCounts->funded,
+                'awaiting_disbursement' => (int) $statusCounts->awaiting_disbursement,
+                'active' => (int) $statusCounts->active,
+                'overdue' => (int) $statusCounts->overdue,
+                'completed' => (int) $statusCounts->completed,
+                'defaulted' => (int) $statusCounts->defaulted,
+                'cancelled' => (int) $statusCounts->cancelled,
             ],
-            'total_requested' => round((clone $loans)->sum('requested_amount'), 2),
-            'total_approved' => round((clone $loans)->sum('approved_amount'), 2),
-            'total_funded' => round((clone $loans)->sum('funded_amount'), 2),
-            'avg_loan_amount' => round((clone $loans)->avg('approved_amount') ?? 0, 2),
-            'avg_interest_rate' => round((clone $loans)->avg('interest_rate') ?? 0, 2),
+            'total_requested' => round((float) $totals->total_requested, 2),
+            'total_approved' => round((float) $totals->total_approved, 2),
+            'total_funded' => round((float) $totals->total_funded, 2),
+            'avg_loan_amount' => round((float) $totals->avg_loan_amount, 2),
+            'avg_interest_rate' => round((float) $totals->avg_interest_rate, 2),
         ];
     }
 
@@ -271,13 +305,19 @@ class AdminDashboardService
 
     protected function getProjectedMonthlyRevenue(): float
     {
-        // Calculate based on active loan volume
         $activeLoanVolume = Loan::whereIn('status', ['active', 'disbursed'])
             ->sum('approved_amount');
-        
-        $avgPlatformFeeRate = 0.03; // 3%
-        
-        return $activeLoanVolume * $avgPlatformFeeRate;
+
+        if ($activeLoanVolume <= 0) {
+            return 0.0;
+        }
+
+        $avgPlatformFeeRate = Loan::whereNotNull('disbursed_at')
+            ->where('approved_amount', '>', 0)
+            ->selectRaw('COALESCE(AVG(platform_fee / approved_amount), 0) as avg_rate')
+            ->value('avg_rate');
+
+        return round($activeLoanVolume * (float) $avgPlatformFeeRate, 2);
     }
 
     // ─── Chart Data ──────────────────────────────────────────────────

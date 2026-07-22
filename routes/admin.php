@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SystemStatusController;
+use App\Http\Controllers\Admin\OperationsDashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
@@ -23,6 +25,9 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
 
     // ─── Dashboard ────────────────────────────────────────────────────
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // ─── Operations Dashboard ─────────────────────────────────────────
+    Route::get('/operations', [OperationsDashboardController::class, 'index'])->name('operations');
 
     Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('impersonate.start');
 
@@ -62,14 +67,6 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
         Route::post('/{loan}/agreement/resend', [LoanController::class, 'resend'])->name('agreement.resend');
     });
 
-    // ─── Funding (Escrow) ─────────────────────────────────────────────
-    Route::prefix('funding')->name('funding.')->group(function () {
-        Route::get('/', [FundingController::class, 'index'])->name('index');
-        Route::get('/{transaction}', [FundingController::class, 'show'])->name('show');
-        Route::patch('/{transaction}/confirm', [FundingController::class, 'confirm'])->name('confirm');
-        Route::patch('/{transaction}/cancel', [FundingController::class, 'cancel'])->name('cancel');
-    });
-
     // ─── Disbursements ────────────────────────────────────────────────
     Route::prefix('disbursements')->name('disbursements.')->group(function () {
         Route::get('/', [DisbursementController::class, 'index'])->name('index');
@@ -82,7 +79,8 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
     Route::prefix('repayments')->name('repayments.')->group(function () {
         Route::get('/', [RepaymentController::class, 'index'])->name('index');
         Route::get('/{repayment}', [RepaymentController::class, 'show'])->name('show');
-        Route::patch('/{repayment}/confirm', [RepaymentController::class, 'confirm'])->name('confirm');
+        Route::patch('/{repayment}/approve', [RepaymentController::class, 'approve'])->name('approve');
+        Route::patch('/{repayment}/reject', [RepaymentController::class, 'reject'])->name('reject');
     });
 
     // ─── Collections ──────────────────────────────────────────────────
@@ -102,6 +100,7 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
     // ─── Audit Logs ───────────────────────────────────────────────────
     Route::prefix('audit')->name('audit.')->group(function () {
         Route::get('/', [AuditController::class, 'index'])->name('index');
+        Route::get('/{source}/{id}', [AuditController::class, 'show'])->name('show');
     });
 
     // ─── Reports ──────────────────────────────────────────────────────
@@ -110,6 +109,24 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
         Route::get('/{type}', [ReportController::class, 'show'])->name('show');
     });
 
+    // ─── Funding Payments ─────────────────────────────────────────────
+    Route::prefix('funding-payments')->name('funding-payments.')->group(function () {
+        Route::get('/', [FundingController::class, 'index'])->name('index');
+        Route::get('/{transaction}', [FundingController::class, 'show'])->name('show');
+        Route::post('/{transaction}/confirm', [FundingController::class, 'confirm'])->name('confirm');
+        Route::post('/{transaction}/reject', [FundingController::class, 'reject'])->name('reject');
+        Route::post('/{transaction}/request-info', [FundingController::class, 'requestInfo'])->name('request-info');
+        Route::post('/{transaction}/cancel', [FundingController::class, 'cancel'])->name('cancel');
+    });
+
     // ─── Settings ─────────────────────────────────────────────────────
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+
+    // ─── System Status ────────────────────────────────────────────────
+    Route::prefix('system-status')->name('system-status.')->group(function () {
+        Route::get('/', [SystemStatusController::class, 'index'])->name('index');
+        Route::post('/restart-worker', [SystemStatusController::class, 'restartWorker'])->name('restart-worker');
+        Route::post('/retry-failed', [SystemStatusController::class, 'retryFailed'])->name('retry-failed');
+        Route::post('/clear-failed', [SystemStatusController::class, 'clearFailed'])->name('clear-failed');
+    });
 });

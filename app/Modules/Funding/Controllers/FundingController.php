@@ -22,7 +22,7 @@ class FundingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status' => ['sometimes', 'string', 'in:pending,confirmed,cancelled,refunded'],
+            'status' => ['sometimes', 'string', 'in:pending,active,completed,cancelled'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -77,7 +77,7 @@ class FundingController extends Controller
             'transaction' => $transaction,
             'loan_status' => $loan->fresh()->status,
             'remaining_funding' => $this->fundingService->getRemainingFunding($loan->fresh()),
-        ], 'Funding transaction initiated. Processing will complete shortly.');
+        ], 'Funding reservation created. Please complete payment and await admin verification.');
     }
 
     // ─── Lender: View Funding Transaction ─────────────────────────

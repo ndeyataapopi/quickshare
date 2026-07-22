@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Address;
 use App\Models\ReferralCode;
 use App\Models\SourceOfIncome;
@@ -235,7 +236,23 @@ class UserController extends Controller
             'status' => 'required|in:active,suspended,pending',
         ]);
 
+        $previousStatus = $user->status;
+
         $user->update(['status' => $validated['status']]);
+
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'actor_id' => auth()->id(),
+            'action' => 'user.status_changed',
+            'description' => "User status changed from {$previousStatus} to {$validated['status']} for {$user->email}",
+            'subject_type' => User::class,
+            'subject_id' => $user->id,
+            'previous_status' => $previousStatus,
+            'new_status' => $validated['status'],
+            'metadata' => ['admin_id' => auth()->id()],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
 
         return redirect()->route('admin.users.show', $user)
             ->with('success', "User status updated to {$validated['status']}.");
@@ -259,7 +276,24 @@ class UserController extends Controller
             'roles.*' => ['string', 'exists:roles,name'],
         ]);
 
+        $previousRoles = $user->roles->pluck('name')->toArray();
+
         $user->syncRoles($validated['roles'] ?? []);
+
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'actor_id' => auth()->id(),
+            'action' => 'user.roles_updated',
+            'description' => 'Roles updated for ' . $user->email,
+            'subject_type' => User::class,
+            'subject_id' => $user->id,
+            'metadata' => [
+                'previous_roles' => $previousRoles,
+                'new_roles' => $validated['roles'] ?? [],
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
 
         return redirect()->route('admin.users.roles', $user)
             ->with('success', 'User roles updated successfully.');
@@ -272,7 +306,24 @@ class UserController extends Controller
             'permissions.*' => ['string', 'exists:permissions,name'],
         ]);
 
+        $previousPermissions = $user->permissions->pluck('name')->toArray();
+
         $user->syncPermissions($validated['permissions'] ?? []);
+
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'actor_id' => auth()->id(),
+            'action' => 'user.permissions_updated',
+            'description' => 'Permissions updated for ' . $user->email,
+            'subject_type' => User::class,
+            'subject_id' => $user->id,
+            'metadata' => [
+                'previous_permissions' => $previousPermissions,
+                'new_permissions' => $validated['permissions'] ?? [],
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
 
         return redirect()->route('admin.users.roles', $user)
             ->with('success', 'User permissions updated successfully.');

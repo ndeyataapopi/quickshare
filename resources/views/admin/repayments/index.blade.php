@@ -73,18 +73,15 @@
                             <td>{{ $r->loan && $r->loan->borrower ? $r->loan->borrower->first_name . ' ' . $r->loan->borrower->last_name : '—' }}</td>
                             <td>N$ {{ number_format($r->amount, 2) }}</td>
                             <td>{{ $r->due_date ? \Carbon\Carbon::parse($r->due_date)->format('M j, Y') : '—' }}</td>
-                            <td>{{ $r->paid_at ? \Carbon\Carbon::parse($r->paid_at)->format('M j, Y') : '—' }}</td>
+                            <td>{{ $r->paid_date ? \Carbon\Carbon::parse($r->paid_date)->format('M j, Y') : '—' }}</td>
                             <td>
-                                @php $sc=['pending'=>'warning','completed'=>'success','overdue'=>'danger']; @endphp
-                                <span class="badge badge-{{ $sc[$r->status] ?? 'secondary' }}">{{ ucfirst($r->status) }}</span>
+                                @php $sc=['pending'=>'warning','pending_approval'=>'info','paid'=>'success','overdue'=>'danger','defaulted'=>'dark','rejected'=>'danger','partial'=>'warning']; @endphp
+                                <span class="badge badge-{{ $sc[$r->status] ?? 'secondary' }}">{{ ucfirst(str_replace('_', ' ', $r->status)) }}</span>
                             </td>
                             <td>
                                 <a href="{{ route('admin.repayments.show', $r) }}" class="btn btn-xs btn-outline-primary">View</a>
-                                @if($r->status === 'pending')
-                                <form method="POST" action="{{ route('admin.repayments.confirm', $r) }}" class="d-inline">
-                                    @csrf @method('PATCH')
-                                    <button class="btn btn-xs btn-success" onclick="return confirm('Confirm this repayment?')">Confirm</button>
-                                </form>
+                                @if($r->status === 'pending_approval')
+                                <a href="{{ route('admin.repayments.show', $r) }}" class="btn btn-xs btn-success">Review</a>
                                 @endif
                             </td>
                         </tr>

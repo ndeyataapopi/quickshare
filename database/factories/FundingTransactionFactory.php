@@ -36,4 +36,12 @@ class FundingTransactionFactory extends Factory
             'confirmed_at' => now(),
         ]);
     }
+
+    public function rejected(): static
+    {
+        return $this->state([
+            'status' => 'rejected',
+            'rejected_at' => now(),
+        ]);
+    }
 }

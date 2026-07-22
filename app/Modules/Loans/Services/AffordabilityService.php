@@ -6,12 +6,15 @@ use App\Models\User;
 use App\Modules\Loans\DTOs\AffordabilityInput;
 use App\Modules\Loans\Models\AffordabilityAssessment;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\LoanService;
 use App\Modules\TrustScore\Services\TrustScoreService;
 
 class AffordabilityService
 {
-    public function __construct(protected TrustTierService $trustTierService)
-    {
+    public function __construct(
+        protected TrustTierService $trustTierService,
+        protected LoanService $loanService,
+    ) {
     }
 
     // ─── Run Full Assessment ─────────────────────────────────────────
@@ -73,33 +76,11 @@ class AffordabilityService
 
     public function calculateMaxLoan(User $user, ?float $disposableIncome = null): float
     {
-        $trustMax = TrustScoreService::maxLoanAmount($user);
-
         if ($disposableIncome === null) {
-            return $trustMax;
+            return TrustScoreService::maxLoanAmount($user);
         }
 
-        $maxMonthlyRepayment = $this->calculateMaxMonthlyRepayment($disposableIncome);
-
-        // Calculate max principal that produces a monthly repayment ≤ maxMonthlyRepayment
-        // Using max term for most favourable calculation
-        $tier = $this->trustTierService->forScore((float) $user->trust_score);
-        $maxTermDays = max($tier['allowed_durations']);
-        $interestRate = $tier['interest_percent'];
-        $platformFeePercent = $tier['platform_fee_percent'];
-        $dailyRate = $interestRate / 365 / 100;
-        $termMonths = $maxTermDays / 30;
-
-        // totalRepayment = P + P*dailyRate*days + P*feePercent/100
-        // totalRepayment = P * (1 + dailyRate*days + feePercent/100)
-        // monthlyRepayment = totalRepayment / termMonths
-        // maxMonthlyRepayment = P * multiplier / termMonths
-        // P = maxMonthlyRepayment * termMonths / multiplier
-        $multiplier = 1 + ($dailyRate * $maxTermDays) + ($platformFeePercent / 100);
-        $incomeBasedMax = ($maxMonthlyRepayment * $termMonths) / $multiplier;
-        $incomeBasedMax = round($incomeBasedMax, 2);
-
-        return min($trustMax, $incomeBasedMax);
+        return $this->loanService->affordabilityMaxLoan($user, $disposableIncome);
     }
 
     // ─── DTI Ratio ───────────────────────────────────────────────────
@@ -117,7 +98,7 @@ class AffordabilityService
 
     public function classifyDTI(float $dti): string
     {
-        $cfg = config('loans.affordability');
+        $cfg = config('loan.affordability');
 
         return match (true) {
             $dti <= $cfg['dti_excellent_max'] => 'excellent',
@@ -148,7 +129,7 @@ class AffordabilityService
 
     public function calculateMaxMonthlyRepayment(float $disposableIncome): float
     {
-        $maxPercent = (float) config('loans.affordability.max_repayment_to_income_percent');
+        $maxPercent = (float) config('loan.affordability.max_repayment_to_income_percent');
 
         return round($disposableIncome * ($maxPercent / 100), 2);
     }
@@ -244,30 +225,13 @@ class AffordabilityService
             $reasons[] = "Multiple loan defaults ({$repaymentHistory['defaulted_loans']})";
         }
 
-        // Check if loan amount exceeds affordability
+        // Check if loan amount exceeds trust tier limit
         if ($loan !== null) {
             $requestedAmount = (float) $loan->requested_amount;
-            $loanTermDays = $loan->loan_term_days;
-            $tier = $this->trustTierService->forScore((float) $loan->borrower->trust_score);
-            $interestRate = $tier['interest_percent'];
-            $platformFeePercent = $tier['platform_fee_percent'];
-            $dailyRate = $interestRate / 365 / 100;
-            $totalRepayment = $requestedAmount * (1 + ($dailyRate * $loanTermDays) + ($platformFeePercent / 100));
-            $termMonths = max(1, $loanTermDays / 30);
-            $monthlyRepayment = $totalRepayment / $termMonths;
-            $maxMonthly = $this->calculateMaxMonthlyRepayment(
-                $this->calculateDisposableIncome(new AffordabilityInput(
-                    monthlyIncome: 0, // placeholder — not used here
-                )),
-            );
+            $trustMax = $this->loanService->maxLoanForUser($loan->borrower);
 
-            // Recalculate with actual income — we already have DTI info
-            if ($monthlyRepayment > 0 && $dti > 0) {
-                // Just flag if amount is disproportionate
-                $trustMax = TrustScoreService::maxLoanAmount($loan->borrower);
-                if ($requestedAmount > $trustMax) {
-                    $reasons[] = "Requested amount exceeds trust-tier limit of {$trustMax}";
-                }
+            if ($requestedAmount > $trustMax) {
+                $reasons[] = "Requested amount exceeds trust-tier limit of {$trustMax}";
             }
         }
 
@@ -355,7 +319,7 @@ class AffordabilityService
 
     protected function getWeights(): array
     {
-        $cfg = config('loans.affordability');
+        $cfg = config('loan.affordability');
 
         return [
             'weight_dti' => $cfg['weight_dti'],
@@ -368,7 +332,7 @@ class AffordabilityService
 
     protected function getThresholds(): array
     {
-        $cfg = config('loans.affordability');
+        $cfg = config('loan.affordability');
 
         return [
             'auto_approve_min_score' => $cfg['auto_approve_min_score'],

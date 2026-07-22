@@ -23,12 +23,12 @@
         <div class="alert alert-danger alert-dismissible fade show"><i class="mdi mdi-alert-circle mr-2"></i>{{ session('error') }}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>
     @endif
     
-    <!-- Marketplace Stats -->
+    <!-- Marketplace Stats (DB-sourced via MarketplaceService::getStats) -->
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-primary mb-0">{{ formatKpi($loans->count()) }}</h4>
+                    <h4 class="font-weight-bold text-primary mb-0">{{ formatKpi($stats['total_listings'] ?? 0) }}</h4>
                     <small class="text-muted">Available Loans</small>
                 </div>
             </div>
@@ -36,7 +36,7 @@
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-success mb-0">{{ formatKpi($loans->whereIn('status', ['marketplace', 'partially_funded'])->count()) }}</h4>
+                    <h4 class="font-weight-bold text-success mb-0">{{ formatKpi($stats['active_funding'] ?? 0) }}</h4>
                     <small class="text-muted">Active Funding</small>
                 </div>
             </div>
@@ -44,7 +44,7 @@
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-info mb-0">{{ kpiMoney($loans->sum('requested_amount')) }}</h4>
+                    <h4 class="font-weight-bold text-info mb-0">{{ kpiMoney($stats['total_value'] ?? 0) }}</h4>
                     <small class="text-muted">Total Volume</small>
                 </div>
             </div>
@@ -107,7 +107,7 @@
 
     <div class="row loan-grid">
         @forelse($loans as $loan)
-        <div class="col-md-6 col-lg-4 loan-card" data-status="{{ $loan->status }}" data-purpose="{{ $loan->purpose }}" data-amount="{{ $loan->requested_amount }}" data-funded="{{ $loan->funded_amount ?? 0 }}" data-date="{{ $loan->created_at->timestamp }}">
+        <div class="col-md-6 col-lg-4 loan-card" data-status="{{ $loan->status }}" data-purpose="{{ $loan->purpose }}" data-amount="{{ $loan->display['loan_amount'] }}" data-funded="{{ $loan->display['funded_amount'] }}" data-date="{{ $loan->created_at->timestamp }}">
             <div class="card h-100">
                 <div class="card-body d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-start mb-2">
@@ -130,39 +130,45 @@
                     </div>
                     
                     @php
-                        $target = (float) ($loan->approved_amount ?? $loan->requested_amount);
-                        $funded = (float) ($loan->funded_amount ?? 0);
-                        $remaining = max(0, $target - $funded);
-                        $pct = $target > 0 ? min(100, round(($funded / $target) * 100)) : 0;
                         $minFund = config('loans.min_funding_amount', 500);
-                        
-                        // Risk is derived from the borrower's trust score
-                        $trustScore = (float) $loan->borrower->trust_score;
-                        $riskScore = max(0, 100 - $trustScore);
-                        $riskLevel = \App\Modules\TrustScore\Services\TrustScoreService::riskLevel($loan->borrower);
-                        $riskColor = $riskLevel === 'low' ? 'success' : ($riskLevel === 'medium' ? 'warning' : 'danger');
                     @endphp
                     
                     <div class="mb-3">
-                        <h4 class="text-primary mb-1">{{ kpiMoney($target) }}</h4>
+                        <div class="d-flex justify-content-between align-items-end">
+                            <h4 class="text-primary mb-1">{{ kpiMoney($loan->display['loan_amount']) }}</h4>
+                            <span class="text-muted small">{{ $loan->loan_term_days }} days</span>
+                        </div>
                         <p class="text-muted small mb-2">{{ $loan->purpose }}</p>
-                        
-                        <!-- Risk Indicator -->
-                        <div class="d-flex align-items-center mb-2">
-                            <small class="text-muted mr-2">Risk:</small>
-                            <span class="badge badge-{{ $riskColor }} badge-sm">
-                                <i class="mdi mdi-shield-check mr-1"></i>{{ ucfirst($riskLevel) }}
-                            </span>
-                            <small class="text-muted ml-auto">{{ $riskScore }}/100</small>
+
+                        <!-- Trust Score & Risk -->
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div>
+                                <small class="text-muted d-block">Trust Score</small>
+                                <span class="badge badge-info badge-sm">{{ number_format($loan->display['trust_score'], 0) }}/100</span>
+                            </div>
+                            <div class="text-right">
+                                <small class="text-muted d-block">Risk</small>
+                                <span class="badge badge-{{ $loan->display['risk_color'] }} badge-sm">
+                                    <i class="mdi mdi-shield-check mr-1"></i>{{ ucfirst($loan->display['risk_level']) }}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="row small text-muted mb-3">
+
+                    <div class="row small text-muted mb-2">
                         <div class="col-6">
-                            <i class="mdi mdi-calendar mr-1"></i> {{ $loan->loan_term_days }} days
+                            Flat Fee: {{ kpiMoney($loan->display['total_loan_charge']) }}
                         </div>
                         <div class="col-6">
-                            <i class="mdi mdi-percent mr-1"></i> {{ $loan->interest_rate ?? '-' }}% p.a.
+                            <i class="mdi mdi-cash-multiple"></i> Return: {{ kpiMoney($loan->display['expected_return']) }}
+                        </div>
+                    </div>
+                    <div class="row small text-muted mb-2">
+                        <div class="col-6">
+                            Platform Fee: {{ kpiMoney($loan->display['platform_fee']) }}
+                        </div>
+                        <div class="col-6">
+                            Lender Return: {{ kpiMoney($loan->display['lender_return']) }}
                         </div>
                     </div>
                     
@@ -170,20 +176,20 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between small mb-1">
                             <span>Funded</span>
-                            <span class="font-weight-bold">{{ $pct }}%</span>
+                            <span class="font-weight-bold">{{ $loan->display['progress_percent'] }}%</span>
                         </div>
                         <div class="progress" style="height:8px;">
-                            <div class="progress-bar bg-{{ $pct >= 75 ? 'success' : ($pct >= 50 ? 'warning' : 'info') }}" 
-                                 style="width:{{ $pct }}%; transition: width 0.3s ease;"></div>
+                            <div class="progress-bar bg-{{ $loan->display['progress_percent'] >= 75 ? 'success' : ($loan->display['progress_percent'] >= 50 ? 'warning' : 'info') }}" 
+                                 style="width:{{ $loan->display['progress_percent'] }}%; transition: width 0.3s ease;"></div>
                         </div>
                         <div class="d-flex justify-content-between small text-muted mt-1">
-                            <span>{{ kpiMoney($funded) }}</span>
-                            <span>{{ kpiMoney($remaining) }} left</span>
+                            <span>{{ kpiMoney($loan->display['funded_amount']) }}</span>
+                            <span>{{ kpiMoney($loan->display['remaining_amount']) }} left</span>
                         </div>
                     </div>
                     
                     <!-- Funding Form -->
-                    @if($loan->isOnMarketplace() && $remaining > 0)
+                    @if($loan->isOnMarketplace() && $loan->display['remaining_amount'] > 0)
                     <form action="{{ route('client.marketplace.fund', $loan) }}" method="POST" class="funding-form mt-auto">
                         @csrf
                         <div class="input-group input-group-sm">
@@ -193,7 +199,7 @@
                             <input type="number" name="amount" class="form-control"
                                    placeholder="{{ $minFund }}"
                                    min="{{ $minFund }}" 
-                                   max="{{ $remaining }}" 
+                                   max="{{ $loan->display['remaining_amount'] }}" 
                                    step="0.01" 
                                    required>
                             <div class="input-group-append">
@@ -216,14 +222,6 @@
                     </div>
                     @endif
                     
-                    <!-- Quick Actions -->
-                    <div class="mt-2 text-center">
-                        <button class="btn btn-link btn-sm text-primary view-details"
-                                data-id="{{ $loan->id }}"
-                                data-url="{{ route('client.marketplace.show', $loan) }}">
-                            <i class="mdi mdi-eye mr-1"></i>View Details
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -243,29 +241,11 @@
     <div class="mt-3">{{ $loans->links() }}</div>
     @endif
 </div>
+@endsection
 
-<!-- Loan Details Modal -->
-<div class="modal fade" id="loanDetailsModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Loan Details</h5>
-                <button type="button" class="close" data-dismiss="modal">
-                    <span>&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" id="loanDetailsContent">
-                <!-- Content will be loaded dynamically -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+$(function() {
     const loanCards = document.querySelectorAll('.loan-card');
     const filterSelects = document.querySelectorAll('.filter-select');
     const sortSelect = document.querySelector('.sort-select');
@@ -350,8 +330,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // View details functionality
-    const viewDetailsButtons = document.querySelectorAll('.view-details');
-    const loanDetailsModal = document.getElementById('loanDetailsModal');
     const loanDetailsContent = document.getElementById('loanDetailsContent');
     const currencySymbol = {{ json_encode(config('loans.currency_symbol')) }};
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
@@ -363,97 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function riskBadgeClass(level) {
         return level === 'low' ? 'success' : (level === 'medium' ? 'warning' : 'danger');
     }
-
-    viewDetailsButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const url = this.dataset.url;
-
-            loanDetailsContent.innerHTML = `
-                <div class="text-center py-4">
-                    <i class="mdi mdi-loading mdi-spin" style="font-size: 48px;"></i>
-                    <p class="mt-2">Loading loan details...</p>
-                </div>
-            `;
-
-            fetch(url, {
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(response => {
-                if (! response.ok) throw new Error('Could not load loan details.');
-                return response.json();
-            })
-            .then(data => {
-                const l = data.listing || data;
-                const borrower = l.borrower || {};
-                const loan = l.loan || {};
-                const funding = l.funding || {};
-                const remaining = parseFloat(funding.remaining_amount || 0);
-                const progress = funding.progress_percent || 0;
-                const canFund = ['marketplace', 'partially_funded'].includes(funding.status) && remaining > 0;
-                const fundUrl = url + '/fund';
-                const minFund = {{ config('loans.min_funding_amount', 500) }};
-
-                const riskClass = riskBadgeClass(borrower.risk_level);
-
-                loanDetailsContent.innerHTML = `
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Borrower Information</h6>
-                            <table class="table table-sm">
-                                <tr><td>Borrower ID:</td><td>${borrower.id_hash || '-'}</td></tr>
-                                <tr><td>Trust Score:</td><td><span class="badge badge-primary">${borrower.trust_score || 0}/100</span></td></tr>
-                                <tr><td>Trust Tier:</td><td>${ucfirst(borrower.trust_tier || '-')}</td></tr>
-                                <tr><td>Risk Level:</td><td><span class="badge badge-${riskClass}">${ucfirst(borrower.risk_level || 'high')}</span></td></tr>
-                                <tr><td>Repayment Probability:</td><td>${borrower.repayment_probability || 0}%</td></tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Loan Details</h6>
-                            <table class="table table-sm">
-                                <tr><td>Reference:</td><td>${l.reference || '-'}</td></tr>
-                                <tr><td>Amount:</td><td>${formatMoney(loan.approved_amount)}</td></tr>
-                                <tr><td>Term:</td><td>${loan.loan_term_days || 0} days</td></tr>
-                                <tr><td>Interest Rate:</td><td>${loan.interest_rate || 0}% p.a.</td></tr>
-                                <tr><td>Total Repayment:</td><td>${formatMoney(loan.total_repayment)}</td></tr>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <h6>Funding Progress</h6>
-                        <div class="progress mb-2" style="height: 20px;">
-                            <div class="progress-bar bg-${progress >= 75 ? 'success' : (progress >= 50 ? 'warning' : 'info')}" style="width: ${progress}%;">${progress}%</div>
-                        </div>
-                        <small class="text-muted">${formatMoney(funding.funded_amount)} of ${formatMoney(loan.approved_amount)} funded &bull; ${formatMoney(remaining)} left</small>
-                    </div>
-                    ${canFund ? `
-                    <div class="mt-4">
-                        <h6>Fund This Loan</h6>
-                        <form action="${fundUrl}" method="POST" class="funding-form">
-                            <input type="hidden" name="_token" value="${csrfToken}">
-                            <div class="input-group">
-                                <div class="input-group-prepend"><span class="input-group-text">${currencySymbol}</span></div>
-                                <input type="number" name="amount" class="form-control" placeholder="${minFund}" min="${minFund}" max="${remaining.toFixed(2)}" step="0.01" required>
-                                <div class="input-group-append">
-                                    <button type="submit" class="btn btn-primary"><i class="mdi mdi-plus"></i> Fund</button>
-                                </div>
-                            </div>
-                            <small class="text-muted">Min: ${currencySymbol}${minFund}</small>
-                        </form>
-                    </div>
-                    ` : ''}
-                `;
-
-                attachFundingValidation(loanDetailsContent);
-            })
-            .catch(error => {
-                loanDetailsContent.innerHTML = `
-                    <div class="alert alert-danger">${error.message || 'Unable to load loan details.'}</div>
-                `;
-            });
-
-            loanDetailsModal.modal('show');
-        });
-    });
 
     function ucfirst(string) {
         return (string || '').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
@@ -498,4 +385,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 30000);
 });
 </script>
-@endsection
+@endpush

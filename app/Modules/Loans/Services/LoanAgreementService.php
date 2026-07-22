@@ -22,7 +22,11 @@ class LoanAgreementService
         $disk = (string) config('loan.agreement.disk');
         $pdf = Pdf::loadView('pdf.loan-agreement', $this->data($loan, $calculation, $repaymentDate));
 
-        Storage::disk($disk)->put($path, $pdf->output());
+        $tempFile = tempnam(sys_get_temp_dir(), 'pdf_');
+        $pdf->save($tempFile);
+
+        Storage::disk($disk)->put($path, fopen($tempFile, 'r'));
+        unlink($tempFile);
 
         $loan->update([
             'agreement_path' => $path,
@@ -38,7 +42,14 @@ class LoanAgreementService
         $loan = new Loan(['reference' => 'PREVIEW']);
         $loan->setRelation('borrower', $borrower);
 
-        return Pdf::loadView('pdf.loan-agreement', $this->data($loan, $calculation, $repaymentDate))->output();
+        $pdf = Pdf::loadView('pdf.loan-agreement', $this->data($loan, $calculation, $repaymentDate));
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'pdf_preview_');
+        $pdf->save($tempFile);
+        $content = file_get_contents($tempFile);
+        unlink($tempFile);
+
+        return $content;
     }
 
     public function data(Loan $loan, LoanCalculation $calculation, CarbonInterface $repaymentDate): array

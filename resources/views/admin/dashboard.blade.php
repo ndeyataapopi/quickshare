@@ -83,7 +83,7 @@
                     <div class="d-flex align-items-center mb-2 mt-4">
                         <h2 class="mb-0 display-5"><i class="mdi mdi-trending-up text-info"></i></h2>
                         <div class="ml-auto">
-                            <h2 class="mb-0 display-6"><span class="font-normal">N$ {{ number_format($stats['total_funded']) }}</span></h2>
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($stats['total_funded']) }}</span></h2>
                         </div>
                     </div>
                 </div>
@@ -99,6 +99,65 @@
                             <h2 class="mb-0 display-6"><span class="font-normal">{{ $stats['pending_kyc'] }}</span></h2>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Platform Earnings</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-cash-multiple text-success"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($earningsSummary['total_earnings'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">ROI: {{ $earningsSummary['roi'] ?? 0 }}%</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Total Revenue</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-chart-line text-info"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($revenueStats['total_revenue'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">Today: {{ formatCurrencyShort($revenueStats['revenue_today'] ?? 0) }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Platform Fees</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-percent text-primary"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($revenueStats['total_platform_fees'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">This month: {{ formatCurrencyShort($revenueStats['revenue_this_month'] ?? 0) }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase">Total Invested</h5>
+                    <div class="d-flex align-items-center mb-2 mt-4">
+                        <h2 class="mb-0 display-5"><i class="mdi mdi-bank text-warning"></i></h2>
+                        <div class="ml-auto">
+                            <h2 class="mb-0 display-6"><span class="font-normal">{{ formatCurrencyShort($earningsSummary['total_invested'] ?? 0) }}</span></h2>
+                        </div>
+                    </div>
+                    <small class="text-muted">Expected: {{ formatCurrencyShort($earningsSummary['total_expected_return'] ?? 0) }}</small>
                 </div>
             </div>
         </div>
@@ -147,6 +206,32 @@
     </div>
 
     <!-- ============================================================== -->
+    <!-- Charts Row  -->
+    <!-- ============================================================== -->
+    <div class="row">
+        <div class="col-md-12 col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase mb-3">Loans Over Time (30 Days)</h5>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="loansOverTimeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12 col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase mb-3">Revenue by Month</h5>
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="revenueByMonthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
     <!-- Recent Loans & Activity Row  -->
     <!-- ============================================================== -->
     <div class="row">
@@ -169,10 +254,21 @@
                                     @foreach($recentLoans as $loan)
                                     <tr>
                                         <td>{{ $loan->reference }}</td>
-                                        <td>N$ {{ number_format($loan->amount) }}</td>
+                                        <td>N$ {{ number_format((float) ($loan->approved_amount ?? $loan->requested_amount)) }}</td>
                                         <td>
-                                            <span class="badge badge-{{ $loan->status === 'approved' ? 'success' : ($loan->status === 'pending' ? 'warning' : ($loan->status === 'active' ? 'primary' : 'secondary')) }}">
-                                                {{ ucfirst($loan->status) }}
+                                            @php
+                                                $badgeClass = match($loan->status) {
+                                                    'marketplace', 'partially_funded', 'funded' => 'success',
+                                                    'pending_review' => 'warning',
+                                                    'active', 'disbursed' => 'primary',
+                                                    'cancelled' => 'danger',
+                                                    'defaulted', 'overdue' => 'danger',
+                                                    'completed' => 'info',
+                                                    default => 'secondary',
+                                                };
+                                            @endphp
+                                            <span class="badge badge-{{ $badgeClass }}">
+                                                {{ ucfirst(str_replace('_', ' ', $loan->status)) }}
                                             </span>
                                         </td>
                                         <td>{{ $loan->created_at->format('M j, Y') }}</td>
@@ -227,4 +323,80 @@
 <!-- ============================================================== -->
 <!-- End Container fluid  -->
 <!-- ============================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    @php
+        $loansOverTime = $chartData['loans_over_time'] ?? [];
+        $revenueByMonth = $chartData['revenue_by_month'] ?? [];
+    @endphp
+
+    // Loans Over Time Chart
+    const loansCtx = document.getElementById('loansOverTimeChart');
+    if (loansCtx) {
+        const loansData = @json($loansOverTime);
+        new Chart(loansCtx.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: loansData.map(function(d) { return d.date; }),
+                datasets: [{
+                    label: 'Loan Count',
+                    data: loansData.map(function(d) { return d.count; }),
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Total Amount (N$)',
+                    data: loansData.map(function(d) { return d.amount; }),
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: { beginAtZero: true, position: 'left' },
+                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    // Revenue by Month Chart
+    const revenueCtx = document.getElementById('revenueByMonthChart');
+    if (revenueCtx) {
+        const revenueData = @json($revenueByMonth);
+        new Chart(revenueCtx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: revenueData.map(function(d) { return d.month; }),
+                datasets: [{
+                    label: 'Platform Fees (N$)',
+                    data: revenueData.map(function(d) { return d.platform_fees; }),
+                    backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: function(value) { return 'N$ ' + value.toLocaleString(); } }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 @endsection

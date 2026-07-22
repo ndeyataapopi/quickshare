@@ -3,12 +3,18 @@
 namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Funding\SubmitPaymentRequest;
 use App\Modules\Funding\Models\FundingTransaction;
-use Illuminate\Http\Request;
+use App\Modules\Funding\Services\FundingService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class FundingController extends Controller
 {
+    public function __construct(protected FundingService $fundingService)
+    {
+    }
+
     public function show(FundingTransaction $transaction)
     {
         $this->authorizeTransaction($transaction);
@@ -20,24 +26,48 @@ class FundingController extends Controller
     {
         $this->authorizeTransaction($transaction);
         $transaction->load(['loan.borrower']);
+
+        $transaction->payment_reference ??= 'QS-LOAN-' . $transaction->loan_id . '-' . $transaction->id;
+        $transaction->save();
+
         return view('client.funding.payment', compact('transaction'));
     }
 
-    public function submitPayment(Request $request, FundingTransaction $transaction)
+    public function submitPayment(SubmitPaymentRequest $request, FundingTransaction $transaction)
     {
         $this->authorizeTransaction($transaction);
 
-        $request->validate([
-            'payment_reference' => 'required|string|max:255',
-            'payment_method'    => 'required|in:eft,instant_eft,bank_transfer',
-        ]);
+        if (! $transaction->isPending()) {
+            return redirect()->route('client.funding.show', $transaction)
+                ->with('error', 'This funding transaction cannot be updated.');
+        }
 
-        $transaction->update([
-            'notes'    => 'Payment reference: ' . $request->payment_reference . ' | Method: ' . $request->payment_method,
-        ]);
+        $validated = $request->validated();
+
+        $transaction = $this->fundingService->submitPayment(
+            $transaction,
+            $validated,
+            $request->file('proof_of_payment'),
+        );
+
+        // Notify admins that a funding payment is awaiting verification
+        $admin = $this->adminUser();
+        if ($admin) {
+            app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
+                $admin,
+                'funding_payment_submitted',
+                [
+                    'loan_id' => $transaction->loan_id,
+                    'reference' => $transaction->loan->reference,
+                    'amount' => (float) $transaction->amount,
+                    'transaction_id' => $transaction->id,
+                    'lender_id' => $transaction->lender_id,
+                ]
+            );
+        }
 
         return redirect()->route('client.investments.index')
-            ->with('success', 'Payment details submitted. Your investment will be confirmed once payment is verified.');
+            ->with('success', 'Payment details submitted. Your investment will be confirmed once the admin verifies your payment.');
     }
 
     private function authorizeTransaction(FundingTransaction $transaction): void
@@ -45,5 +75,16 @@ class FundingController extends Controller
         if ($transaction->lender_id !== Auth::id()) {
             abort(403, 'Unauthorized.');
         }
+    }
+
+    private function adminUser(): ?\App\Models\User
+    {
+        $admin = \App\Models\User::role('admin')->first();
+
+        if (! $admin) {
+            Log::warning('No admin user found to notify about funding payment submission.');
+        }
+
+        return $admin;
     }
 }

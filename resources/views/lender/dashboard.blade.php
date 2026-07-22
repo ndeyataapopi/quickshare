@@ -13,28 +13,28 @@
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Total Funded</h5>
-                <h2 class="font-bold">N$ {{ number_format(auth()->user()->fundingTransactions()->sum('amount')) }}</h2>
+                <h2 class="font-bold">{{ formatCurrencyShort($summary['total_invested'] ?? 0) }}</h2>
                 <i class="mdi mdi-trending-up text-primary float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Active Investments</h5>
-                <h2 class="font-bold">{{ auth()->user()->fundingTransactions()->whereHas('loan', fn($q) => $q->where('status','active'))->count() }}</h2>
+                <h2 class="font-bold">{{ $summary['active_count'] ?? 0 }}</h2>
                 <i class="mdi mdi-bank text-success float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Expected Returns</h5>
-                <h2 class="font-bold">N$ {{ number_format(auth()->user()->fundingTransactions()->sum('expected_return')) }}</h2>
+                <h2 class="font-bold">{{ formatCurrencyShort($summary['total_expected_return'] ?? 0) }}</h2>
                 <i class="mdi mdi-cash-multiple text-warning float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
         <div class="col-md-3">
             <div class="card"><div class="card-body">
                 <h5 class="card-title text-muted text-uppercase small">Total Investments</h5>
-                <h2 class="font-bold">{{ auth()->user()->fundingTransactions()->count() }}</h2>
+                <h2 class="font-bold">{{ ($summary['active_count'] ?? 0) + ($summary['completed_count'] ?? 0) }}</h2>
                 <i class="mdi mdi-chart-bar text-info float-right" style="font-size:40px;opacity:.3"></i>
             </div></div>
         </div>
@@ -63,13 +63,12 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Recent Investments</h5>
-                    @php $recentInv = auth()->user()->fundingTransactions()->with('loan')->latest()->take(5)->get(); @endphp
-                    @if($recentInv->count())
+                    @if($investments->count())
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead><tr><th>Loan</th><th>Amount</th><th>Status</th></tr></thead>
                             <tbody>
-                            @foreach($recentInv as $inv)
+                            @foreach($investments as $inv)
                             <tr>
                                 <td>{{ $inv->loan->reference ?? '#'.$inv->loan_id }}</td>
                                 <td>N$ {{ number_format($inv->amount) }}</td>
@@ -90,11 +89,11 @@
                     <h5 class="card-title">Investment Performance</h5>
                     <div class="row text-center py-3">
                         <div class="col-6 border-right">
-                            <h3 class="font-bold text-success">{{ auth()->user()->fundingTransactions()->count() }}</h3>
+                            <h3 class="font-bold text-success">{{ ($summary['active_count'] ?? 0) + ($summary['completed_count'] ?? 0) }}</h3>
                             <small class="text-muted">Total Investments</small>
                         </div>
                         <div class="col-6">
-                            <h3 class="font-bold text-primary">N$ {{ number_format(auth()->user()->fundingTransactions()->where('status','confirmed')->sum('actual_return') ?? 0) }}</h3>
+                            <h3 class="font-bold text-primary">{{ formatCurrencyShort($summary['total_actual_return'] ?? 0) }}</h3>
                             <small class="text-muted">Actual Returns</small>
                         </div>
                     </div>

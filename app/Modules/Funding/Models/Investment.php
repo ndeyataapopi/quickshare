@@ -6,16 +6,18 @@ use App\Models\User;
 use App\Modules\Loans\Models\Loan;
 use App\Traits\Auditable;
 use App\Traits\HasActivityLog;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Investment extends Model
 {
-    use Auditable, HasActivityLog;
+    use Auditable, HasActivityLog, HasFactory;
 
     protected $fillable = [
         'loan_id',
         'lender_id',
+        'funding_transaction_id',
         'amount',
         'interest_rate',
         'expected_return',
@@ -47,6 +49,11 @@ class Investment extends Model
     public function lender(): BelongsTo
     {
         return $this->belongsTo(User::class, 'lender_id');
+    }
+
+    public function fundingTransaction(): BelongsTo
+    {
+        return $this->belongsTo(FundingTransaction::class);
     }
 
     // ─── Status Helpers ──────────────────────────────────────────────

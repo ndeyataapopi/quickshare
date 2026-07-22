@@ -29,12 +29,12 @@
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Borrower</div><div class="col-sm-8 font-weight-bold">{{ $repayment->loan && $repayment->loan->borrower ? $repayment->loan->borrower->first_name . ' ' . $repayment->loan->borrower->last_name : '—' }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Amount</div><div class="col-sm-8 font-weight-bold">N$ {{ number_format($repayment->amount, 2) }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Due Date</div><div class="col-sm-8">{{ $repayment->due_date ? \Carbon\Carbon::parse($repayment->due_date)->format('M j, Y') : '—' }}</div></div>
-                    <div class="row mb-2"><div class="col-sm-4 text-muted">Paid At</div><div class="col-sm-8">{{ $repayment->paid_at ? \Carbon\Carbon::parse($repayment->paid_at)->format('M j, Y g:i A') : 'Not yet paid' }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Paid At</div><div class="col-sm-8">{{ $repayment->paid_date ? \Carbon\Carbon::parse($repayment->paid_date)->format('M j, Y') : 'Not yet paid' }}</div></div>
                     <div class="row mb-2">
                         <div class="col-sm-4 text-muted">Status</div>
                         <div class="col-sm-8">
-                            @php $sc=['pending'=>'warning','completed'=>'success','overdue'=>'danger']; @endphp
-                            <span class="badge badge-{{ $sc[$repayment->status] ?? 'secondary' }}">{{ ucfirst($repayment->status) }}</span>
+                            @php $sc=['pending'=>'warning','pending_approval'=>'info','paid'=>'success','overdue'=>'danger','defaulted'=>'dark','rejected'=>'danger','partial'=>'warning']; @endphp
+                            <span class="badge badge-{{ $sc[$repayment->status] ?? 'secondary' }}">{{ ucfirst(str_replace('_', ' ', $repayment->status)) }}</span>
                         </div>
                     </div>
                 </div>
@@ -66,12 +66,22 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title text-uppercase mb-3">Actions</h5>
-                    @if($repayment->status === 'pending')
-                    <form method="POST" action="{{ route('admin.repayments.confirm', $repayment) }}">
+                    @if($repayment->status === 'pending_approval')
+                    <form method="POST" action="{{ route('admin.repayments.approve', $repayment) }}">
                         @csrf @method('PATCH')
                         <button type="submit" class="btn btn-success btn-block"
-                            onclick="return confirm('Confirm this repayment?')">
-                            <i class="mdi mdi-check mr-1"></i> Confirm Repayment
+                            onclick="return confirm('Approve this repayment? This will process lender distributions and update investor earnings.')">
+                            <i class="mdi mdi-check mr-1"></i> Approve Repayment
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('admin.repayments.reject', $repayment) }}" class="mt-2">
+                        @csrf @method('PATCH')
+                        <div class="form-group">
+                            <textarea name="reason" class="form-control" rows="2" placeholder="Rejection reason (optional)"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger btn-block"
+                            onclick="return confirm('Reject this repayment? The borrower will be notified.')">
+                            <i class="mdi mdi-close mr-1"></i> Reject Repayment
                         </button>
                     </form>
                     @endif

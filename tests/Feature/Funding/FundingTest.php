@@ -4,8 +4,10 @@ namespace Tests\Feature\Funding;
 
 use App\Models\User;
 use App\Modules\Funding\Models\FundingTransaction;
+use App\Modules\Funding\Models\Investment;
 use App\Modules\Funding\Services\FundingService;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Repayments\Models\Repayment;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -68,12 +70,13 @@ class FundingTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.transaction.status', 'pending')
-            ->assertJsonPath('data.loan_status', 'partially_funded');
-        
+            ->assertJsonPath('data.loan_status', 'marketplace');
+
         // Amount may be returned as string '5000.00' due to decimal cast
         $amount = $response->json('data.transaction.amount');
         $this->assertEquals(5000, (float) $amount);
-        $this->assertEquals(5000, (float) $response->json('data.remaining_funding'));
+        // The funding is reserved but not yet applied to the loan until admin verification
+        $this->assertEquals(10000, (float) $response->json('data.remaining_funding'));
 
         $this->assertDatabaseHas('funding_transactions', [
             'loan_id' => $loan->id,
@@ -114,6 +117,16 @@ class FundingTest extends TestCase
         $response = $this->postJson("/api/funding/{$loan->id}", ['amount' => 4000]);
         $response->assertOk();
 
+        // The loan is still marketplace until an admin verifies payments
+        $loan->refresh();
+        $this->assertEquals(0, $loan->funded_amount);
+        $this->assertEquals('marketplace', $loan->status);
+        $this->assertEquals(2, $loan->fundingTransactions()->where('status', 'pending')->count());
+
+        // Once both payments are verified, the loan becomes partially funded
+        foreach ($loan->fundingTransactions()->where('status', 'pending')->get() as $transaction) {
+            $this->service->confirmFunding($transaction, $this->lender);
+        }
         $loan->refresh();
         $this->assertEquals(7000, $loan->funded_amount);
         $this->assertEquals('partially_funded', $loan->status);
@@ -131,11 +144,22 @@ class FundingTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonPath('data.loan_status', 'funded')
-            ->assertJsonPath('data.remaining_funding', 0);
+            ->assertJsonPath('data.transaction.status', 'pending')
+            ->assertJsonPath('data.loan_status', 'marketplace')
+            ->assertJsonPath('data.remaining_funding', 5000);
+
+        // Admin verifies the funding payment
+        $transaction = FundingTransaction::where('loan_id', $loan->id)->first();
+        $this->service->confirmFunding($transaction, $this->lender);
 
         $loan->refresh();
         $this->assertEquals('funded', $loan->status);
+        $this->assertEquals(0, $this->service->getRemainingFunding($loan));
+
+        // Repayment schedule is NOT created at funding stage;
+        // it is created when the borrower confirms disbursement (Stage 7.1)
+        $repayment = Repayment::forLoan($loan->id)->first();
+        $this->assertNull($repayment);
     }
 
     // ─── Overfunding Protection ──────────────────────────────────────
@@ -265,7 +289,7 @@ class FundingTest extends TestCase
         $loan1 = $this->createMarketplaceLoan();
         $loan2 = $this->createMarketplaceLoan();
 
-        FundingTransaction::create([
+        $tx1 = FundingTransaction::create([
             'loan_id' => $loan1->id,
             'lender_id' => $this->lender->id,
             'amount' => 3000,
@@ -275,7 +299,7 @@ class FundingTest extends TestCase
             'confirmed_at' => now(),
         ]);
 
-        FundingTransaction::create([
+        $tx2 = FundingTransaction::create([
             'loan_id' => $loan2->id,
             'lender_id' => $this->lender->id,
             'amount' => 4000,
@@ -283,6 +307,28 @@ class FundingTest extends TestCase
             'status' => 'confirmed',
             'transaction_reference' => FundingTransaction::generateReference(),
             'confirmed_at' => now(),
+        ]);
+
+        Investment::create([
+            'loan_id' => $loan1->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx1->id,
+            'amount' => 3000,
+            'interest_rate' => 15.00,
+            'expected_return' => 0,
+            'status' => 'active',
+            'funded_at' => now(),
+        ]);
+
+        Investment::create([
+            'loan_id' => $loan2->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx2->id,
+            'amount' => 4000,
+            'interest_rate' => 15.00,
+            'expected_return' => 0,
+            'status' => 'active',
+            'funded_at' => now(),
         ]);
 
         Sanctum::actingAs($this->lender);
@@ -297,7 +343,7 @@ class FundingTest extends TestCase
     {
         $loan = $this->createMarketplaceLoan(['status' => 'active']);
 
-        FundingTransaction::create([
+        $tx = FundingTransaction::create([
             'loan_id' => $loan->id,
             'lender_id' => $this->lender->id,
             'amount' => 5000,
@@ -308,6 +354,17 @@ class FundingTest extends TestCase
             'confirmed_at' => now(),
         ]);
 
+        Investment::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx->id,
+            'amount' => 5000,
+            'interest_rate' => 15.00,
+            'expected_return' => 5123,
+            'status' => 'active',
+            'funded_at' => now(),
+        ]);
+
         Sanctum::actingAs($this->lender);
 
         $response = $this->getJson('/api/funding/portfolio/summary');
@@ -315,6 +372,45 @@ class FundingTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.total_invested', 5000)
             ->assertJsonPath('data.total_expected_return', 5123)
+            ->assertJsonPath('data.active_investments', 1);
+    }
+
+    public function test_portfolio_summary_uses_investment_table_not_funding_transactions(): void
+    {
+        $loan = $this->createMarketplaceLoan(['status' => 'active']);
+
+        $tx = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 15.00,
+            'expected_return' => 5123,
+            'status' => 'confirmed',
+            'transaction_reference' => FundingTransaction::generateReference(),
+            'confirmed_at' => now(),
+        ]);
+
+        // Create investment with different values to prove summary reads from investments table
+        Investment::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx->id,
+            'amount' => 5000,
+            'interest_rate' => 15.00,
+            'expected_return' => 5400,
+            'actual_return' => 200,
+            'status' => 'active',
+            'funded_at' => now(),
+        ]);
+
+        Sanctum::actingAs($this->lender);
+
+        $response = $this->getJson('/api/funding/portfolio/summary');
+
+        $response->assertOk()
+            ->assertJsonPath('data.total_invested', 5000)
+            ->assertJsonPath('data.total_expected_return', 5400)
+            ->assertJsonPath('data.total_actual_return', 200)
             ->assertJsonPath('data.active_investments', 1);
     }
 
@@ -458,7 +554,9 @@ class FundingTest extends TestCase
         config(['loan.trust_tiers.silver.lender_return_percent' => 8.00]);
         $loan = $this->createMarketplaceLoan([
             'approved_amount' => 10000,
-            'interest_rate' => 15.00,
+            'interest_rate' => 13.00,
+            'platform_fee' => 500,
+            'total_repayment' => 11300,
             'loan_term_days' => 30,
         ]);
 
@@ -470,7 +568,7 @@ class FundingTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.transaction.interest_rate', '8.00')
-            ->assertJsonPath('data.transaction.expected_return', '5032.88');
+            ->assertJsonPath('data.transaction.expected_return', '5400.00');
     }
 
     // ─── RBAC Tests ──────────────────────────────────────────────────
@@ -543,5 +641,391 @@ class FundingTest extends TestCase
         ]);
 
         $this->assertCount(1, $loan->fresh()->fundingTransactions);
+    }
+
+    // ─── Investment Creation Tests ──────────────────────────────────
+
+    public function test_confirm_funding_creates_investment_record(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $this->assertDatabaseHas('investments', [
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $transaction->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'actual_return' => 0,
+            'status' => 'active',
+        ]);
+    }
+
+    public function test_confirm_funding_sets_funded_at_timestamp(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $investment = Investment::where('funding_transaction_id', $transaction->id)->first();
+        $this->assertNotNull($investment);
+        $this->assertNotNull($investment->funded_at);
+    }
+
+    public function test_multiple_lenders_each_get_investment_records(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $lender2 = User::factory()->active()->create(['trust_score' => 80.00]);
+        $this->assignClientRole($lender2);
+
+        $tx1 = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $tx2 = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $lender2->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($tx1, $this->lender);
+        $this->service->confirmFunding($tx2, $this->lender);
+
+        $this->assertEquals(2, Investment::where('loan_id', $loan->id)->count());
+        $this->assertDatabaseHas('investments', [
+            'lender_id' => $this->lender->id,
+            'funding_transaction_id' => $tx1->id,
+        ]);
+        $this->assertDatabaseHas('investments', [
+            'lender_id' => $lender2->id,
+            'funding_transaction_id' => $tx2->id,
+        ]);
+    }
+
+    public function test_funding_transaction_has_investment_relationship(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $transaction->refresh();
+        $this->assertNotNull($transaction->investment);
+        $this->assertEquals(5000, (float) $transaction->investment->amount);
+    }
+
+    public function test_loan_has_investments_relationship(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $loan->refresh();
+        $this->assertCount(1, $loan->investments);
+    }
+
+    public function test_user_has_investments_relationship(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $this->assertCount(1, $this->lender->fresh()->investments);
+    }
+
+    public function test_fully_funded_loan_has_correct_investment_data(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 5000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->confirmFunding($transaction, $this->lender);
+
+        $loan->refresh();
+        $this->assertEquals('funded', $loan->status);
+        $this->assertEquals(5000, (float) $loan->funded_amount);
+        $this->assertEquals(0, $this->service->getRemainingFunding($loan));
+
+        $investment = Investment::where('loan_id', $loan->id)->first();
+        $this->assertNotNull($investment);
+        $this->assertEquals('active', $investment->status);
+        $this->assertEquals(5400, (float) $investment->expected_return);
+    }
+
+    // ─── Reject Funding Tests ───────────────────────────────────────
+
+    public function test_reject_funding_sets_status_to_rejected(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->rejectFunding($transaction, $this->lender, 'Invalid payment proof');
+
+        $transaction->refresh();
+        $this->assertEquals('rejected', $transaction->status);
+        $this->assertTrue($transaction->isRejected());
+    }
+
+    public function test_reject_funding_sets_rejected_at_timestamp(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->rejectFunding($transaction, $this->lender, 'Invalid payment proof');
+
+        $transaction->refresh();
+        $this->assertNotNull($transaction->rejected_at);
+    }
+
+    public function test_reject_funding_does_not_create_investment(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->rejectFunding($transaction, $this->lender, 'Invalid payment proof');
+
+        $this->assertDatabaseMissing('investments', [
+            'funding_transaction_id' => $transaction->id,
+        ]);
+        $this->assertEquals(0, Investment::where('loan_id', $loan->id)->count());
+    }
+
+    public function test_reject_funding_does_not_change_loan_funded_amount(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000, 'funded_amount' => 0]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->rejectFunding($transaction, $this->lender, 'Invalid payment proof');
+
+        $loan->refresh();
+        $this->assertEquals(0, (float) $loan->funded_amount);
+        $this->assertEquals('marketplace', $loan->status);
+    }
+
+    public function test_reject_funding_sets_admin_notes(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->rejectFunding($transaction, $this->lender, 'Payment proof is unclear');
+
+        $transaction->refresh();
+        $this->assertEquals('Payment proof is unclear', $transaction->admin_notes);
+        $this->assertNotNull($transaction->admin_verified_at);
+        $this->assertEquals($this->lender->id, $transaction->admin_verified_by);
+    }
+
+    public function test_cannot_reject_non_pending_transaction(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'confirmed',
+            'transaction_reference' => FundingTransaction::generateReference(),
+            'confirmed_at' => now(),
+        ]);
+
+        $this->expectException(\App\Exceptions\ApiException::class);
+        $this->expectExceptionMessage('Only pending funding transactions can be rejected.');
+
+        $this->service->rejectFunding($transaction, $this->lender, 'Too late');
+    }
+
+    public function test_rejected_lender_can_fund_same_loan_again(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $transaction = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 5000,
+            'interest_rate' => 8.00,
+            'expected_return' => 5400,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+
+        $this->service->rejectFunding($transaction, $this->lender, 'Invalid payment proof');
+
+        // The lender should be able to fund again since the previous transaction was rejected
+        Sanctum::actingAs($this->lender);
+        $response = $this->postJson("/api/funding/{$loan->id}", [
+            'amount' => 5000,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.transaction.status', 'pending');
+    }
+
+    public function test_reject_funding_preserves_other_confirmed_funding(): void
+    {
+        Queue::fake();
+        $loan = $this->createMarketplaceLoan(['approved_amount' => 10000]);
+
+        $lender2 = User::factory()->active()->create(['trust_score' => 80.00]);
+        $this->assignClientRole($lender2);
+
+        // Lender 1 confirmed funding
+        $tx1 = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $this->lender->id,
+            'amount' => 3000,
+            'interest_rate' => 8.00,
+            'expected_return' => 3240,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+        $this->service->confirmFunding($tx1, $this->lender);
+
+        // Lender 2 pending funding gets rejected
+        $tx2 = FundingTransaction::create([
+            'loan_id' => $loan->id,
+            'lender_id' => $lender2->id,
+            'amount' => 7000,
+            'interest_rate' => 8.00,
+            'expected_return' => 7560,
+            'status' => 'pending',
+            'transaction_reference' => FundingTransaction::generateReference(),
+        ]);
+        $this->service->rejectFunding($tx2, $this->lender, 'Invalid payment proof');
+
+        $loan->refresh();
+        $this->assertEquals(3000, (float) $loan->funded_amount);
+        $this->assertEquals('partially_funded', $loan->status);
+        $this->assertEquals(7000, $this->service->getRemainingFunding($loan));
     }
 }

@@ -55,32 +55,106 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title text-uppercase mb-3">System Audit Logs</h5>
-                    <form method="GET" class="form-inline mb-4">
-                        <input type="text" name="search" class="form-control mr-2 mb-2" placeholder="Search by user, event, or model..." value="{{ request('search') }}">
-                        <select name="event" class="form-control mr-2 mb-2">
-                            <option value="">All Events</option>
-                            <option value="created" {{ request('event')==='created'?'selected':'' }}>Created</option>
-                            <option value="updated" {{ request('event')==='updated'?'selected':'' }}>Updated</option>
-                            <option value="deleted" {{ request('event')==='deleted'?'selected':'' }}>Deleted</option>
-                        </select>
-                        <input type="date" name="date_from" class="form-control mr-2 mb-2" value="{{ request('date_from') }}" placeholder="From">
-                        <input type="date" name="date_to" class="form-control mr-2 mb-2" value="{{ request('date_to') }}" placeholder="To">
-                        <button type="submit" class="btn btn-primary mb-2">Filter</button>
+                    <form method="GET" class="mb-4">
+                        <div class="form-row">
+                            <div class="col-md-3 mb-2">
+                                <input type="text" name="search" class="form-control" placeholder="Search by user, event, or model..." value="{{ request('search') }}">
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <select name="source" class="form-control">
+                                    <option value="">All Sources</option>
+                                    <option value="audit" {{ request('source')==='audit'?'selected':'' }}>Model Audit</option>
+                                    <option value="activity" {{ request('source')==='activity'?'selected':'' }}>Activity Log</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <select name="event" class="form-control">
+                                    <option value="">All Events</option>
+                                    <option value="created" {{ request('event')==='created'?'selected':'' }}>Created</option>
+                                    <option value="updated" {{ request('event')==='updated'?'selected':'' }}>Updated</option>
+                                    <option value="deleted" {{ request('event')==='deleted'?'selected':'' }}>Deleted</option>
+                                    <option value="loan" {{ request('event')==='loan'?'selected':'' }}>Loan Events</option>
+                                    <option value="funding" {{ request('event')==='funding'?'selected':'' }}>Funding Events</option>
+                                    <option value="kyc" {{ request('event')==='kyc'?'selected':'' }}>KYC Events</option>
+                                    <option value="user" {{ request('event')==='user'?'selected':'' }}>User/Auth Events</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}" placeholder="From">
+                            </div>
+                            <div class="col-md-2 mb-2">
+                                <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}" placeholder="To">
+                            </div>
+                            <div class="col-md-1 mb-2">
+                                <button type="submit" class="btn btn-primary btn-block">Filter</button>
+                            </div>
+                        </div>
                     </form>
                     @if(isset($logs) && $logs->count() > 0)
                     <div class="table-responsive">
                         <table class="table table-hover table-striped">
                             <thead class="thead-light">
-                                <tr><th>User</th><th>Action</th><th>Model</th><th>IP Address</th><th>Date</th></tr>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>User / Actor</th>
+                                    <th>Action</th>
+                                    <th>Affected Resource</th>
+                                    <th>Status Change</th>
+                                    <th>Amount</th>
+                                    <th>IP Address</th>
+                                    <th>Timestamp</th>
+                                    <th></th>
+                                </tr>
                             </thead>
                             <tbody>
                                 @foreach($logs as $log)
                                 <tr>
-                                    <td>{{ optional($log->user)->first_name }} {{ optional($log->user)->last_name ?? 'System' }}</td>
-                                    <td><span class="badge badge-info">{{ $log->action ?? $log->event ?? '-' }}</span></td>
-                                    <td>{{ $log->auditable_type ? class_basename($log->auditable_type) : '-' }} #{{ $log->auditable_id ?? '-' }}</td>
-                                    <td>{{ $log->ip_address ?? '-' }}</td>
-                                    <td>{{ $log->created_at->format('M j, Y g:i A') }}</td>
+                                    <td>
+                                        @if($log['source'] === 'audit')
+                                            <span class="badge badge-secondary">Model Audit</span>
+                                        @else
+                                            <span class="badge badge-primary">Activity</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($log['source'] === 'activity' && !empty($log['actor']))
+                                            {{ $log['actor']->first_name ?? '' }} {{ $log['actor']->last_name ?? '' }}
+                                            <small class="text-muted d-block">Actor</small>
+                                        @elseif(!empty($log['user']))
+                                            {{ $log['user']->first_name ?? '' }} {{ $log['user']->last_name ?? '' }}
+                                        @else
+                                            <span class="text-muted">System</span>
+                                        @endif
+                                    </td>
+                                    <td><span class="badge badge-info">{{ $log['action'] ?? '-' }}</span></td>
+                                    <td>
+                                        @if($log['auditable_type'])
+                                            {{ class_basename($log['auditable_type']) }} #{{ $log['auditable_id'] ?? '-' }}
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(!empty($log['previous_status']) || !empty($log['new_status']))
+                                            <small>{{ $log['previous_status'] ?? '-' }} &rarr; {{ $log['new_status'] ?? '-' }}</small>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(!empty($log['amount']))
+                                            N$ {{ number_format((float) $log['amount'], 2) }}
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $log['ip_address'] ?? '-' }}</td>
+                                    <td>{{ $log['created_at']->format('M j, Y g:i A') }}</td>
+                                    <td>
+                                        <a href="{{ route('admin.audit.show', ['source' => $log['source'], 'id' => $log['id']]) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="mdi mdi-eye"></i>
+                                        </a>
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>

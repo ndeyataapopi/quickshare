@@ -44,7 +44,7 @@ class RepaymentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $request->validate([
-            'status' => ['sometimes', 'string', 'in:pending,partial,paid,overdue,defaulted'],
+            'status' => ['sometimes', 'string', 'in:pending,partial,paid,overdue,defaulted,pending_approval'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -77,34 +77,46 @@ class RepaymentController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'loan_id' => ['required', 'integer', 'exists:loans,id'],
-            'amount' => ['required', 'numeric', 'min:1'],
-            'payment_method' => ['sometimes', 'string', 'in:bank_transfer,credit_card,debit_card'],
+            'repayment_ids' => ['required', 'array', 'min:1'],
+            'repayment_ids.*' => ['required', 'integer', 'exists:repayments,id'],
+            'payment_method' => ['required', 'string', 'in:eft,mobile_wallet,cash_deposit'],
+            'external_reference' => ['nullable', 'string', 'max:255'],
+            'proof_of_payment' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
 
-        $loan = Loan::findOrFail($validated['loan_id']);
+        $user = $request->user();
 
-        // Authorization check
-        if ($loan->borrower_id !== $request->user()->id) {
-            return $this->forbidden('You can only repay your own loans.');
+        // Verify all repayments belong to the borrower
+        $repayments = \App\Modules\Repayments\Models\Repayment::whereIn('id', $validated['repayment_ids'])
+            ->where('borrower_id', $user->id)
+            ->get();
+
+        if ($repayments->isEmpty()) {
+            return $this->error('No eligible repayments found.', 422);
         }
 
-        if (! $loan->isActive()) {
-            return $this->error('Loan is not active. Status: ' . $loan->status, 422);
+        // Verify all loans are active
+        foreach ($repayments as $repayment) {
+            if (! $repayment->loan->isActive()) {
+                return $this->error('Loan is not active. Status: ' . $repayment->loan->status, 422);
+            }
         }
 
         try {
-            $repayment = $this->repaymentService->recordRepayment(
-                $loan,
-                $request->user(),
-                (float) $validated['amount'],
-                $validated['payment_method'] ?? 'bank_transfer',
+            $proofPath = $request->file('proof_of_payment')->store('repayment-proofs', 'public');
+
+            $result = $this->repaymentService->submitRepaymentRequest(
+                $validated['repayment_ids'],
+                $user,
+                $validated['payment_method'],
+                $proofPath,
+                $validated['external_reference'] ?? null,
             );
 
             return $this->success([
-                'repayment' => $repayment,
-                'loan_status' => $loan->fresh()->status,
-            ], 'Repayment recorded successfully.');
+                'repayments' => $result['repayments'],
+                'disbursements' => $result['disbursements'],
+            ], 'Repayment request submitted for approval.');
         } catch (\Throwable $e) {
             return $this->error($e->getMessage(), 422);
         }

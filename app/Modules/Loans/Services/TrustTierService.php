@@ -66,6 +66,10 @@ class TrustTierService
             throw new RuntimeException("Trust tier {$key} has no allowed durations.");
         }
 
+        $platformFeePercent = (float) ($tier['platform_fee_percent'] ?? 0);
+        $lenderReturnPercent = (float) ($tier['lender_return_percent'] ?? 0);
+        $totalChargePercent = $platformFeePercent + $lenderReturnPercent;
+
         return [
             'key' => $key,
             'name' => (string) ($tier['name'] ?? $key),
@@ -73,11 +77,14 @@ class TrustTierService
                 'min' => (float) ($tier['trust_score']['min'] ?? 0),
                 'max' => (float) ($tier['trust_score']['max'] ?? 0),
             ],
+            'minimum_loan' => (float) ($tier['minimum_loan'] ?? 0),
             'maximum_loan' => (float) ($tier['maximum_loan'] ?? 0),
-            'interest_percent' => (float) ($tier['interest_percent'] ?? 0),
-            'platform_fee_percent' => (float) ($tier['platform_fee_percent'] ?? 0),
-            'lender_return_percent' => (float) ($tier['lender_return_percent'] ?? 0),
+            'platform_fee_percent' => $platformFeePercent,
+            'lender_return_percent' => $lenderReturnPercent,
+            'interest_percent' => $totalChargePercent,
+            'total_charge_percent' => $totalChargePercent,
             'allowed_durations' => $durations,
+            'eligibility_rules' => (array) ($tier['eligibility_rules'] ?? []),
         ];
     }
 }

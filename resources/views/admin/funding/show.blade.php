@@ -9,7 +9,7 @@
             <nav aria-label="breadcrumb" class="mt-2 float-md-right float-left">
                 <ol class="breadcrumb mb-0 justify-content-end p-0">
                     <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('admin.funding.index') }}">Funding</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('admin.funding-payments.index') }}">Funding Payments</a></li>
                     <li class="breadcrumb-item active">{{ $transaction->transaction_reference }}</li>
                 </ol>
             </nav>
@@ -35,16 +35,41 @@
                     <div class="row mb-2">
                         <div class="col-sm-4 text-muted">Status</div>
                         <div class="col-sm-8">
-                            @php $sc=['pending'=>'warning','confirmed'=>'success','cancelled'=>'danger','refunded'=>'secondary']; @endphp
+                            @php $sc=['pending'=>'warning','confirmed'=>'success','rejected'=>'danger','cancelled'=>'secondary','refunded'=>'secondary']; @endphp
                             <span class="badge badge-{{ $sc[$transaction->status] ?? 'secondary' }}">{{ ucfirst($transaction->status) }}</span>
                         </div>
                     </div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payment Method</div><div class="col-sm-8">{{ ucfirst(str_replace('_', ' ', $transaction->payment_method ?? '—')) }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payment Reference</div><div class="col-sm-8">{{ $transaction->payment_reference ?? '—' }}</div></div>
+                    @if($transaction->payment_date)
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payment Date</div><div class="col-sm-8">{{ \Carbon\Carbon::parse($transaction->payment_date)->format('M j, Y') }}</div></div>
+                    @endif
+                    @if(($transaction->metadata['payer_reference_number'] ?? null) || ($transaction->metadata['payer_transaction_number'] ?? null))
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payer Reference #</div><div class="col-sm-8">{{ $transaction->metadata['payer_reference_number'] ?? '—' }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payer Transaction #</div><div class="col-sm-8">{{ $transaction->metadata['payer_transaction_number'] ?? '—' }}</div></div>
+                    @endif
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Created</div><div class="col-sm-8">{{ $transaction->created_at->format('M j, Y g:i A') }}</div></div>
                     @if($transaction->confirmed_at)
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Confirmed At</div><div class="col-sm-8">{{ $transaction->confirmed_at->format('M j, Y g:i A') }}</div></div>
                     @endif
+                    @if($transaction->rejected_at)
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Rejected At</div><div class="col-sm-8">{{ $transaction->rejected_at->format('M j, Y g:i A') }}</div></div>
+                    @endif
+                    @if($transaction->admin_notes)
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Admin Notes</div><div class="col-sm-8 small">{{ $transaction->admin_notes }}</div></div>
+                    @endif
                     @if($transaction->notes)
-                    <div class="row mb-2"><div class="col-sm-4 text-muted">Notes</div><div class="col-sm-8 small">{{ $transaction->notes }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Lender Notes</div><div class="col-sm-8 small">{{ $transaction->notes }}</div></div>
+                    @endif
+                    @if($transaction->payment_proof_path)
+                    <div class="row mb-2">
+                        <div class="col-sm-4 text-muted">Proof of Payment</div>
+                        <div class="col-sm-8">
+                            <a href="{{ \Illuminate\Support\Facades\Storage::url($transaction->payment_proof_path) }}" target="_blank" class="btn btn-sm btn-info">
+                                <i class="mdi mdi-file-pdf mr-1"></i> View Proof
+                            </a>
+                        </div>
+                    </div>
                     @endif
                 </div>
             </div>
@@ -54,23 +79,35 @@
                 <div class="card-body">
                     <h5 class="card-title text-uppercase mb-3">Actions</h5>
                     @if($transaction->status === 'pending')
-                    <form method="POST" action="{{ route('admin.funding.confirm', $transaction) }}" class="mb-2">
-                        @csrf @method('PATCH')
+                    <form method="POST" action="{{ route('admin.funding-payments.confirm', $transaction) }}" class="mb-2">
+                        @csrf
                         <button type="submit" class="btn btn-success btn-block"
-                            onclick="return confirm('Confirm this payment and activate the investment?')">
-                            <i class="mdi mdi-check mr-1"></i> Confirm Payment
+                            onclick="return confirm('Confirm this payment and apply it to the loan?')">
+                            <i class="mdi mdi-check mr-1"></i> Approve Payment
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('admin.funding.cancel', $transaction) }}">
-                        @csrf @method('PATCH')
+                    <form method="POST" action="{{ route('admin.funding-payments.reject', $transaction) }}" class="mb-2">
+                        @csrf
+                        <div class="form-group">
+                            <textarea name="reason" class="form-control" rows="2" placeholder="Rejection reason (required)"></textarea>
+                        </div>
                         <button type="submit" class="btn btn-danger btn-block"
-                            onclick="return confirm('Cancel this transaction?')">
-                            <i class="mdi mdi-close mr-1"></i> Cancel Transaction
+                            onclick="return confirm('Reject this payment and notify the lender?')">
+                            <i class="mdi mdi-close mr-1"></i> Reject Payment
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('admin.funding-payments.request-info', $transaction) }}" class="mb-2">
+                        @csrf
+                        <div class="form-group">
+                            <textarea name="message" class="form-control" rows="2" placeholder="Request more information"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-info btn-block">
+                            <i class="mdi mdi-information mr-1"></i> Request More Info
                         </button>
                     </form>
                     @endif
-                    <a href="{{ route('admin.funding.index') }}" class="btn btn-outline-secondary btn-block mt-2">
-                        <i class="mdi mdi-arrow-left mr-1"></i> Back to Funding
+                    <a href="{{ route('admin.funding-payments.index') }}" class="btn btn-outline-secondary btn-block mt-2">
+                        <i class="mdi mdi-arrow-left mr-1"></i> Back to Funding Payments
                     </a>
                 </div>
             </div>

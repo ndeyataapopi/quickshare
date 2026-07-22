@@ -76,6 +76,7 @@
                 <select name="status" class="form-control mr-2 mb-2">
                     <option value="">All Statuses</option>
                     <option value="funded" {{ request('status')==='funded'?'selected':'' }}>Funded</option>
+                    <option value="awaiting_disbursement" {{ request('status')==='awaiting_disbursement'?'selected':'' }}>Awaiting Disbursement</option>
                     <option value="disbursed" {{ request('status')==='disbursed'?'selected':'' }}>Disbursed</option>
                     <option value="active" {{ request('status')==='active'?'selected':'' }}>Active</option>
                 </select>
@@ -102,8 +103,8 @@
                             <td class="font-weight-bold">{{ kpiMoney($loan->approved_amount ?? $loan->requested_amount) }}</td>
                             <td>{{ $loan->loan_term_days }} days</td>
                             <td>
-                                @php $sc = ['funded'=>'warning','disbursed'=>'info','active'=>'success']; @endphp
-                                <span class="badge badge-{{ $sc[$loan->status] ?? 'secondary' }}">{{ ucfirst($loan->status) }}</span>
+                                @php $sc = ['funded'=>'warning','awaiting_disbursement'=>'info','disbursed'=>'info','active'=>'success']; @endphp
+                                <span class="badge badge-{{ $sc[$loan->status] ?? 'secondary' }}">{{ ucfirst(str_replace('_', ' ', $loan->status)) }}</span>
                             </td>
                             <td>{{ $loan->disbursed_at ? \Carbon\Carbon::parse($loan->disbursed_at)->format('M j, Y') : '—' }}</td>
                             <td>
@@ -111,7 +112,7 @@
                                     <a href="{{ route('admin.disbursements.show', $loan) }}" class="btn btn-sm btn-primary">
                                         <i class="mdi mdi-send mr-1"></i> Disburse
                                     </a>
-                                @elseif($loan->status === 'disbursed')
+                                @elseif($loan->status === 'awaiting_disbursement')
                                     <form method="POST" action="{{ route('admin.disbursements.confirm', $loan) }}" class="d-inline">
                                         @csrf @method('PATCH')
                                         <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Confirm disbursement?')">

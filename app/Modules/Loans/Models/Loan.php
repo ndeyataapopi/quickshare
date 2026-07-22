@@ -51,6 +51,7 @@ class Loan extends Model
         'admin_notes',
         'submitted_at',
         'approved_at',
+        'rejected_at',
         'disbursed_at',
         'external_loan_id',
         'external_provider',
@@ -77,6 +78,7 @@ class Loan extends Model
             'agreement_consented_at' => 'datetime',
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
             'disbursed_at' => 'datetime',
             'completed_at' => 'datetime',
             'last_synced_at' => 'datetime',
@@ -100,6 +102,11 @@ class Loan extends Model
     public function fundingTransactions(): HasMany
     {
         return $this->hasMany(FundingTransaction::class);
+    }
+
+    public function investments(): HasMany
+    {
+        return $this->hasMany(\App\Modules\Funding\Models\Investment::class);
     }
 
     public function disbursements(): HasMany
@@ -202,7 +209,7 @@ class Loan extends Model
             return 0;
         }
 
-        $repaidAmount = (float) $this->repayments()->where('status', 'completed')->sum('amount');
+        $repaidAmount = (float) $this->repayments()->where('status', 'paid')->sum('amount');
 
         return round(($repaidAmount / $totalRepayment) * 100, 2);
     }
@@ -221,7 +228,12 @@ class Loan extends Model
 
     public function scopeOnMarketplace($query)
     {
-        return $query->whereIn('loans.status', ['marketplace', 'partially_funded']);
+        return $query
+            ->whereIn('loans.status', ['marketplace', 'partially_funded'])
+            ->where(function ($q) {
+                $q->whereNull('loans.repayment_date')
+                  ->orWhere('loans.repayment_date', '>=', now()->toDateString());
+            });
     }
 
     public function scopePendingReview($query)

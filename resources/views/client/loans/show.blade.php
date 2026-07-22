@@ -72,6 +72,43 @@
                     @endif
                 </div>
             </div>
+
+            @if($loan->status === 'awaiting_disbursement')
+                @php $pendingDisbursement = $loan->disbursements()->pendingBorrowerConfirmation()->latest()->first(); @endphp
+                @if($pendingDisbursement)
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h5 class="card-title text-uppercase mb-3">Confirm Disbursement</h5>
+                        <div class="alert alert-info p-2 small mb-3">
+                            The admin has sent <strong>N$ {{ number_format($pendingDisbursement->net_amount, 2) }}</strong> to your account.
+                            Please confirm you have received the funds, or reject if you have not.
+                        </div>
+                        <div class="row mb-2"><div class="col-sm-5 text-muted small">Reference</div><div class="col-sm-7 small font-weight-bold">{{ $pendingDisbursement->transaction_reference }}</div></div>
+                        <div class="row mb-2"><div class="col-sm-5 text-muted small">Net Amount</div><div class="col-sm-7 small font-weight-bold text-primary">N$ {{ number_format($pendingDisbursement->net_amount, 2) }}</div></div>
+                        <div class="row mb-2"><div class="col-sm-5 text-muted small">Payment Method</div><div class="col-sm-7 small">{{ ucfirst(str_replace('_', ' ', $pendingDisbursement->payment_method ?? 'bank_transfer')) }}</div></div>
+                        <div class="row mb-2"><div class="col-sm-5 text-muted small">External Ref</div><div class="col-sm-7 small">{{ $pendingDisbursement->external_reference ?: '—' }}</div></div>
+                        <div class="row mb-3"><div class="col-sm-5 text-muted small">Sent At</div><div class="col-sm-7 small">{{ $pendingDisbursement->processed_at ? $pendingDisbursement->processed_at->format('M j, Y H:i') : '—' }}</div></div>
+                        <form method="POST" action="{{ route('client.loans.disbursement.confirm', $loan) }}" class="mb-2">
+                            @csrf
+                            <button type="submit" class="btn btn-success btn-block"
+                                onclick="return confirm('Confirm you have received the disbursement? This will activate your loan.')">
+                                <i class="mdi mdi-check-circle mr-1"></i> Confirm Receipt
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('client.loans.disbursement.reject', $loan) }}">
+                            @csrf
+                            <div class="form-group mb-2">
+                                <textarea name="reason" class="form-control form-control-sm" rows="2" placeholder="Reason for rejection (optional)"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-danger btn-block"
+                                onclick="return confirm('Are you sure you want to reject this disbursement? Admin will be notified.')">
+                                <i class="mdi mdi-close-circle mr-1"></i> Reject Disbursement
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                @endif
+            @endif
         </div>
     </div>
 </div>

@@ -35,6 +35,7 @@ class Repayment extends Model
         'transaction_reference',
         'external_reference',
         'payment_method',
+        'payment_proof_path',
         'notes',
         'metadata',
     ];
@@ -102,6 +103,16 @@ class Repayment extends Model
         return $this->status === 'defaulted';
     }
 
+    public function isPendingApproval(): bool
+    {
+        return $this->status === 'pending_approval';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
     public function markAsOverdue(): void
     {
         $daysOverdue = now()->diffInDays($this->due_date, false);
@@ -129,6 +140,16 @@ class Repayment extends Model
         return $query->where('status', 'pending');
     }
 
+    public function scopePendingApproval($query)
+    {
+        return $query->where('status', 'pending_approval');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
+    }
+
     public function scopeOverdue($query)
     {
         return $query->where('status', 'overdue');
@@ -149,6 +170,7 @@ class Repayment extends Model
     public function scopeShouldBeOverdue($query)
     {
         return $query->whereIn('status', ['pending', 'partial'])
+            ->whereHas('loan', fn ($q) => $q->where('status', 'active'))
             ->whereDate('due_date', '<', today());
     }
 
@@ -165,16 +187,18 @@ class Repayment extends Model
 
     // ─── Calculate Penalty ───────────────────────────────────────────
 
-    public function calculatePenalty(float $penaltyRate = 0.05): float
+    public function calculatePenalty(): float
     {
         if ($this->days_overdue <= 0) {
             return 0;
         }
 
-        // Simple penalty: 5% per week overdue (configurable)
-        $weeksOverdue = ceil($this->days_overdue / 7);
-        $penalty = $this->amount * ($penaltyRate * $weeksOverdue);
+        $rate = (float) config('loan.repayment.penalty_rate_weekly', 0.05);
+        $maxRatio = (float) config('loan.repayment.max_penalty_ratio', 0.50);
 
-        return round(min($penalty, $this->amount * 0.5), 2); // Cap at 50% of repayment
+        $weeksOverdue = ceil($this->days_overdue / 7);
+        $penalty = $this->amount * ($rate * $weeksOverdue);
+
+        return round(min($penalty, $this->amount * $maxRatio), 2);
     }
 }

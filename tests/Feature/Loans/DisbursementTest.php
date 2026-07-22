@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\Loans\Models\DisbursementTransaction;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\DisbursementService;
+use App\Modules\Repayments\Models\Repayment;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -65,7 +66,7 @@ class DisbursementTest extends TestCase
         $this->assertEquals('awaiting_disbursement', $disbursement->status);
         $this->assertEquals(10000.00, $disbursement->gross_amount);
         $this->assertEquals(300.00, $disbursement->platform_fee);
-        $this->assertEquals(9700.00, $disbursement->net_amount); // Gross - Fee
+        $this->assertEquals(10000.00, $disbursement->net_amount); // Borrower receives full principal
         $this->assertNotNull($disbursement->transaction_reference);
         $this->assertStringStartsWith('DISB-', $disbursement->transaction_reference);
     }
@@ -135,8 +136,9 @@ class DisbursementTest extends TestCase
     public function test_cannot_disburse_if_net_amount_zero_or_negative(): void
     {
         $loan = $this->createFundedLoan([
-            'funded_amount' => 200,
-            'platform_fee' => 300, // Fee > funded
+            'approved_amount' => 0,
+            'requested_amount' => 0,
+            'funded_amount' => 0,
         ]);
 
         $this->expectException(\App\Exceptions\ApiException::class);
@@ -152,12 +154,23 @@ class DisbursementTest extends TestCase
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
 
-        $processed = $this->service->processDisbursement($disbursement);
+        $processed = $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
 
-        $this->assertEquals('disbursed', $processed->status);
+        $this->assertEquals('pending_borrower_confirmation', $processed->status);
         $this->assertNotNull($processed->processed_at);
-        $this->assertNotNull($processed->external_reference);
-        $this->assertStringStartsWith('BNK-', $processed->external_reference);
+        $this->assertEquals('TRX-TEST123', $processed->external_reference);
+        $this->assertEquals('bank_transfer', $processed->payment_method);
+        $this->assertEquals('disbursement-proofs/test.pdf', $processed->payment_proof_path);
+
+        // Borrower confirms receipt
+        $confirmed = $this->service->confirmReceipt($processed->fresh());
+
+        $this->assertEquals('disbursed', $confirmed->status);
+        $this->assertNotNull($confirmed->borrower_confirmed_at);
 
         // Loan should be updated to active
         $loan->refresh();
@@ -169,7 +182,11 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
 
         // Try to process again
         $this->expectException(\App\Exceptions\ApiException::class);
@@ -237,7 +254,12 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
 
         $reconciled = $this->service->reconcile(
             $disbursement->fresh(),
@@ -346,7 +368,12 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
 
         Sanctum::actingAs($this->admin);
 
@@ -363,7 +390,12 @@ class DisbursementTest extends TestCase
     {
         $loan = $this->createFundedLoan();
         $disbursement = $this->service->initiateDisbursement($loan);
-        $this->service->processDisbursement($disbursement);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
         $this->service->reconcile($disbursement->fresh(), 'admin@test.com');
 
         Sanctum::actingAs($this->admin);
@@ -379,16 +411,38 @@ class DisbursementTest extends TestCase
     public function test_reconciliation_report_shows_correct_totals(): void
     {
         // Create and process multiple disbursements
-        $loan1 = $this->createFundedLoan(['funded_amount' => 5000]);
+        $loan1 = $this->createFundedLoan([
+            'approved_amount' => 5000,
+            'requested_amount' => 5000,
+            'funded_amount' => 5000,
+        ]);
         $d1 = $this->service->initiateDisbursement($loan1);
-        $this->service->processDisbursement($d1);
+        $this->service->processDisbursement($d1, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-001',
+            'payment_proof_path' => 'proofs/1.pdf',
+        ]);
+        $this->service->confirmReceipt($d1->fresh());
 
-        $loan2 = $this->createFundedLoan(['funded_amount' => 10000]);
+        $loan2 = $this->createFundedLoan([
+            'approved_amount' => 10000,
+            'requested_amount' => 10000,
+            'funded_amount' => 10000,
+        ]);
         $d2 = $this->service->initiateDisbursement($loan2);
-        $this->service->processDisbursement($d2);
+        $this->service->processDisbursement($d2, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-002',
+            'payment_proof_path' => 'proofs/2.pdf',
+        ]);
+        $this->service->confirmReceipt($d2->fresh());
         $this->service->reconcile($d2->fresh(), 'admin@test.com');
 
-        $loan3 = $this->createFundedLoan(['funded_amount' => 8000]);
+        $loan3 = $this->createFundedLoan([
+            'approved_amount' => 8000,
+            'requested_amount' => 8000,
+            'funded_amount' => 8000,
+        ]);
         $d3 = $this->service->initiateDisbursement($loan3);
         $d3->update(['status' => 'failed']);
 
@@ -398,8 +452,8 @@ class DisbursementTest extends TestCase
         $this->assertEquals(1, $report['reconciled_count']);
         $this->assertEquals(1, $report['unreconciled_count']);
         $this->assertEquals(1, $report['failed_count']);
-        // Loan1: 5000 - 300 = 4700, Loan2: 10000 - 300 = 9700, Total = 14400
-        $this->assertEquals(14400, $report['total_amount']);
+        // Loan1: 5000, Loan2: 10000, Total = 15000
+        $this->assertEquals(15000, $report['total_amount']);
     }
 
     // ─── Model Tests ─────────────────────────────────────────────────
@@ -450,5 +504,301 @@ class DisbursementTest extends TestCase
         $disbursements = $this->service->getLoanDisbursements($loan->id);
 
         $this->assertCount(2, $disbursements);
+    }
+
+    // ─── Borrower Confirm Receipt Tests (Stage 7.1) ──────────────────
+
+    public function test_confirm_receipt_creates_repayment_schedule(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+
+        $confirmed = $this->service->confirmReceipt($disbursement->fresh());
+
+        $this->assertEquals('disbursed', $confirmed->status);
+        $this->assertNotNull($confirmed->borrower_confirmed_at);
+
+        // Loan should be active
+        $loan->refresh();
+        $this->assertEquals('active', $loan->status);
+        $this->assertNotNull($loan->disbursed_at);
+
+        // Repayment schedule should be created
+        $repayment = \App\Modules\Repayments\Models\Repayment::forLoan($loan->id)->first();
+        $this->assertNotNull($repayment);
+        $this->assertEquals('pending', $repayment->status);
+        $this->assertEquals($loan->total_repayment, $repayment->amount);
+    }
+
+    public function test_cannot_confirm_non_pending_borrower_confirmation(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+
+        // Status is 'awaiting_disbursement', not 'pending_borrower_confirmation'
+        $this->expectException(\App\Exceptions\ApiException::class);
+        $this->expectExceptionMessage('Disbursement is not pending borrower confirmation');
+
+        $this->service->confirmReceipt($disbursement);
+    }
+
+    // ─── Stage 8: Repayment Schedule Correctness Tests ───────────────
+
+    public function test_schedule_exists_immediately_after_confirm(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-IMM-001',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+
+        // Before confirmation — no schedule
+        $this->assertNull(Repayment::forLoan($loan->id)->first());
+
+        $this->service->confirmReceipt($disbursement->fresh());
+
+        // After confirmation — schedule must exist immediately
+        $repayment = Repayment::forLoan($loan->id)->first();
+        $this->assertNotNull($repayment, 'Repayment schedule must exist immediately after borrower confirms receipt.');
+    }
+
+    public function test_schedule_installment_amounts_correct(): void
+    {
+        $loan = $this->createFundedLoan([
+            'requested_amount' => 5000,
+            'approved_amount' => 5000,
+            'platform_fee' => 150,
+            'total_repayment' => 5273,
+        ]);
+
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-INST-001',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
+
+        $repayment = Repayment::forLoan($loan->id)->first();
+        $this->assertNotNull($repayment);
+
+        // Amount = total_repayment
+        $this->assertEquals(5273, (float) $repayment->amount);
+        // Principal = approved_amount
+        $this->assertEquals(5000, (float) $repayment->principal);
+        // Platform fee
+        $this->assertEquals(150, (float) $repayment->platform_fee);
+        // Interest = lender_return = total_repayment - platform_fee - principal
+        $expectedInterest = 5273 - 150 - 5000;
+        $this->assertEquals($expectedInterest, (float) $repayment->interest);
+        // Penalty starts at 0
+        $this->assertEquals(0, (float) $repayment->penalty);
+    }
+
+    public function test_schedule_due_date_correct(): void
+    {
+        $repaymentDate = now()->addDays(45)->toDateString();
+        $loan = $this->createFundedLoan([
+            'loan_term_days' => 45,
+            'repayment_date' => $repaymentDate,
+        ]);
+
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-DUE-001',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
+
+        $repayment = Repayment::forLoan($loan->id)->first();
+        $this->assertNotNull($repayment);
+        $this->assertEquals($repaymentDate, $repayment->due_date->toDateString());
+    }
+
+    public function test_schedule_outstanding_balance_correct(): void
+    {
+        $loan = $this->createFundedLoan([
+            'total_repayment' => 10546,
+        ]);
+
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-OUT-001',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
+
+        $repayment = Repayment::forLoan($loan->id)->first();
+        $this->assertNotNull($repayment);
+
+        $loanService = app(\App\Modules\Loans\Services\LoanService::class);
+        $paidHistory = collect($repayment->metadata['payment_history'] ?? [])->sum('amount');
+        $outstanding = $loanService->outstandingBalance(
+            (float) $repayment->amount,
+            (float) $paidHistory,
+            (float) $repayment->penalty,
+        );
+
+        // No payments made yet — outstanding = full amount
+        $this->assertEquals(10546, $outstanding);
+    }
+
+    public function test_confirm_receipt_atomic_on_schedule_failure(): void
+    {
+        $loan = $this->createFundedLoan();
+
+        // Pre-create a repayment so createRepaymentSchedule throws
+        Repayment::create([
+            'loan_id' => $loan->id,
+            'borrower_id' => $this->borrower->id,
+            'amount' => 9999,
+            'status' => 'pending',
+            'due_date' => now()->addDays(60),
+            'transaction_reference' => Repayment::generateReference(),
+        ]);
+
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-ATOMIC-001',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+
+        try {
+            $this->service->confirmReceipt($disbursement->fresh());
+            $this->fail('confirmReceipt should have thrown due to duplicate schedule.');
+        } catch (\App\Exceptions\ApiException $e) {
+            $this->assertStringContainsString('Repayment schedule already exists', $e->getMessage());
+        }
+
+        // Transaction must have rolled back — loan should NOT be active
+        $loan->refresh();
+        $this->assertNotEquals('active', $loan->status, 'Loan must not be active if schedule creation failed.');
+        $this->assertNull($loan->disbursed_at, 'disbursed_at must be null if schedule creation failed.');
+
+        $disbursement->refresh();
+        $this->assertNotEquals('disbursed', $disbursement->status, 'Disbursement must not be disbursed if schedule creation failed.');
+    }
+
+    public function test_dashboard_shows_outstanding_balance_from_db(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-DASH-001',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->confirmReceipt($disbursement->fresh());
+
+        $loan->refresh();
+        $this->assertEquals('active', $loan->status);
+
+        $repayment = Repayment::forLoan($loan->id)->first();
+        $this->assertNotNull($repayment);
+
+        $loanService = app(\App\Modules\Loans\Services\LoanService::class);
+        $paidHistory = collect($repayment->metadata['payment_history'] ?? [])->sum('amount');
+        $outstanding = $loanService->outstandingBalance(
+            (float) $repayment->amount,
+            (float) $paidHistory,
+            (float) $repayment->penalty,
+        );
+
+        $this->assertEquals((float) $loan->total_repayment, $outstanding);
+    }
+
+    // ─── Borrower Reject Receipt Tests (Stage 7.1) ───────────────────
+
+    public function test_borrower_can_reject_disbursement(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST123',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+
+        $rejected = $this->service->rejectReceipt($disbursement->fresh(), 'Did not receive funds');
+
+        $this->assertEquals('rejected_by_borrower', $rejected->status);
+        $this->assertNotNull($rejected->borrower_rejected_at);
+        $this->assertEquals('Did not receive funds', $rejected->rejection_reason);
+
+        // Loan remains awaiting_disbursement so admin can re-initiate
+        $loan->refresh();
+        $this->assertEquals('awaiting_disbursement', $loan->status);
+
+        // No repayment schedule should exist
+        $repayment = \App\Modules\Repayments\Models\Repayment::forLoan($loan->id)->first();
+        $this->assertNull($repayment);
+    }
+
+    public function test_borrower_can_reject_without_reason(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST456',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+
+        $rejected = $this->service->rejectReceipt($disbursement->fresh());
+
+        $this->assertEquals('rejected_by_borrower', $rejected->status);
+        $this->assertNull($rejected->rejection_reason);
+    }
+
+    public function test_cannot_reject_non_pending_borrower_confirmation(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+
+        // Status is 'awaiting_disbursement', not 'pending_borrower_confirmation'
+        $this->expectException(\App\Exceptions\ApiException::class);
+        $this->expectExceptionMessage('Disbursement is not pending borrower confirmation');
+
+        $this->service->rejectReceipt($disbursement);
+    }
+
+    public function test_rejected_disbursement_transaction_is_rejected_by_borrower(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-TEST789',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+
+        $rejected = $this->service->rejectReceipt($disbursement->fresh(), 'Wrong amount');
+
+        $this->assertTrue($rejected->isRejectedByBorrower());
+    }
+
+    public function test_rejected_disbursement_scope_works(): void
+    {
+        $loan = $this->createFundedLoan();
+        $disbursement = $this->service->initiateDisbursement($loan);
+        $this->service->processDisbursement($disbursement, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-SCOPE-TEST',
+            'payment_proof_path' => 'disbursement-proofs/test.pdf',
+        ]);
+        $this->service->rejectReceipt($disbursement->fresh());
+
+        $rejectedCount = DisbursementTransaction::rejectedByBorrower()->count();
+        $this->assertEquals(1, $rejectedCount);
     }
 }

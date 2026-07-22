@@ -6,6 +6,7 @@ use App\Modules\Admin\Events\FraudAlert;
 use App\Modules\Admin\Listeners\NotifyFraudAlert;
 use App\Modules\Admin\Services\AdminDashboardService;
 use App\Modules\Admin\Services\FraudDetectionService;
+use App\Modules\Admin\Services\OperationsDashboardService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,6 +16,7 @@ class AdminServiceProvider extends ServiceProvider
     {
         $this->app->singleton(AdminDashboardService::class);
         $this->app->singleton(FraudDetectionService::class);
+        $this->app->singleton(OperationsDashboardService::class);
     }
 
     public function boot(): void

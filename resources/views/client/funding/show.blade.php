@@ -39,12 +39,20 @@
                             <span class="badge badge-{{ $sc[$transaction->status] ?? 'secondary' }}">{{ ucfirst($transaction->status) }}</span>
                         </div>
                     </div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payment Method</div><div class="col-sm-8">{{ $transaction->payment_method ? ucfirst(str_replace('_', ' ', $transaction->payment_method)) : '—' }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Payment Reference</div><div class="col-sm-8 font-weight-bold text-primary">{{ $transaction->payment_reference ?? $transaction->transaction_reference }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Date</div><div class="col-sm-8">{{ $transaction->created_at->format('M j, Y g:i A') }}</div></div>
                     @if($transaction->confirmed_at)
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Confirmed At</div><div class="col-sm-8">{{ $transaction->confirmed_at->format('M j, Y g:i A') }}</div></div>
                     @endif
+                    @if($transaction->admin_notes)
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Admin Notes</div><div class="col-sm-8 small">{{ $transaction->admin_notes }}</div></div>
+                    @endif
                     @if($transaction->notes)
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Notes</div><div class="col-sm-8 small">{{ $transaction->notes }}</div></div>
+                    @endif
+                    @if($transaction->payment_proof_path)
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Proof of Payment</div><div class="col-sm-8"><a href="{{ \Illuminate\Support\Facades\Storage::url($transaction->payment_proof_path) }}" target="_blank" class="btn btn-sm btn-info"><i class="mdi mdi-file-pdf mr-1"></i> View Proof</a></div></div>
                     @endif
                 </div>
             </div>
