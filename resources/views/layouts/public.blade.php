@@ -27,6 +27,8 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
 
+    <script src="https://www.google.com/recaptcha/enterprise.js?render=6LdZWmAtAAAAACd6MdTuAfv5Jsi2jud-0eyx1hM9"></script>
+    
     <style>
         :root{
             --primary:#635bff;
