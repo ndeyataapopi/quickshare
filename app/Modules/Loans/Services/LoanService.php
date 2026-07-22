@@ -10,6 +10,7 @@ use App\Modules\Loans\DTOs\LoanRequestData;
 use App\Modules\Loans\Events\LoanApproved;
 use App\Modules\Loans\Events\LoanRejected;
 use App\Modules\Loans\Events\LoanRequested;
+use App\Modules\Loans\Jobs\GenerateLoanAgreementJob;
 use App\Modules\Loans\Mail\LoanAgreementMail;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Repayments\Models\Repayment;
@@ -115,13 +116,13 @@ class LoanService
                 'submitted_at' => $submittedAt,
             ]);
 
-            $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
-
             event(new LoanRequested($borrower, $data['amount'], $data['repayment_period'], $loan->id));
 
             return $loan;
         });
 
+        GenerateLoanAgreementJob::dispatch($loan->id);
+        $loan->refresh();
         $this->queueLoanAgreementEmail($loan);
 
         return $loan;
@@ -173,13 +174,13 @@ class LoanService
                 'submitted_at' => $submittedAt,
             ]);
 
-            $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
-
             event(new LoanRequested($borrower, $data->requestedAmount, $data->loanTermDays, $loan->id));
 
             return $loan;
         });
 
+        GenerateLoanAgreementJob::dispatch($loan->id);
+        $loan->refresh();
         $this->queueLoanAgreementEmail($loan);
 
         return $loan;
@@ -199,7 +200,7 @@ class LoanService
         $borrower = $loan->borrower;
         $calculation = $this->calculate($borrower, $amount, $loan->loan_term_days);
 
-        return DB::transaction(function () use ($loan, $reviewer, $amount, $calculation, $notes) {
+        $updated = DB::transaction(function () use ($loan, $reviewer, $amount, $calculation, $notes) {
             $repaymentDate = now()->addDays($loan->loan_term_days);
 
             $loan->update([
@@ -215,14 +216,17 @@ class LoanService
                 'approved_at' => now(),
             ]);
 
-            if ($loan->agreement_path === null) {
-                $this->loanAgreementService->generate($loan, $calculation, $repaymentDate);
-            }
-
             event(new LoanApproved($loan->id, $loan->borrower));
 
             return $loan->fresh();
         });
+
+        if ($updated->agreement_path === null) {
+            GenerateLoanAgreementJob::dispatch($updated->id);
+            $updated->refresh();
+        }
+
+        return $updated;
     }
 
     // ─── Admin: Reject ───────────────────────────────────────────────
