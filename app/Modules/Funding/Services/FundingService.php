@@ -374,28 +374,7 @@ class FundingService
 
     public function getLenderPortfolioSummary(User $lender): array
     {
-        $investments = Investment::forLender($lender->id);
-
-        return [
-            'total_invested' => round((float) (clone $investments)
-                ->whereIn('status', ['active', 'completed'])
-                ->sum('amount'), 2),
-            'total_expected_return' => round((float) (clone $investments)
-                ->whereIn('status', ['active', 'completed'])
-                ->sum('expected_return'), 2),
-            'total_actual_return' => round((float) (clone $investments)
-                ->where('status', 'completed')
-                ->sum('actual_return'), 2),
-            'active_investments' => (clone $investments)
-                ->where('status', 'active')
-                ->count(),
-            'completed_investments' => (clone $investments)
-                ->where('status', 'completed')
-                ->count(),
-            'pending_transactions' => FundingTransaction::forLender($lender->id)
-                ->where('status', 'pending')
-                ->count(),
-        ];
+        return app(EarningsService::class)->getLenderPortfolioSummary($lender);
     }
 
     // ─── Loan Funding Details ────────────────────────────────────────

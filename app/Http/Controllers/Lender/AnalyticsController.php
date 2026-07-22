@@ -28,6 +28,18 @@ class AnalyticsController extends Controller
         $trustScoreData = $this->getTrustScoreHistoryData($user);
         $investmentData = $this->earningsService->getInvestmentPerformanceData($user);
 
+        $totalLoans = $user->loans()->count();
+        $activeLoans = $user->loans()->whereIn('status', ['active', 'disbursed'])->count();
+        $completedLoans = $user->loans()->where('status', 'completed')->count();
+        $defaultedLoans = $user->loans()->where('status', 'defaulted')->count();
+        $totalBorrowed = $user->loans()->whereNotNull('approved_amount')->sum('approved_amount');
+        $totalRepaid = $user->repayments()->where('status', 'completed')->sum('amount');
+        $score = (float) $user->trust_score;
+        $tier = \App\Modules\TrustScore\Services\TrustScoreService::getTier($score);
+        $repaymentRate = $totalLoans > 0 ? round(($completedLoans / $totalLoans) * 100, 1) : 0;
+
+        $recentLoans = $user->loans()->latest()->take(5)->get();
+
         return view('client.analytics', compact(
             'earningsSummary',
             'financialData',
@@ -35,7 +47,17 @@ class AnalyticsController extends Controller
             'financialDataYear',
             'loanStatusData',
             'trustScoreData',
-            'investmentData'
+            'investmentData',
+            'totalLoans',
+            'activeLoans',
+            'completedLoans',
+            'defaultedLoans',
+            'totalBorrowed',
+            'totalRepaid',
+            'score',
+            'tier',
+            'repaymentRate',
+            'recentLoans'
         ));
     }
 

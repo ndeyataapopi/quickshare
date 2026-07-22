@@ -23,19 +23,12 @@ class InvestmentController extends Controller
             ->latest()
             ->paginate(20);
 
-        $portfolioSummary = $this->earningsService->getLenderPortfolioSummary($user);
-        $summary = [
-            'total_invested'   => $portfolioSummary['total_invested'],
-            'total_expected'   => $portfolioSummary['total_expected_return'],
-            'total_actual'     => $portfolioSummary['total_actual_return'],
-            'active_count'     => $portfolioSummary['active_investments'],
-            'completed_count'  => $portfolioSummary['completed_investments'],
-        ];
+        $earningsSummary = $this->earningsService->getLenderEarningsSummary($user);
 
         $portfolioData = $this->earningsService->getPortfolioPerformanceData($user);
         $distributionData = $this->earningsService->getInvestmentDistributionData($user);
 
-        return view('client.investments.index', compact('investments', 'summary', 'portfolioData', 'distributionData'));
+        return view('client.investments.index', compact('investments', 'earningsSummary', 'portfolioData', 'distributionData'));
     }
 
     public function show(Investment $investment)

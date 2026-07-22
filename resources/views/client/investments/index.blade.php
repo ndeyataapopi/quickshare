@@ -21,10 +21,10 @@
         <div class="col-md-3">
             <div class="card text-center border-primary">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-primary mb-0">{{ kpiMoney($summary['total_invested'] ?? 0) }}</h4>
+                    <h4 class="font-weight-bold text-primary mb-0">{{ kpiMoney($earningsSummary['total_invested'] ?? 0) }}</h4>
                     <small class="text-muted">Total Invested</small>
                     <div class="mt-2">
-                        <small class="text-success"><i class="mdi mdi-trending-up"></i> +12.5%</small>
+                        <small class="text-{{ ($earningsSummary['growth_rate'] ?? 0) >= 0 ? 'success' : 'danger' }}"><i class="mdi mdi-trending-{{ ($earningsSummary['growth_rate'] ?? 0) >= 0 ? 'up' : 'down' }}"></i> {{ ($earningsSummary['growth_rate'] ?? 0) >= 0 ? '+' : '' }}{{ $earningsSummary['growth_rate'] ?? 0 }}%</small>
                     </div>
                 </div>
             </div>
@@ -32,10 +32,10 @@
         <div class="col-md-3">
             <div class="card text-center border-success">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-success mb-0">{{ kpiMoney($summary['total_expected'] ?? 0) }}</h4>
+                    <h4 class="font-weight-bold text-success mb-0">{{ kpiMoney($earningsSummary['total_expected_return'] ?? 0) }}</h4>
                     <small class="text-muted">Expected Returns</small>
                     <div class="mt-2">
-                        <small class="text-info"><i class="mdi mdi-percent"></i> {{ $summary['total_invested'] > 0 ? round((($summary['total_expected'] - $summary['total_invested']) / $summary['total_invested']) * 100, 1) : 0 }}% ROI</small>
+                        <small class="text-info"><i class="mdi mdi-percent"></i> {{ $earningsSummary['roi'] ?? 0 }}% ROI</small>
                     </div>
                 </div>
             </div>
@@ -43,10 +43,10 @@
         <div class="col-md-3">
             <div class="card text-center border-warning">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-warning mb-0">{{ kpiMoney(($summary['total_expected'] - $summary['total_invested']) ?? 0) }}</h4>
-                    <small class="text-muted">Profit/Loss</small>
+                    <h4 class="font-weight-bold text-warning mb-0">{{ kpiMoney($earningsSummary['expected_profit'] ?? 0) }}</h4>
+                    <small class="text-muted">Expected Profit</small>
                     <div class="mt-2">
-                        <small class="text-success"><i class="mdi mdi-arrow-up"></i> Pending</small>
+                        <small class="text-muted">{{ $earningsSummary['completed_count'] ?? 0 }} completed</small>
                     </div>
                 </div>
             </div>
@@ -54,10 +54,10 @@
         <div class="col-md-3">
             <div class="card text-center border-info">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-info mb-0">{{ $summary['active_count'] ?? 0 }}</h4>
+                    <h4 class="font-weight-bold text-info mb-0">{{ $earningsSummary['active_count'] ?? 0 }}</h4>
                     <small class="text-muted">Active Investments</small>
                     <div class="mt-2">
-                        <small class="text-muted">{{ $summary['completed_count'] ?? 0 }} completed</small>
+                        <small class="text-muted">{{ $earningsSummary['completed_count'] ?? 0 }} completed</small>
                     </div>
                 </div>
             </div>

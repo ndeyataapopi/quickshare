@@ -17,19 +17,9 @@
 </div>
 <div class="page-content container-fluid">
     @php
-        $user = auth()->user();
-        $totalLoans      = $user->loans()->count();
-        $activeLoans     = $user->loans()->whereIn('status', ['active', 'disbursed'])->count();
-        $completedLoans  = $user->loans()->where('status', 'completed')->count();
-        $defaultedLoans  = $user->loans()->where('status', 'defaulted')->count();
-        $totalBorrowed   = $user->loans()->whereNotNull('approved_amount')->sum('approved_amount');
-        $totalRepaid     = $user->repayments()->where('status', 'completed')->sum('amount');
         $totalInvested   = $earningsSummary['total_invested'] ?? 0;
         $totalExpected   = $earningsSummary['total_expected_return'] ?? 0;
         $totalEarnings   = $earningsSummary['total_earnings'] ?? 0;
-        $score           = (float) $user->trust_score;
-        $tier            = \App\Modules\TrustScore\Services\TrustScoreService::getTier($score);
-        $repaymentRate   = $totalLoans > 0 ? round(($completedLoans / $totalLoans) * 100, 1) : 0;
     @endphp
 
     <!-- Enhanced Analytics Stats -->
@@ -252,7 +242,6 @@
                             <button class="btn btn-outline-primary" data-activity="repayments">Repayments</button>
                         </div>
                     </div>
-                    @php $recentLoans = $user->loans()->latest()->take(5)->get(); @endphp
                     @if($recentLoans->isEmpty())
                         <div class="text-center py-4">
                             <i class="mdi mdi-cash-usd text-muted" style="font-size:48px;"></i>

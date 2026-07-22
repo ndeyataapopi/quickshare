@@ -332,6 +332,72 @@ class EarningsServiceTest extends TestCase
         $this->assertEquals(800.0, $summary['total_earnings']);
     }
 
+    // ─── getPortfolioPerformanceData ────────────────────────────────
+
+    public function test_portfolio_performance_returns_no_data_when_empty(): void
+    {
+        $data = $this->service->getPortfolioPerformanceData($this->lender);
+
+        $this->assertEquals(['Now'], $data['labels']);
+        $this->assertEquals([0], $data['portfolio_value']);
+        $this->assertEquals([0], $data['total_invested']);
+    }
+
+    public function test_portfolio_performance_shows_cumulative_values(): void
+    {
+        $this->createInvestment(['amount' => 1000, 'expected_return' => 1100, 'status' => 'active']);
+
+        $data = $this->service->getPortfolioPerformanceData($this->lender);
+
+        $this->assertCount(6, $data['labels']);
+        $this->assertCount(6, $data['portfolio_value']);
+        $this->assertCount(6, $data['total_invested']);
+
+        $lastPortfolio = end($data['portfolio_value']);
+        $lastInvested = end($data['total_invested']);
+
+        $this->assertEquals(1100.0, $lastPortfolio);
+        $this->assertEquals(1000.0, $lastInvested);
+    }
+
+    public function test_portfolio_performance_accumulates_across_months(): void
+    {
+        $this->createInvestment([
+            'amount' => 1000,
+            'expected_return' => 1100,
+            'status' => 'active',
+            'created_at' => now()->subMonths(3),
+            'funded_at' => now()->subMonths(3),
+        ]);
+        $this->createInvestment([
+            'amount' => 2000,
+            'expected_return' => 2200,
+            'status' => 'active',
+        ]);
+
+        $data = $this->service->getPortfolioPerformanceData($this->lender);
+
+        $lastPortfolio = end($data['portfolio_value']);
+        $lastInvested = end($data['total_invested']);
+
+        $this->assertEquals(3300.0, $lastPortfolio);
+        $this->assertEquals(3000.0, $lastInvested);
+    }
+
+    // ─── FundingService Delegation ──────────────────────────────────
+
+    public function test_funding_service_portfolio_summary_delegates_to_earnings_service(): void
+    {
+        $fundingService = app(\App\Modules\Funding\Services\FundingService::class);
+
+        $this->createInvestment(['amount' => 3000, 'status' => 'active']);
+
+        $summary = $fundingService->getLenderPortfolioSummary($this->lender);
+
+        $this->assertEquals(3000.0, $summary['total_invested']);
+        $this->assertArrayHasKey('pending_transactions', $summary);
+    }
+
     // ─── No Hardcoded Values ────────────────────────────────────────
 
     public function test_no_hardcoded_values_in_summary(): void

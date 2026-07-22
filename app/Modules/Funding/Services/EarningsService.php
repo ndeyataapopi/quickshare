@@ -153,31 +153,34 @@ class EarningsService
             ];
         }
 
-        $monthlyData = $investments->groupBy(function ($item) {
-            return $item->created_at->format('M Y');
-        })->map(function ($group) {
-            return [
-                'portfolio_value' => $group->sum('expected_return'),
-                'total_invested'  => $group->sum('amount'),
-            ];
-        });
-
         $labels = [];
         $portfolioValues = [];
-        $totalInvested = [];
+        $totalInvestedValues = [];
+
+        $cumulativeInvested = 0;
+        $cumulativePortfolio = 0;
 
         for ($i = 5; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $key = $date->format('M Y');
+            $monthStart = $date->copy()->startOfMonth();
+            $monthEnd = $date->copy()->endOfMonth();
             $labels[] = $date->format('M');
-            $portfolioValues[] = $monthlyData[$key]['portfolio_value'] ?? 0;
-            $totalInvested[] = $monthlyData[$key]['total_invested'] ?? 0;
+
+            $monthInvestments = $investments->filter(function ($item) use ($monthStart, $monthEnd) {
+                return $item->created_at->between($monthStart, $monthEnd);
+            });
+
+            $cumulativeInvested += $monthInvestments->sum('amount');
+            $cumulativePortfolio += $monthInvestments->sum('expected_return');
+
+            $portfolioValues[] = round($cumulativePortfolio, 2);
+            $totalInvestedValues[] = round($cumulativeInvested, 2);
         }
 
         return [
             'labels'          => $labels,
             'portfolio_value' => $portfolioValues,
-            'total_invested'  => $totalInvested,
+            'total_invested'  => $totalInvestedValues,
         ];
     }
 
