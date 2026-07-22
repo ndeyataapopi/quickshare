@@ -323,6 +323,14 @@ class RepaymentService
             // 4. Update Investment.actual_return for each lender
             $this->updateInvestmentEarnings($locked);
 
+            // 4a. Mark LenderRepayment records as processed
+            LenderRepayment::forRepayment($locked->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'processed',
+                    'processed_at' => now(),
+                ]);
+
             // 5. Fire RepaymentMade event (triggers borrower notification)
             RepaymentMade::dispatch($loan->id, $locked->borrower, $paymentAmount);
 
@@ -552,8 +560,8 @@ class RepaymentService
             'completed_at' => now(),
         ]);
 
-        // Process all pending lender repayments
-        LenderRepayment::forRepayment($repayment->id)
+        // Process all pending lender repayments for this loan
+        LenderRepayment::whereHas('repayment', fn ($q) => $q->where('loan_id', $loan->id))
             ->where('status', 'pending')
             ->update([
                 'status' => 'processed',

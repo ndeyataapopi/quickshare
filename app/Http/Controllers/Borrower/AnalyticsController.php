@@ -13,7 +13,7 @@ class AnalyticsController extends Controller
     {
         $user = Auth::user();
 
-        $totalBorrowed = $user->loans()->sum('requested_amount');
+        $totalBorrowed = $user->loans()->whereNotNull('approved_amount')->sum('approved_amount');
         $totalRepaid = $user->repayments()->where('status', 'paid')->sum('amount');
         $activeLoansCount = $user->loans()->where('status', 'active')->count();
         $overdueRepayments = $user->repayments()->where('status', 'overdue')->count();

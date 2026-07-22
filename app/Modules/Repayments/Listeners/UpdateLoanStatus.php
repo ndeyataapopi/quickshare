@@ -3,6 +3,7 @@
 namespace App\Modules\Repayments\Listeners;
 
 use App\Models\ActivityLog;
+use App\Modules\Funding\Models\Investment;
 use App\Modules\Repayments\Events\LoanFullyRepaid;
 
 class UpdateLoanStatus
@@ -17,6 +18,11 @@ class UpdateLoanStatus
             'ip_address' => request()->ip(),
         ]);
 
-        // TODO: Update loan model status to 'completed'
+        Investment::where('loan_id', $event->loanId)
+            ->where('status', 'active')
+            ->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
     }
 }
