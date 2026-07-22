@@ -110,16 +110,18 @@ class RepaymentTest extends TestCase
         $loan = $this->createActiveLoan();
         $this->createFunding($loan, 10000);
 
-        Sanctum::actingAs($this->borrower);
+        // Use the service directly for the old recordRepayment flow
+        $repayment = $this->service->createRepaymentSchedule($loan);
 
-        $response = $this->postJson('/api/repayments', [
-            'loan_id' => $loan->id,
-            'amount' => 10546,
-        ]);
+        $recorded = $this->service->recordRepayment(
+            $loan,
+            $this->borrower,
+            10546,
+            'bank_transfer',
+        );
 
-        $response->assertStatus(200)
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.loan_status', 'completed');
+        $this->assertEquals('paid', $recorded->status);
+        $this->assertEquals('completed', $loan->fresh()->status);
 
         $this->assertDatabaseHas('repayments', [
             'loan_id' => $loan->id,
@@ -131,7 +133,7 @@ class RepaymentTest extends TestCase
     public function test_repayment_splits_proportionally_to_lenders(): void
     {
         $loan = $this->createActiveLoan();
-        
+
         // Create two lender fundings
         $funding1 = FundingTransaction::create([
             'loan_id' => $loan->id,
@@ -146,7 +148,7 @@ class RepaymentTest extends TestCase
 
         $lender2 = User::factory()->active()->create();
         $this->assignClientRole($lender2);
-        
+
         $funding2 = FundingTransaction::create([
             'loan_id' => $loan->id,
             'lender_id' => $lender2->id,
@@ -158,19 +160,11 @@ class RepaymentTest extends TestCase
             'transaction_reference' => FundingTransaction::generateReference(),
         ]);
 
-        Sanctum::actingAs($this->borrower);
-
-        $response = $this->postJson('/api/repayments', [
-            'loan_id' => $loan->id,
-            'amount' => 10546,
-        ]);
-
-        $response->assertOk();
+        // Use service directly for the old recordRepayment flow
+        $this->service->createRepaymentSchedule($loan);
+        $this->service->recordRepayment($loan, $this->borrower, 10546, 'bank_transfer');
 
         // Check lender repayments were created proportionally
-        $lenderRepayments = LenderRepayment::where('loan_id', $loan->id)->get();
-        
-        // Lender 1 should get 60% (6000/10000)
         $lender1Repayment = LenderRepayment::where('lender_id', $this->lender->id)->first();
         $this->assertNotNull($lender1Repayment);
         $this->assertEquals(60.00, (float) $lender1Repayment->funding_percentage);
@@ -185,30 +179,22 @@ class RepaymentTest extends TestCase
     {
         $loan = $this->createActiveLoan(['status' => 'funded']); // Not yet active
 
-        Sanctum::actingAs($this->borrower);
+        $this->expectException(\App\Exceptions\ApiException::class);
+        $this->expectExceptionMessage('Loan is not active');
 
-        $response = $this->postJson('/api/repayments', [
-            'loan_id' => $loan->id,
-            'amount' => 5000,
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonPath('success', false);
+        $this->service->recordRepayment($loan, $this->borrower, 5000, 'bank_transfer');
     }
 
     public function test_cannot_overpay_repayment(): void
     {
         $loan = $this->createActiveLoan();
         $this->createFunding($loan, 10000);
+        $this->service->createRepaymentSchedule($loan);
 
-        Sanctum::actingAs($this->borrower);
+        $this->expectException(\App\Exceptions\ApiException::class);
+        $this->expectExceptionMessage('exceeds remaining balance');
 
-        $response = $this->postJson('/api/repayments', [
-            'loan_id' => $loan->id,
-            'amount' => 20000, // More than total_repayment
-        ]);
-
-        $response->assertStatus(422);
+        $this->service->recordRepayment($loan, $this->borrower, 20000, 'bank_transfer');
     }
 
     // ─── Overdue Detection ───────────────────────────────────────────

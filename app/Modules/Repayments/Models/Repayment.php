@@ -35,6 +35,7 @@ class Repayment extends Model
         'transaction_reference',
         'external_reference',
         'payment_method',
+        'payment_proof_path',
         'notes',
         'metadata',
     ];
@@ -102,6 +103,11 @@ class Repayment extends Model
         return $this->status === 'defaulted';
     }
 
+    public function isPendingApproval(): bool
+    {
+        return $this->status === 'pending_approval';
+    }
+
     public function markAsOverdue(): void
     {
         $daysOverdue = now()->diffInDays($this->due_date, false);
@@ -127,6 +133,11 @@ class Repayment extends Model
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
+    }
+
+    public function scopePendingApproval($query)
+    {
+        return $query->where('status', 'pending_approval');
     }
 
     public function scopeOverdue($query)

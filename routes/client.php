@@ -44,6 +44,8 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     // ─── Repayments (Borrower) ────────────────────────────────────────
     Route::middleware(['kyc_verified'])->prefix('repayments')->name('repayments.')->group(function () {
         Route::get('/', [RepaymentController::class, 'index'])->name('index');
+        Route::get('/create', [RepaymentController::class, 'create'])->name('create');
+        Route::post('/', [RepaymentController::class, 'store'])->name('store');
         Route::get('/{repayment}', [RepaymentController::class, 'show'])->name('show');
     });
 

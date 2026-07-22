@@ -11,6 +11,7 @@ use App\Modules\Repayments\Events\LoanFullyRepaid;
 use App\Modules\Repayments\Events\RepaymentMade;
 use App\Modules\Repayments\Events\RepaymentOverdue;
 use App\Modules\Repayments\Models\LenderRepayment;
+use App\Modules\Loans\Models\DisbursementTransaction;
 use App\Modules\Repayments\Models\Repayment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -146,6 +147,110 @@ class RepaymentService
             ]);
 
             return $repayment->fresh();
+        });
+    }
+
+    // ─── Submit Repayment Request (Stage 10) ──────────────────────────
+
+    /**
+     * Borrower submits a repayment request for one or multiple installments.
+     * - Sets each selected repayment to 'pending_approval' status.
+     * - Creates an incoming DisbursementTransaction (Borrower → QuickShare).
+     * - Does NOT reduce loan balance or update investor earnings.
+     *
+     * @param  array  $repaymentIds  IDs of repayments the borrower wants to pay
+     * @param  User   $borrower      The authenticated borrower
+     * @param  string $paymentMethod eft, mobile_wallet, cash_deposit
+     * @param  string|null $paymentProofPath  Stored file path of uploaded proof
+     * @param  string|null $externalReference  Optional payment reference from borrower
+     * @return array{repayments: \Illuminate\Support\Collection, disbursement: DisbursementTransaction}
+     */
+    public function submitRepaymentRequest(
+        array $repaymentIds,
+        User $borrower,
+        string $paymentMethod,
+        ?string $paymentProofPath = null,
+        ?string $externalReference = null,
+    ): array {
+        return DB::transaction(function () use ($repaymentIds, $borrower, $paymentMethod, $paymentProofPath, $externalReference) {
+            // Fetch repayments, ensure they belong to the borrower and are in a submittable state
+            $repayments = Repayment::whereIn('id', $repaymentIds)
+                ->where('borrower_id', $borrower->id)
+                ->whereIn('status', ['pending', 'partial', 'overdue'])
+                ->lockForUpdate()
+                ->get();
+
+            if ($repayments->isEmpty()) {
+                throw new ApiException('No eligible repayments found for submission.', 422);
+            }
+
+            // Group by loan to create one incoming disbursement per loan
+            $byLoan = $repayments->groupBy('loan_id');
+
+            $disbursements = [];
+
+            foreach ($byLoan as $loanId => $loanRepayments) {
+                $loan = Loan::lockForUpdate()->find($loanId);
+
+                if (! $loan) {
+                    throw new ApiException("Loan #{$loanId} not found.", 404);
+                }
+
+                if (! $loan->isActive()) {
+                    throw new ApiException('Loan is not active. Status: ' . $loan->status, 422);
+                }
+
+                $totalAmount = $loanRepayments->sum(function ($r) {
+                    return (float) $r->amount + (float) $r->penalty;
+                });
+
+                // Update each repayment to pending_approval
+                foreach ($loanRepayments as $repayment) {
+                    $repayment->update([
+                        'status' => 'pending_approval',
+                        'payment_method' => $paymentMethod,
+                        'payment_proof_path' => $paymentProofPath,
+                        'external_reference' => $externalReference,
+                        'metadata' => array_merge($repayment->metadata ?? [], [
+                            'submission' => [
+                                'amount' => (float) $repayment->amount + (float) $repayment->penalty,
+                                'date' => now()->toIso8601String(),
+                                'payment_method' => $paymentMethod,
+                                'reference' => $externalReference,
+                            ],
+                        ]),
+                    ]);
+                }
+
+                // Create incoming disbursement (Borrower → QuickShare)
+                $disbursement = DisbursementTransaction::create([
+                    'loan_id' => $loanId,
+                    'direction' => 'incoming',
+                    'gross_amount' => $totalAmount,
+                    'platform_fee' => 0,
+                    'net_amount' => $totalAmount,
+                    'status' => 'awaiting_approval',
+                    'transaction_reference' => DisbursementTransaction::generateReference(),
+                    'external_reference' => $externalReference,
+                    'payment_method' => $paymentMethod,
+                    'payment_proof_path' => $paymentProofPath,
+                ]);
+
+                $disbursements[] = $disbursement;
+
+                Log::info('Repayment request submitted', [
+                    'loan_id' => $loanId,
+                    'borrower_id' => $borrower->id,
+                    'repayment_ids' => $loanRepayments->pluck('id')->toArray(),
+                    'total_amount' => $totalAmount,
+                    'disbursement_id' => $disbursement->id,
+                ]);
+            }
+
+            return [
+                'repayments' => $repayments->fresh(),
+                'disbursements' => collect($disbursements),
+            ];
         });
     }
 

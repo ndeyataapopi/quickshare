@@ -13,6 +13,7 @@ class DisbursementTransaction extends Model
 
     protected $fillable = [
         'loan_id',
+        'direction',
         'gross_amount',
         'platform_fee',
         'net_amount',
@@ -65,6 +66,21 @@ class DisbursementTransaction extends Model
         return $this->status === 'awaiting_disbursement';
     }
 
+    public function isAwaitingApproval(): bool
+    {
+        return $this->status === 'awaiting_approval';
+    }
+
+    public function isIncoming(): bool
+    {
+        return $this->direction === 'incoming';
+    }
+
+    public function isOutgoing(): bool
+    {
+        return $this->direction === 'outgoing';
+    }
+
     public function isProcessing(): bool
     {
         return $this->status === 'processing';
@@ -115,6 +131,21 @@ class DisbursementTransaction extends Model
     public function scopeAwaiting($query)
     {
         return $query->where('status', 'awaiting_disbursement');
+    }
+
+    public function scopeAwaitingApproval($query)
+    {
+        return $query->where('status', 'awaiting_approval');
+    }
+
+    public function scopeIncoming($query)
+    {
+        return $query->where('direction', 'incoming');
+    }
+
+    public function scopeOutgoing($query)
+    {
+        return $query->where('direction', 'outgoing');
     }
 
     public function scopePendingProcessing($query)

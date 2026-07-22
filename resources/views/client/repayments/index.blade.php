@@ -56,38 +56,19 @@
         </div>
     </div>
 
-    <!-- Quick Payment Section -->
-    @if($repayments->where('status', 'pending')->count() > 0)
+    <!-- Submit Repayment Section -->
+    @if($repayments->whereIn('status', ['pending', 'partial', 'overdue'])->count() > 0)
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-success">
                 <div class="card-header bg-success text-white">
-                    <h6 class="mb-0"><i class="mdi mdi-credit-card mr-2"></i>Quick Payment</h6>
+                    <h6 class="mb-0"><i class="mdi mdi-credit-card mr-2"></i>Submit Repayment</h6>
                 </div>
                 <div class="card-body">
-                    <p class="mb-3">You have {{ $repayments->where('status', 'pending')->count() }} pending payment(s). Select a payment method to continue:</p>
-                    <div class="row">
-                        <div class="col-md-3 col-6 mb-2">
-                            <button class="btn btn-outline-primary btn-block payment-method" data-method="bank">
-                                <i class="mdi mdi-bank mr-2"></i>Bank Transfer
-                            </button>
-                        </div>
-                        <div class="col-md-3 col-6 mb-2">
-                            <button class="btn btn-outline-success btn-block payment-method" data-method="card">
-                                <i class="mdi mdi-credit-card mr-2"></i>Card Payment
-                            </button>
-                        </div>
-                        <div class="col-md-3 col-6 mb-2">
-                            <button class="btn btn-outline-info btn-block payment-method" data-method="mobile">
-                                <i class="mdi mdi-cellphone mr-2"></i>Mobile Money
-                            </button>
-                        </div>
-                        <div class="col-md-3 col-6 mb-2">
-                            <button class="btn btn-outline-warning btn-block payment-method" data-method="cash">
-                                <i class="mdi mdi-cash mr-2"></i>Cash Deposit
-                            </button>
-                        </div>
-                    </div>
+                    <p class="mb-3">You have {{ $repayments->whereIn('status', ['pending', 'partial', 'overdue'])->count() }} repayment(s) due. Click below to submit a repayment request.</p>
+                    <a href="{{ route('client.repayments.create') }}" class="btn btn-success">
+                        <i class="mdi mdi-credit-card-plus mr-2"></i>Submit Repayment Request
+                    </a>
                 </div>
             </div>
         </div>
@@ -104,6 +85,7 @@
                             <button class="btn btn-sm btn-outline-primary filter-btn active" data-filter="all">All</button>
                             <button class="btn btn-sm btn-outline-success filter-btn" data-filter="paid">Paid</button>
                             <button class="btn btn-sm btn-outline-warning filter-btn" data-filter="pending">Pending</button>
+                            <button class="btn btn-sm btn-outline-info filter-btn" data-filter="pending_approval">Pending Approval</button>
                             <button class="btn btn-sm btn-outline-danger filter-btn" data-filter="overdue">Overdue</button>
                         </div>
                     </div>
@@ -147,13 +129,17 @@
                                                 'paid' => 'success', 
                                                 'overdue' => 'danger', 
                                                 'pending' => 'warning', 
-                                                'defaulted' => 'danger'
+                                                'defaulted' => 'danger',
+                                                'pending_approval' => 'info',
+                                                'partial' => 'primary',
                                             ]; 
                                             $statusIcons = [
                                                 'paid' => 'check-circle', 
                                                 'overdue' => 'alert-circle', 
                                                 'pending' => 'clock', 
-                                                'defaulted' => 'alert-circle'
+                                                'defaulted' => 'alert-circle',
+                                                'pending_approval' => 'hourglass',
+                                                'partial' => 'clock',
                                             ]; 
                                         @endphp
                                         <span class="badge badge-{{ $statusColors[$repayment->status] ?? 'secondary' }}">
@@ -167,10 +153,10 @@
                                             <a href="{{ route('client.repayments.show', $repayment) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="mdi mdi-eye"></i>
                                             </a>
-                                            @if($repayment->status === 'pending')
-                                                <button class="btn btn-sm btn-outline-success pay-now" data-id="{{ $repayment->id }}" data-amount="{{ $repayment->amount }}">
+                                            @if(in_array($repayment->status, ['pending', 'partial', 'overdue']))
+                                                <a href="{{ route('client.repayments.create', ['loan_id' => $repayment->loan_id]) }}" class="btn btn-sm btn-outline-success">
                                                     <i class="mdi mdi-credit-card"></i>
-                                                </button>
+                                                </a>
                                             @endif
                                             @if($repayment->status === 'paid')
                                                 <button class="btn btn-sm btn-outline-info download-receipt" data-id="{{ $repayment->id }}">

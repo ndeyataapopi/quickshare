@@ -18,7 +18,8 @@ return new class extends Migration
             $table->decimal('net_amount', 12, 2);      // To borrower
             
             // Status tracking
-            $table->enum('status', ['awaiting_disbursement', 'processing', 'pending_borrower_confirmation', 'disbursed', 'failed', 'retried', 'rejected_by_borrower'])->default('awaiting_disbursement');
+            $table->enum('direction', ['incoming', 'outgoing'])->default('outgoing');
+            $table->enum('status', ['awaiting_disbursement', 'processing', 'pending_borrower_confirmation', 'disbursed', 'failed', 'retried', 'rejected_by_borrower', 'awaiting_approval'])->default('awaiting_disbursement');
             
             // Processing
             $table->timestamp('processed_at')->nullable();
@@ -47,6 +48,7 @@ return new class extends Migration
             // Timestamps
             $table->timestamps();
             
+            $table->index('direction');
             // Indexes (external_reference already indexed at column definition)
         });
     }
