@@ -21,7 +21,7 @@ return new class extends Migration
             $table->decimal('platform_fee', 12, 2)->default(0);  // Platform fee portion
             
             // Status tracking
-            $table->enum('status', ['pending', 'partial', 'paid', 'overdue', 'defaulted', 'pending_approval'])->default('pending');
+            $table->enum('status', ['pending', 'partial', 'paid', 'overdue', 'defaulted', 'pending_approval', 'rejected'])->default('pending');
             
             // Schedule tracking
             $table->date('due_date');

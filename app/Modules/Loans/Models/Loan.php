@@ -209,7 +209,7 @@ class Loan extends Model
             return 0;
         }
 
-        $repaidAmount = (float) $this->repayments()->where('status', 'completed')->sum('amount');
+        $repaidAmount = (float) $this->repayments()->where('status', 'paid')->sum('amount');
 
         return round(($repaidAmount / $totalRepayment) * 100, 2);
     }

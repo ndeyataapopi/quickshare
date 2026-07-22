@@ -19,7 +19,7 @@ return new class extends Migration
             
             // Status tracking
             $table->enum('direction', ['incoming', 'outgoing'])->default('outgoing');
-            $table->enum('status', ['awaiting_disbursement', 'processing', 'pending_borrower_confirmation', 'disbursed', 'failed', 'retried', 'rejected_by_borrower', 'awaiting_approval'])->default('awaiting_disbursement');
+            $table->enum('status', ['awaiting_disbursement', 'processing', 'pending_borrower_confirmation', 'disbursed', 'failed', 'retried', 'rejected_by_borrower', 'awaiting_approval', 'confirmed', 'rejected'])->default('awaiting_disbursement');
             
             // Processing
             $table->timestamp('processed_at')->nullable();

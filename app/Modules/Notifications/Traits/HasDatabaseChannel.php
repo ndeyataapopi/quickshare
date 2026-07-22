@@ -41,6 +41,8 @@ trait HasDatabaseChannel
             'repayment_reminder' => 'Repayment Reminder',
             'repayment_overdue' => 'Repayment Overdue',
             'repayment_received' => 'Payment Received',
+            'repayment_approved' => 'Repayment Approved',
+            'repayment_rejected' => 'Repayment Rejected',
             'funding_payment_submitted' => 'Funding Payment Submitted',
             'funding_payment_approved' => 'Funding Payment Approved',
             'funding_payment_rejected' => 'Funding Payment Rejected',
@@ -71,6 +73,8 @@ trait HasDatabaseChannel
             'repayment_reminder' => "Your repayment for loan {$reference} is due soon.",
             'repayment_overdue' => 'Your loan repayment is now overdue. Please make payment to avoid penalties.',
             'repayment_received' => "Thank you! We received your repayment of {$amount} for loan {$reference}.",
+            'repayment_approved' => "Your repayment of {$amount} for loan {$reference} has been approved and processed.",
+            'repayment_rejected' => "Your repayment of {$amount} for loan {$reference} was rejected. Reason: " . ($this->data['reason'] ?? 'No reason provided.'),
             'funding_payment_submitted' => "A funding payment of {$amount} has been submitted for loan {$reference}.",
             'funding_payment_approved' => "Your funding payment of {$amount} for loan {$reference} has been approved.",
             'funding_payment_rejected' => "Your funding payment of {$amount} for loan {$reference} was rejected.",
@@ -129,10 +133,10 @@ trait HasDatabaseChannel
             'password_reset' => ['text' => 'Reset Password', 'url' => $this->data['reset_url'] ?? url('/')],
             'kyc_approved' => ['text' => 'Apply for a Loan', 'url' => route('client.loans.create')],
             'kyc_rejected' => ['text' => 'Resubmit KYC', 'url' => url('/kyc/resubmit')],
-            'loan_submitted', 'loan_approved', 'loan_funded', 'repayment_received' =>
+            'loan_submitted', 'loan_approved', 'loan_funded', 'repayment_received', 'repayment_approved' =>
                 ['text' => 'View Loan', 'url' => $loanId ? route('client.loans.show', $loanId) : route('client.loans.index')],
             'loan_rejected' => ['text' => 'Apply Again', 'url' => route('client.loans.create')],
-            'loan_disbursed', 'repayment_reminder', 'repayment_overdue' =>
+            'loan_disbursed', 'repayment_reminder', 'repayment_overdue', 'repayment_rejected' =>
                 ['text' => 'Make Payment', 'url' => route('client.repayments.index')],
             'funding_payment_submitted' => [
                 'text' => 'Review Funding',

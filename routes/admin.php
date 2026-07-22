@@ -75,7 +75,8 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
     Route::prefix('repayments')->name('repayments.')->group(function () {
         Route::get('/', [RepaymentController::class, 'index'])->name('index');
         Route::get('/{repayment}', [RepaymentController::class, 'show'])->name('show');
-        Route::patch('/{repayment}/confirm', [RepaymentController::class, 'confirm'])->name('confirm');
+        Route::patch('/{repayment}/approve', [RepaymentController::class, 'approve'])->name('approve');
+        Route::patch('/{repayment}/reject', [RepaymentController::class, 'reject'])->name('reject');
     });
 
     // ─── Collections ──────────────────────────────────────────────────

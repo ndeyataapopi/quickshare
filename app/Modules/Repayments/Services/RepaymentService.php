@@ -10,6 +10,7 @@ use App\Modules\Loans\Services\LoanService;
 use App\Modules\Repayments\Events\LoanFullyRepaid;
 use App\Modules\Repayments\Events\RepaymentMade;
 use App\Modules\Repayments\Events\RepaymentOverdue;
+use App\Modules\Funding\Models\Investment;
 use App\Modules\Repayments\Models\LenderRepayment;
 use App\Modules\Loans\Models\DisbursementTransaction;
 use App\Modules\Repayments\Models\Repayment;
@@ -252,6 +253,201 @@ class RepaymentService
                 'disbursements' => collect($disbursements),
             ];
         });
+    }
+
+    // ─── Approve Repayment (Stage 10.1) ──────────────────────────────
+
+    /**
+     * Admin approves a borrower's repayment submission.
+     *
+     * - Repayment becomes Paid.
+     * - Incoming disbursement becomes Confirmed.
+     * - Loan outstanding balance decreases.
+     * - Installment marked Paid.
+     * - Next installment updates if applicable.
+     * - Loan status updates if fully repaid.
+     * - Investor earnings update (Investment.actual_return).
+     * - LenderRepayment records created and processed.
+     *
+     * @param  Repayment $repayment
+     * @param  User|null $admin
+     * @return Repayment
+     * @throws ApiException
+     */
+    public function approveRepayment(Repayment $repayment, ?User $admin = null): Repayment
+    {
+        return DB::transaction(function () use ($repayment, $admin) {
+            $locked = Repayment::lockForUpdate()->find($repayment->id);
+
+            if (! $locked) {
+                throw new ApiException('Repayment not found.', 404);
+            }
+
+            if (! $locked->isPendingApproval()) {
+                throw new ApiException(
+                    'Only repayments pending approval can be approved. Status: ' . $locked->status,
+                    422,
+                );
+            }
+
+            $loan = Loan::lockForUpdate()->find($locked->loan_id);
+
+            if (! $loan) {
+                throw new ApiException('Loan not found.', 404);
+            }
+
+            $paymentAmount = (float) $locked->amount + (float) $locked->penalty;
+
+            // 1. Repayment becomes Paid
+            $locked->update([
+                'status' => 'paid',
+                'paid_date' => now()->toDateString(),
+                'metadata' => array_merge($locked->metadata ?? [], [
+                    'approved_by' => $admin?->id,
+                    'approved_at' => now()->toIso8601String(),
+                ]),
+            ]);
+
+            // 2. Incoming disbursement becomes Confirmed
+            DisbursementTransaction::forLoan($loan->id)
+                ->incoming()
+                ->where('status', 'awaiting_approval')
+                ->update([
+                    'status' => 'confirmed',
+                    'processed_at' => now(),
+                ]);
+
+            // 3. Distribute to lenders (creates LenderRepayment records)
+            $this->distributeToLenders($locked, $paymentAmount);
+
+            // 4. Update Investment.actual_return for each lender
+            $this->updateInvestmentEarnings($locked);
+
+            // 5. Fire RepaymentMade event (triggers borrower notification)
+            RepaymentMade::dispatch($loan->id, $locked->borrower, $paymentAmount);
+
+            // 6. Check if loan is fully repaid
+            $allRepaid = Repayment::forLoan($loan->id)
+                ->where('status', '!=', 'paid')
+                ->doesntExist();
+
+            if ($allRepaid) {
+                $this->markLoanAsFullyRepaid($loan, $locked);
+            }
+
+            Log::info('Repayment approved', [
+                'repayment_id' => $locked->id,
+                'loan_id' => $loan->id,
+                'admin_id' => $admin?->id,
+                'amount' => $paymentAmount,
+            ]);
+
+            return $locked->fresh();
+        });
+    }
+
+    // ─── Reject Repayment (Stage 10.1) ───────────────────────────────
+
+    /**
+     * Admin rejects a borrower's repayment submission.
+     *
+     * - Repayment status becomes Rejected.
+     * - Disbursement marked Rejected.
+     * - Borrower notified.
+     * - Loan balance unchanged.
+     * - Earnings unchanged.
+     *
+     * @param  Repayment  $repayment
+     * @param  User|null  $admin
+     * @param  string|null $reason
+     * @return Repayment
+     * @throws ApiException
+     */
+    public function rejectRepayment(Repayment $repayment, ?User $admin = null, ?string $reason = null): Repayment
+    {
+        return DB::transaction(function () use ($repayment, $admin, $reason) {
+            $locked = Repayment::lockForUpdate()->find($repayment->id);
+
+            if (! $locked) {
+                throw new ApiException('Repayment not found.', 404);
+            }
+
+            if (! $locked->isPendingApproval()) {
+                throw new ApiException(
+                    'Only repayments pending approval can be rejected. Status: ' . $locked->status,
+                    422,
+                );
+            }
+
+            $loan = Loan::find($locked->loan_id);
+
+            // 1. Repayment status becomes Rejected
+            $locked->update([
+                'status' => 'rejected',
+                'metadata' => array_merge($locked->metadata ?? [], [
+                    'rejected_by' => $admin?->id,
+                    'rejected_at' => now()->toIso8601String(),
+                    'rejection_reason' => $reason,
+                ]),
+            ]);
+
+            // 2. Disbursement marked Rejected
+            DisbursementTransaction::forLoan($loan->id)
+                ->incoming()
+                ->where('status', 'awaiting_approval')
+                ->update([
+                    'status' => 'rejected',
+                    'processed_at' => now(),
+                ]);
+
+            // 3. Borrower notified
+            try {
+                $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
+                $notificationService->queue(
+                    $locked->borrower,
+                    'repayment_rejected',
+                    [
+                        'loan_id' => $loan->id,
+                        'reference' => $loan->reference,
+                        'amount' => (float) $locked->amount,
+                        'reason' => $reason ?? 'No reason provided',
+                    ],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send repayment rejection notification', [
+                    'repayment_id' => $locked->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            Log::info('Repayment rejected', [
+                'repayment_id' => $locked->id,
+                'loan_id' => $loan->id,
+                'admin_id' => $admin?->id,
+                'reason' => $reason,
+            ]);
+
+            return $locked->fresh();
+        });
+    }
+
+    // ─── Update Investment Earnings ──────────────────────────────────
+
+    /**
+     * Update Investment.actual_return for each lender based on processed
+     * LenderRepayment records for this repayment.
+     */
+    protected function updateInvestmentEarnings(Repayment $repayment): void
+    {
+        $lenderRepayments = LenderRepayment::forRepayment($repayment->id)->get();
+
+        foreach ($lenderRepayments as $lr) {
+            $investment = Investment::where('funding_transaction_id', $lr->funding_transaction_id)->first();
+
+            if ($investment) {
+                $investment->increment('actual_return', (float) $lr->amount);
+            }
+        }
     }
 
     // ─── Distribute to Lenders Proportionally ─────────────────────────

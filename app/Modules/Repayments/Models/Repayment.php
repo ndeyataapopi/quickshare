@@ -108,6 +108,11 @@ class Repayment extends Model
         return $this->status === 'pending_approval';
     }
 
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
     public function markAsOverdue(): void
     {
         $daysOverdue = now()->diffInDays($this->due_date, false);
@@ -138,6 +143,11 @@ class Repayment extends Model
     public function scopePendingApproval($query)
     {
         return $query->where('status', 'pending_approval');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
     }
 
     public function scopeOverdue($query)
