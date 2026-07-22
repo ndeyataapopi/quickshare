@@ -133,6 +133,13 @@
                 <p class="text-muted small mb-0">Investment & funding data</p>
             </a>
         </div>
+        <div class="col-md-3">
+            <a href="{{ route('admin.reports.show', ['type' => 'reconciliation', 'period' => $period]) }}" class="card card-body text-center text-decoration-none h-100">
+                <i class="mdi mdi-scale-balance text-danger mb-2" style="font-size:48px;"></i>
+                <h5 class="mb-1">Reconciliation Report</h5>
+                <p class="text-muted small mb-0">Money In = Money Out + Revenue</p>
+            </a>
+        </div>
     </div>
 </div>
 @endsection

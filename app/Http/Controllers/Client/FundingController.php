@@ -7,6 +7,7 @@ use App\Http\Requests\Funding\SubmitPaymentRequest;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Funding\Services\FundingService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class FundingController extends Controller
 {
@@ -50,17 +51,20 @@ class FundingController extends Controller
         );
 
         // Notify admins that a funding payment is awaiting verification
-        app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
-            $this->adminUser(),
-            'funding_payment_submitted',
-            [
-                'loan_id' => $transaction->loan_id,
-                'reference' => $transaction->loan->reference,
-                'amount' => (float) $transaction->amount,
-                'transaction_id' => $transaction->id,
-                'lender_id' => $transaction->lender_id,
-            ]
-        );
+        $admin = $this->adminUser();
+        if ($admin) {
+            app(\App\Modules\Notifications\Services\NotificationService::class)->queue(
+                $admin,
+                'funding_payment_submitted',
+                [
+                    'loan_id' => $transaction->loan_id,
+                    'reference' => $transaction->loan->reference,
+                    'amount' => (float) $transaction->amount,
+                    'transaction_id' => $transaction->id,
+                    'lender_id' => $transaction->lender_id,
+                ]
+            );
+        }
 
         return redirect()->route('client.investments.index')
             ->with('success', 'Payment details submitted. Your investment will be confirmed once the admin verifies your payment.');
@@ -73,9 +77,14 @@ class FundingController extends Controller
         }
     }
 
-    private function adminUser(): \App\Models\User
+    private function adminUser(): ?\App\Models\User
     {
-        return \App\Models\User::role('admin')->first()
-            ?? \App\Models\User::firstOrFail();
+        $admin = \App\Models\User::role('admin')->first();
+
+        if (! $admin) {
+            Log::warning('No admin user found to notify about funding payment submission.');
+        }
+
+        return $admin;
     }
 }

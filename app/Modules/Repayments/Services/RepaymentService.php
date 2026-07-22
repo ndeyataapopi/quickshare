@@ -7,9 +7,12 @@ use App\Models\User;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\LoanService;
+use App\Modules\Repayments\Events\LenderRepaymentAllocated;
 use App\Modules\Repayments\Events\LoanFullyRepaid;
 use App\Modules\Repayments\Events\RepaymentMade;
 use App\Modules\Repayments\Events\RepaymentOverdue;
+use App\Modules\Repayments\Events\RepaymentRejected;
+use App\Modules\Repayments\Events\RepaymentSubmitted;
 use App\Modules\Funding\Models\Investment;
 use App\Modules\Repayments\Models\LenderRepayment;
 use App\Modules\Loans\Models\DisbursementTransaction;
@@ -62,92 +65,6 @@ class RepaymentService
             ]);
 
             return $repayment;
-        });
-    }
-
-    // ─── Record Repayment ────────────────────────────────────────────
-
-    public function recordRepayment(
-        Loan $loan,
-        User $borrower,
-        float $amount,
-        ?string $paymentMethod = 'bank_transfer',
-        ?string $externalReference = null,
-    ): Repayment {
-        return DB::transaction(function () use ($loan, $borrower, $amount, $paymentMethod, $externalReference) {
-            // Lock loan for update
-            $lockedLoan = Loan::lockForUpdate()->find($loan->id);
-
-            if (! $lockedLoan) {
-                throw new ApiException('Loan not found.', 404);
-            }
-
-            if (! $lockedLoan->isActive()) {
-                throw new ApiException('Loan is not active. Status: ' . $lockedLoan->status, 422);
-            }
-
-            // Find or create repayment record
-            $repayment = Repayment::forLoan($loan->id)
-                ->whereIn('status', ['pending', 'partial', 'overdue'])
-                ->first();
-
-            if (! $repayment) {
-                // Create new repayment record
-                $repayment = $this->createRepaymentSchedule($lockedLoan);
-            }
-
-            // Calculate how much is still owed
-            $totalDue = $repayment->amount + $repayment->penalty;
-            $alreadyPaid = $this->getTotalPaidForRepayment($repayment);
-            $remaining = $totalDue - $alreadyPaid;
-
-            if ($amount > $remaining) {
-                throw new ApiException(
-                    "Payment amount exceeds remaining balance. Remaining: {$remaining}, Offered: {$amount}",
-                    422,
-                );
-            }
-
-            // Update repayment record
-            $newPaidAmount = $alreadyPaid + $amount;
-            $isFullyPaid = $newPaidAmount >= $totalDue;
-
-            $repayment->update([
-                'status' => $isFullyPaid ? 'paid' : 'partial',
-                'paid_date' => now(),
-                'external_reference' => $externalReference,
-                'payment_method' => $paymentMethod,
-                'metadata' => array_merge($repayment->metadata ?? [], [
-                    'payment_history' => ($repayment->metadata['payment_history'] ?? []) + [
-                        [
-                            'amount' => $amount,
-                            'date' => now()->toIso8601String(),
-                            'reference' => $externalReference,
-                        ],
-                    ],
-                ]),
-            ]);
-
-            // Split among lenders
-            $this->distributeToLenders($repayment, $amount);
-
-            // Fire repayment event
-            RepaymentMade::dispatch($loan->id, $borrower, $amount);
-
-            // Check if loan is fully repaid
-            if ($isFullyPaid) {
-                $this->markLoanAsFullyRepaid($lockedLoan, $repayment);
-            }
-
-            Log::info('Repayment recorded', [
-                'loan_id' => $loan->id,
-                'repayment_id' => $repayment->id,
-                'amount' => $amount,
-                'status' => $repayment->status,
-                'is_fully_paid' => $isFullyPaid,
-            ]);
-
-            return $repayment->fresh();
         });
     }
 
@@ -248,10 +165,19 @@ class RepaymentService
                 ]);
             }
 
-            return [
+            $result = [
                 'repayments' => $repayments->fresh(),
                 'disbursements' => collect($disbursements),
             ];
+
+            RepaymentSubmitted::dispatch(
+                $repayments->fresh(),
+                $borrower,
+                (float) $repayments->sum(fn ($r) => (float) $r->amount + (float) $r->penalty),
+                collect($disbursements),
+            );
+
+            return $result;
         });
     }
 
@@ -435,6 +361,8 @@ class RepaymentService
                 'reason' => $reason,
             ]);
 
+            RepaymentRejected::dispatch($locked->fresh(), $admin, $reason);
+
             return $locked->fresh();
         });
     }
@@ -487,7 +415,7 @@ class RepaymentService
                 $amount,
             );
 
-            LenderRepayment::create([
+            $lenderRepayment = LenderRepayment::create([
                 'repayment_id' => $repayment->id,
                 'lender_id' => $funding->lender_id,
                 'funding_transaction_id' => $funding->id,
@@ -499,6 +427,8 @@ class RepaymentService
                 'status' => 'pending',
                 'transaction_reference' => LenderRepayment::generateReference(),
             ]);
+
+            LenderRepaymentAllocated::dispatch($lenderRepayment);
         }
     }
 
@@ -575,16 +505,6 @@ class RepaymentService
             'loan_id' => $loan->id,
             'repayment_id' => $repayment->id,
         ]);
-    }
-
-    // ─── Get Total Paid for Repayment ──────────────────────────────────
-
-    protected function getTotalPaidForRepayment(Repayment $repayment): float
-    {
-        // Sum from metadata payment history
-        $history = $repayment->metadata['payment_history'] ?? [];
-        
-        return collect($history)->sum('amount');
     }
 
     // ─── Interest Portion ────────────────────────────────────────────

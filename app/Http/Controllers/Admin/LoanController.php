@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Modules\Loans\Mail\LoanAgreementMail;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\LoanFinancialSummaryService;
 use App\Modules\Loans\Services\LoanService;
 use App\Modules\Loans\Services\TrustTierService;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class LoanController extends Controller
     public function __construct(
         private LoanService $loanService,
         private TrustTierService $trustTierService,
+        private LoanFinancialSummaryService $summaryService,
     ) {}
 
     public function index(Request $request)
@@ -47,7 +49,9 @@ class LoanController extends Controller
 
     public function show(Loan $loan)
     {
-        return view('admin.loans.show', compact('loan'));
+        $financialSummary = $this->summaryService->generate($loan);
+
+        return view('admin.loans.show', compact('loan', 'financialSummary'));
     }
 
     public function update(Request $request, Loan $loan)

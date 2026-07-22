@@ -24,12 +24,10 @@ class EarningsService
             ->sum('expected_return');
 
         $totalActualReturn = (float) (clone $investments)
-            ->where('status', 'completed')
+            ->whereIn('status', ['active', 'completed'])
             ->sum('actual_return');
 
-        $totalEarnings = $totalActualReturn - (float) (clone $investments)
-            ->where('status', 'completed')
-            ->sum('amount');
+        $totalEarnings = $totalActualReturn - $totalInvested;
 
         $activeCount = (clone $investments)->where('status', 'active')->count();
         $completedCount = (clone $investments)->where('status', 'completed')->count();
@@ -273,12 +271,10 @@ class EarningsService
             ->sum('amount');
 
         $totalActualReturn = (float) (clone $investments)
-            ->where('status', 'completed')
+            ->whereIn('status', ['active', 'completed'])
             ->sum('actual_return');
 
-        $totalEarnings = $totalActualReturn - (float) (clone $investments)
-            ->where('status', 'completed')
-            ->sum('amount');
+        $totalEarnings = $totalActualReturn - $totalInvested;
 
         $totalExpectedReturn = (float) (clone $investments)
             ->whereIn('status', ['active', 'completed'])

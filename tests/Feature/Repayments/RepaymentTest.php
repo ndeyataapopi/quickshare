@@ -110,15 +110,18 @@ class RepaymentTest extends TestCase
         $loan = $this->createActiveLoan();
         $this->createFunding($loan, 10000);
 
-        // Use the service directly for the old recordRepayment flow
         $repayment = $this->service->createRepaymentSchedule($loan);
 
-        $recorded = $this->service->recordRepayment(
-            $loan,
+        // Use the proper approval flow: submit then approve
+        $this->service->submitRepaymentRequest(
+            [$repayment->id],
             $this->borrower,
-            10546,
             'bank_transfer',
+            null,
+            'EXT-REF-001',
         );
+
+        $recorded = $this->service->approveRepayment($repayment->fresh(), $this->admin);
 
         $this->assertEquals('paid', $recorded->status);
         $this->assertEquals('completed', $loan->fresh()->status);
@@ -160,9 +163,16 @@ class RepaymentTest extends TestCase
             'transaction_reference' => FundingTransaction::generateReference(),
         ]);
 
-        // Use service directly for the old recordRepayment flow
-        $this->service->createRepaymentSchedule($loan);
-        $this->service->recordRepayment($loan, $this->borrower, 10546, 'bank_transfer');
+        // Use the proper approval flow: submit then approve
+        $repayment = $this->service->createRepaymentSchedule($loan);
+        $this->service->submitRepaymentRequest(
+            [$repayment->id],
+            $this->borrower,
+            'bank_transfer',
+            null,
+            'EXT-REF-002',
+        );
+        $this->service->approveRepayment($repayment->fresh(), $this->admin);
 
         // Check lender repayments were created proportionally
         $lender1Repayment = LenderRepayment::where('lender_id', $this->lender->id)->first();
@@ -178,23 +188,38 @@ class RepaymentTest extends TestCase
     public function test_cannot_repay_inactive_loan(): void
     {
         $loan = $this->createActiveLoan(['status' => 'funded']); // Not yet active
+        $repayment = $this->service->createRepaymentSchedule($loan);
 
         $this->expectException(\App\Exceptions\ApiException::class);
         $this->expectExceptionMessage('Loan is not active');
 
-        $this->service->recordRepayment($loan, $this->borrower, 5000, 'bank_transfer');
+        $this->service->submitRepaymentRequest(
+            [$repayment->id],
+            $this->borrower,
+            'bank_transfer',
+        );
     }
 
-    public function test_cannot_overpay_repayment(): void
+    public function test_repayment_approval_marks_lender_repayment_processed(): void
     {
         $loan = $this->createActiveLoan();
         $this->createFunding($loan, 10000);
-        $this->service->createRepaymentSchedule($loan);
+        $repayment = $this->service->createRepaymentSchedule($loan);
 
-        $this->expectException(\App\Exceptions\ApiException::class);
-        $this->expectExceptionMessage('exceeds remaining balance');
+        $this->service->submitRepaymentRequest(
+            [$repayment->id],
+            $this->borrower,
+            'bank_transfer',
+            null,
+            'EXT-REF-003',
+        );
 
-        $this->service->recordRepayment($loan, $this->borrower, 20000, 'bank_transfer');
+        $this->service->approveRepayment($repayment->fresh(), $this->admin);
+
+        $lenderRepayment = LenderRepayment::where('repayment_id', $repayment->id)->first();
+        $this->assertNotNull($lenderRepayment);
+        $this->assertEquals('processed', $lenderRepayment->status);
+        $this->assertNotNull($lenderRepayment->processed_at);
     }
 
     // ─── Overdue Detection ───────────────────────────────────────────

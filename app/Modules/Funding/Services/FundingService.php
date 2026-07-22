@@ -5,6 +5,11 @@ namespace App\Modules\Funding\Services;
 use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Modules\Funding\Events\FundingCompleted;
+use App\Modules\Funding\Events\FundingInitiated;
+use App\Modules\Funding\Events\FundingPaymentApproved;
+use App\Modules\Funding\Events\FundingPaymentRejected;
+use App\Modules\Funding\Events\FundingPaymentSubmitted;
+use App\Modules\Funding\Events\InvestmentCreated;
 use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Funding\Models\Investment;
 use App\Modules\Loans\Models\Loan;
@@ -63,6 +68,8 @@ class FundingService
                 'status' => 'pending',
                 'transaction_reference' => FundingTransaction::generateReference(),
             ]);
+
+            FundingInitiated::dispatch($transaction->fresh(), $lender);
 
             // Clear marketplace cache
             $this->marketplaceService->clearListingCache($lockedLoan->id);
@@ -167,6 +174,8 @@ class FundingService
                 'metadata' => $metadata,
             ]);
 
+            FundingPaymentSubmitted::dispatch($transaction->fresh());
+
             return $transaction->fresh();
         });
     }
@@ -210,7 +219,7 @@ class FundingService
             $transaction->update($updateData);
 
             // Create investment record for the lender's portfolio
-            Investment::create([
+            $investment = Investment::create([
                 'loan_id' => $loan->id,
                 'lender_id' => $transaction->lender_id,
                 'funding_transaction_id' => $transaction->id,
@@ -221,6 +230,9 @@ class FundingService
                 'status' => 'active',
                 'funded_at' => now(),
             ]);
+
+            InvestmentCreated::dispatch($investment);
+            FundingPaymentApproved::dispatch($transaction->fresh(), $admin);
 
             // Notify lender that payment was approved
             $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
@@ -289,6 +301,8 @@ class FundingService
                 'admin_verified_by' => $admin?->id,
                 'admin_notes' => $reason,
             ]);
+
+            FundingPaymentRejected::dispatch($transaction->fresh(), $admin, $reason);
 
             // Clear marketplace cache so the freed funding slot is reflected
             $this->marketplaceService->clearListingCache($transaction->loan_id);

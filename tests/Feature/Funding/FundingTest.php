@@ -410,7 +410,7 @@ class FundingTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.total_invested', 5000)
             ->assertJsonPath('data.total_expected_return', 5400)
-            ->assertJsonPath('data.total_actual_return', 0)
+            ->assertJsonPath('data.total_actual_return', 200)
             ->assertJsonPath('data.active_investments', 1);
     }
 

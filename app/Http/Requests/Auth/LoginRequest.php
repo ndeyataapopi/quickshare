@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Modules\Auth\Events\UserLoggedIn;
 
 class LoginRequest extends FormRequest
 {
@@ -51,6 +52,8 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+
+        UserLoggedIn::dispatch(Auth::user());
     }
 
     /**

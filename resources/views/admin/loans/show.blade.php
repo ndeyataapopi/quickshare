@@ -96,5 +96,117 @@
             </div>
         </div>
     </div>
+
+    @if(isset($financialSummary))
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase mb-3">Financial Summary &amp; Reconciliation</h5>
+
+                    <div class="row mb-4">
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Funding Received</small>
+                            <h6 class="mb-0">N$ {{ number_format($financialSummary['funding_summary']['total_received'], 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Disbursed to Borrower</small>
+                            <h6 class="mb-0">N$ {{ number_format(collect($financialSummary['borrower_disbursement'])->where('status','disbursed')->sum('net_amount'), 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Repaid by Borrower</small>
+                            <h6 class="mb-0">N$ {{ number_format($financialSummary['repayment_summary']['actual_repaid'], 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Outstanding Balance</small>
+                            <h6 class="mb-0">N$ {{ number_format($financialSummary['repayment_summary']['outstanding_balance'], 2) }}</h6>
+                        </div></div></div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Platform Fee</small>
+                            <h6 class="mb-0">N$ {{ number_format($financialSummary['platform_summary']['platform_fee_earned'], 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Penalties Collected</small>
+                            <h6 class="mb-0">N$ {{ number_format($financialSummary['platform_summary']['penalties_collected'], 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Net Platform Revenue</small>
+                            <h6 class="mb-0">N$ {{ number_format($financialSummary['platform_summary']['net_platform_revenue'], 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Investors</small>
+                            <h6 class="mb-0">{{ $financialSummary['funding_summary']['investor_count'] }}</h6>
+                        </div></div></div>
+                    </div>
+
+                    <h6 class="text-uppercase text-muted mb-2">Reconciliation</h6>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td class="text-right font-weight-bold" style="width:25%">Money In</td>
+                                    <td>N$ {{ number_format($financialSummary['reconciliation']['money_in'], 2) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-right font-weight-bold">Money Out</td>
+                                    <td>N$ {{ number_format($financialSummary['reconciliation']['money_out'], 2) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-right font-weight-bold">Platform Revenue</td>
+                                    <td>N$ {{ number_format($financialSummary['reconciliation']['platform_revenue'], 2) }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-right font-weight-bold">Money Out + Revenue</td>
+                                    <td>N$ {{ number_format($financialSummary['reconciliation']['money_out_plus_revenue'], 2) }}</td>
+                                </tr>
+                                <tr class="{{ $financialSummary['reconciliation']['reconciled'] ? 'table-success' : 'table-danger' }}">
+                                    <td class="text-right font-weight-bold">Status</td>
+                                    <td>
+                                        @if($financialSummary['reconciliation']['reconciled'])
+                                            <span class="badge badge-success">RECONCILED</span>
+                                        @else
+                                            <span class="badge badge-danger">DISCREPANCY DETECTED</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h6 class="text-uppercase text-muted mb-2">Reconciliation Checks</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Check</th>
+                                    <th>Status</th>
+                                    <th>Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($financialSummary['reconciliation']['checks'] as $check)
+                                <tr class="{{ $check['passed'] ? '' : 'table-warning' }}">
+                                    <td>{{ $check['label'] }}</td>
+                                    <td>
+                                        @if($check['passed'])
+                                            <span class="badge badge-success">PASS</span>
+                                        @else
+                                            <span class="badge badge-danger">FAIL</span>
+                                        @endif
+                                    </td>
+                                    <td><small>{{ $check['detail'] }}</small></td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 @endsection

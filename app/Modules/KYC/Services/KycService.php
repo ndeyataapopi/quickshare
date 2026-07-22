@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Models\User;
 use App\Modules\KYC\Events\KycApproved;
 use App\Modules\KYC\Events\KycRejected;
+use App\Modules\KYC\Events\KycResubmitted;
 use App\Modules\KYC\Events\KycSubmitted;
 use App\Modules\KYC\Jobs\ProcessKycDocument;
 use App\Modules\KYC\Models\KycDocument;
@@ -124,6 +125,8 @@ class KycService
             ]);
 
             event(new KycSubmitted($user, 'resubmission'));
+
+            KycResubmitted::dispatch($user, $submission->fresh());
 
             return $submission->fresh()->load('documents');
         });

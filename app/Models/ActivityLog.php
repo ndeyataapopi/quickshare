@@ -10,6 +10,7 @@ class ActivityLog extends Model
 {
     protected $fillable = [
         'user_id',
+        'actor_id',
         'action',
         'description',
         'subject_type',
@@ -17,13 +18,27 @@ class ActivityLog extends Model
         'metadata',
         'ip_address',
         'user_agent',
+        'loan_id',
+        'investment_id',
+        'repayment_id',
+        'funding_transaction_id',
+        'disbursement_transaction_id',
+        'amount',
+        'previous_status',
+        'new_status',
     ];
 
     protected function casts(): array
     {
         return [
             'metadata' => 'array',
+            'amount' => 'decimal:2',
         ];
+    }
+
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
     }
 
     public function user(): BelongsTo

@@ -3,6 +3,11 @@
 namespace App\Modules\Loans\Services;
 
 use App\Exceptions\ApiException;
+use App\Modules\Loans\Events\BorrowerConfirmedReceipt;
+use App\Modules\Loans\Events\BorrowerRejectedReceipt;
+use App\Modules\Loans\Events\DisbursementInitiated;
+use App\Modules\Loans\Events\DisbursementProcessed;
+use App\Modules\Loans\Events\LoanActivated;
 use App\Modules\Loans\Models\DisbursementTransaction;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\LoanService;
@@ -92,6 +97,8 @@ class DisbursementService
                 'net' => $netAmount,
             ]);
 
+            DisbursementInitiated::dispatch($transaction->fresh());
+
             return $transaction->fresh();
         });
     }
@@ -142,6 +149,8 @@ class DisbursementService
                 'external_reference' => $transaction->external_reference,
             ]);
 
+            DisbursementProcessed::dispatch($transaction->fresh());
+
             // Notify borrower to confirm receipt
             try {
                 $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
@@ -173,10 +182,16 @@ class DisbursementService
             throw new ApiException('Disbursement is not pending borrower confirmation. Status: ' . $transaction->status, 422);
         }
 
-        $loan = $transaction->loan;
+        return DB::transaction(function () use ($transaction) {
+            $lockedTransaction = DisbursementTransaction::lockForUpdate()->find($transaction->id);
 
-        return DB::transaction(function () use ($transaction, $loan) {
-            $transaction->update([
+            if (! $lockedTransaction->isPendingBorrowerConfirmation()) {
+                throw new ApiException('Disbursement is no longer pending borrower confirmation.', 422);
+            }
+
+            $loan = Loan::lockForUpdate()->find($lockedTransaction->loan_id);
+
+            $lockedTransaction->update([
                 'status' => 'disbursed',
                 'borrower_confirmed_at' => now(),
             ]);
@@ -188,13 +203,16 @@ class DisbursementService
 
             Log::info('Borrower confirmed disbursement receipt', [
                 'loan_id' => $loan->id,
-                'disbursement_id' => $transaction->id,
+                'disbursement_id' => $lockedTransaction->id,
             ]);
 
             // Create repayment schedule — must succeed for the loan to be active
             $this->repaymentService()->createRepaymentSchedule($loan);
 
-            return $transaction->fresh();
+            BorrowerConfirmedReceipt::dispatch($lockedTransaction->fresh(), $loan->borrower);
+            LoanActivated::dispatch($loan->fresh(), $loan->borrower);
+
+            return $lockedTransaction->fresh();
         });
     }
 
@@ -206,24 +224,36 @@ class DisbursementService
             throw new ApiException('Disbursement is not pending borrower confirmation. Status: ' . $transaction->status, 422);
         }
 
-        $transaction->update([
-            'status' => 'rejected_by_borrower',
-            'borrower_rejected_at' => now(),
-            'rejection_reason' => $reason,
-        ]);
+        $loan = DB::transaction(function () use ($transaction, $reason) {
+            $lockedTransaction = DisbursementTransaction::lockForUpdate()->find($transaction->id);
 
-        $loan = $transaction->loan;
+            if (! $lockedTransaction->isPendingBorrowerConfirmation()) {
+                throw new ApiException('Disbursement is no longer pending borrower confirmation.', 422);
+            }
 
-        // Loan remains awaiting_disbursement so admin can re-initiate
-        $loan->update([
-            'status' => 'awaiting_disbursement',
-        ]);
+            $loan = Loan::lockForUpdate()->find($lockedTransaction->loan_id);
 
-        Log::info('Borrower rejected disbursement receipt', [
-            'loan_id' => $loan->id,
-            'disbursement_id' => $transaction->id,
-            'reason' => $reason,
-        ]);
+            $lockedTransaction->update([
+                'status' => 'rejected_by_borrower',
+                'borrower_rejected_at' => now(),
+                'rejection_reason' => $reason,
+            ]);
+
+            // Loan remains awaiting_disbursement so admin can re-initiate
+            $loan->update([
+                'status' => 'awaiting_disbursement',
+            ]);
+
+            Log::info('Borrower rejected disbursement receipt', [
+                'loan_id' => $loan->id,
+                'disbursement_id' => $lockedTransaction->id,
+                'reason' => $reason,
+            ]);
+
+            BorrowerRejectedReceipt::dispatch($lockedTransaction->fresh(), $loan->borrower, $reason);
+
+            return $loan;
+        });
 
         // Notify admins that borrower rejected the disbursement
         try {

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Modules\Auth\Events\UserLoggedIn;
+use App\Modules\Auth\Events\UserLoggedOut;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +44,8 @@ class AuthController extends Controller
 
         $token = $user->createToken($deviceName)->plainTextToken;
 
+        UserLoggedIn::dispatch($user);
+
         return $this->success([
             'user' => new UserResource($user),
             'token' => $token,
@@ -53,8 +57,12 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         // Revoke the current token
         $request->user()->currentAccessToken()->delete();
+
+        UserLoggedOut::dispatch($user);
 
         return $this->success(null, 'Logged out successfully.');
     }

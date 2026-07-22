@@ -68,12 +68,19 @@ class AdminDashboardService
 
     protected function getAvgKycProcessingTime(): ?float
     {
-        $avgHours = KycSubmission::where('status', 'approved')
+        $submissions = KycSubmission::where('status', 'approved')
             ->whereNotNull('reviewed_at')
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, reviewed_at)) as avg_hours')
-            ->value('avg_hours');
+            ->get(['created_at', 'reviewed_at']);
 
-        return $avgHours ? round($avgHours, 1) : null;
+        if ($submissions->isEmpty()) {
+            return null;
+        }
+
+        $totalHours = $submissions->sum(function ($submission) {
+            return $submission->created_at->diffInHours($submission->reviewed_at);
+        });
+
+        return round($totalHours / $submissions->count(), 1);
     }
 
     // ─── Loan Stats ────────────────────────────────────────────────────

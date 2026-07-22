@@ -8,6 +8,7 @@ use App\Modules\Funding\Models\FundingTransaction;
 use App\Modules\Loans\DTOs\LoanCalculation;
 use App\Modules\Loans\DTOs\LoanRequestData;
 use App\Modules\Loans\Events\LoanApproved;
+use App\Modules\Loans\Events\LoanCancelled;
 use App\Modules\Loans\Events\LoanRejected;
 use App\Modules\Loans\Events\LoanRequested;
 use App\Modules\Loans\Jobs\GenerateLoanAgreementJob;
@@ -264,6 +265,8 @@ class LoanService
         }
 
         $loan->update(['status' => 'cancelled']);
+
+        LoanCancelled::dispatch($loan->fresh(), $borrower);
 
         return $loan->fresh();
     }
