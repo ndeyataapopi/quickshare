@@ -243,11 +243,42 @@ class OperationsDashboardService
         return $alerts;
     }
 
+    // ─── Start of Day Summary ─────────────────────────────────────────
+
+    public function getStartOfDaySummary(): array
+    {
+        $pendingKyc = $this->getPendingKyc();
+        $loansAwaiting = $this->getLoansAwaitingApproval();
+        $fundingAwaiting = $this->getFundingAwaitingApproval();
+        $disbursements = $this->getDisbursementsAwaitingProcessing();
+        $borrowerConfirmations = $this->getBorrowerConfirmationsAwaiting();
+        $repayments = $this->getRepaymentsAwaitingApproval();
+        $lenderPayouts = $this->getLenderPayoutsAwaiting();
+
+        $items = [
+            ['label' => 'Pending KYC', 'count' => $pendingKyc['pending_verification'] + $pendingKyc['resubmissions'], 'route' => $pendingKyc['view_route']],
+            ['label' => 'Loans Awaiting Approval', 'count' => $loansAwaiting['pending_count'], 'route' => $loansAwaiting['view_route']],
+            ['label' => 'Funding Awaiting Approval', 'count' => $fundingAwaiting['pending_proofs'], 'route' => $fundingAwaiting['view_route']],
+            ['label' => 'Borrower Disbursements', 'count' => $disbursements['count'], 'route' => $disbursements['view_route']],
+            ['label' => 'Borrower Confirmations', 'count' => $borrowerConfirmations['count'], 'route' => $borrowerConfirmations['view_route']],
+            ['label' => 'Repayments Awaiting Approval', 'count' => $repayments['count'], 'route' => $repayments['view_route']],
+            ['label' => 'Lender Payouts Awaiting', 'count' => $lenderPayouts['lenders_waiting'], 'route' => $lenderPayouts['view_route']],
+        ];
+
+        $total = array_sum(array_column($items, 'count'));
+
+        return [
+            'items' => $items,
+            'total' => $total,
+        ];
+    }
+
     // ─── Full Operations Dashboard Data ───────────────────────────────
 
     public function getOperationsData(): array
     {
         return [
+            'start_of_day' => $this->getStartOfDaySummary(),
             'todays_loans' => $this->getTodaysLoans(),
             'pending_kyc' => $this->getPendingKyc(),
             'loans_awaiting_approval' => $this->getLoansAwaitingApproval(),

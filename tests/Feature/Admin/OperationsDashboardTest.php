@@ -39,6 +39,7 @@ class OperationsDashboardTest extends TestCase
 
         $response->assertOk();
         $response->assertViewHas([
+            'start_of_day',
             'todays_loans',
             'pending_kyc',
             'loans_awaiting_approval',
@@ -385,6 +386,39 @@ class OperationsDashboardTest extends TestCase
         $this->assertTrue(
             collect($alerts)->contains(fn ($a) => str_contains($a['message'], 'overdue'))
         );
+    }
+
+    public function test_start_of_day_summary_totals_match_database(): void
+    {
+        $borrower = User::factory()->active()->create();
+        $this->assignClientRole($borrower);
+
+        KycSubmission::create([
+            'user_id' => $borrower->id,
+            'status' => 'pending',
+            'submitted_at' => now(),
+        ]);
+
+        Loan::create([
+            'borrower_id' => $borrower->id,
+            'reference' => Loan::generateReference(),
+            'requested_amount' => 5000,
+            'interest_rate' => 15,
+            'platform_fee' => 100,
+            'total_repayment' => 5750,
+            'loan_term_days' => 30,
+            'status' => 'pending_review',
+            'submitted_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('admin.operations'));
+
+        $startOfDay = $response->viewData('start_of_day');
+
+        $this->assertEquals(1, $startOfDay['items'][0]['count']); // Pending KYC
+        $this->assertEquals(1, $startOfDay['items'][1]['count']); // Loans Awaiting Approval
+        $this->assertEquals(2, $startOfDay['total']);
     }
 
     public function test_view_queue_buttons_link_to_correct_routes(): void

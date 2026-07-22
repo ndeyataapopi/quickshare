@@ -32,6 +32,37 @@
         </div>
     @endif
 
+    {{-- Start of Day Banner --}}
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body py-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="mdi mdi-clipboard-check-outline text-primary mr-2" style="font-size:28px;"></i>
+                        <h4 class="mb-0">QuickShare Operations &mdash; Start of Day</h4>
+                        <span class="ml-auto text-muted">{{ now()->format('l, F j, Y') }}</span>
+                    </div>
+                    <hr class="my-3">
+                    <div class="row">
+                        @foreach($start_of_day['items'] as $item)
+                            <div class="col-md-6 col-lg-3 mb-2">
+                                <a href="{{ $item['route'] }}" class="d-flex justify-content-between align-items-center text-decoration-none px-3 py-2 rounded {{ $item['count'] > 0 ? 'bg-white border' : '' }}">
+                                    <span class="text-muted">{{ $item['label'] }}</span>
+                                    <span class="font-weight-bold {{ $item['count'] > 0 ? 'text-primary' : 'text-muted' }}" style="font-size:1.25rem;">{{ $item['count'] }}</span>
+                                </a>
+                            </div>
+                        @endforeach
+                    </div>
+                    <hr class="my-3">
+                    <div class="d-flex justify-content-between align-items-center px-3">
+                        <span class="font-weight-bold text-uppercase text-muted">Total Items Requiring Action</span>
+                        <span class="font-weight-bold {{ $start_of_day['total'] > 0 ? 'text-danger' : 'text-success' }}" style="font-size:1.75rem;">{{ $start_of_day['total'] }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- System Alerts --}}
     @if(!empty($system_alerts))
     <div class="row">
