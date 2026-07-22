@@ -45,6 +45,7 @@ trait HasDatabaseChannel
             'funding_payment_approved' => 'Funding Payment Approved',
             'funding_payment_rejected' => 'Funding Payment Rejected',
             'funding_payment_info_requested' => 'More Information Required',
+            'disbursement_rejected' => 'Disbursement Rejected by Borrower',
             default => 'Notification',
         };
     }
@@ -74,6 +75,7 @@ trait HasDatabaseChannel
             'funding_payment_approved' => "Your funding payment of {$amount} for loan {$reference} has been approved.",
             'funding_payment_rejected' => "Your funding payment of {$amount} for loan {$reference} was rejected.",
             'funding_payment_info_requested' => "We need more information for your funding payment of {$amount} on loan {$reference}.",
+            'disbursement_rejected' => "The borrower has rejected the disbursement of {$amount} for loan {$reference}. Reason: " . ($this->data['reason'] ?? 'No reason provided.'),
             default => 'You have a new notification.',
         };
     }
@@ -140,6 +142,8 @@ trait HasDatabaseChannel
             ],
             'funding_payment_approved', 'funding_payment_rejected', 'funding_payment_info_requested' =>
                 ['text' => 'View Investment', 'url' => $loanId ? route('client.loans.show', $loanId) : route('client.investments.index')],
+            'disbursement_rejected' =>
+                ['text' => 'View Disbursement', 'url' => $loanId ? route('admin.disbursements.show', $loanId) : route('admin.disbursements.index')],
             default => null,
         };
     }

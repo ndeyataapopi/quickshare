@@ -115,4 +115,29 @@ class DisbursementController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
+
+    public function borrowerReject(Request $request, Loan $loan)
+    {
+        $validated = $request->validate([
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $transaction = $loan->disbursements()
+            ->pendingBorrowerConfirmation()
+            ->latest()
+            ->first();
+
+        if (! $transaction) {
+            return back()->with('error', 'No disbursement pending your confirmation.');
+        }
+
+        try {
+            $this->disbursementService->rejectReceipt($transaction, $validated['reason'] ?? null);
+
+            return redirect()->route('client.dashboard')
+                ->with('success', 'Disbursement rejected. Admin has been notified.');
+        } catch (ApiException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
 }

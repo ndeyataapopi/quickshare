@@ -6,6 +6,7 @@ use App\Exceptions\ApiException;
 use App\Modules\Loans\Models\DisbursementTransaction;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\LoanService;
+use App\Modules\Repayments\Services\RepaymentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -16,6 +17,11 @@ class DisbursementService
 
     public function __construct(protected LoanService $loanService)
     {
+    }
+
+    protected function repaymentService(): RepaymentService
+    {
+        return app(RepaymentService::class);
     }
 
     // ─── Core Disbursement ───────────────────────────────────────────
@@ -183,6 +189,16 @@ class DisbursementService
             'disbursement_id' => $transaction->id,
         ]);
 
+        // Create repayment schedule now that the loan is active
+        try {
+            $this->repaymentService()->createRepaymentSchedule($loan);
+        } catch (\Throwable $e) {
+            Log::warning('Repayment schedule creation failed during disbursement confirmation', [
+                'loan_id' => $loan->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         // Notify lenders that loan is now active
         try {
             $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
@@ -200,6 +216,52 @@ class DisbursementService
             }
         } catch (\Throwable $notifError) {
             Log::warning('Failed to send lender notifications', ['error' => $notifError->getMessage()]);
+        }
+
+        return $transaction->fresh();
+    }
+
+    // ─── Borrower Rejects Receipt ────────────────────────────────────
+
+    public function rejectReceipt(DisbursementTransaction $transaction, ?string $reason = null): DisbursementTransaction
+    {
+        if (! $transaction->isPendingBorrowerConfirmation()) {
+            throw new ApiException('Disbursement is not pending borrower confirmation. Status: ' . $transaction->status, 422);
+        }
+
+        $transaction->update([
+            'status' => 'rejected_by_borrower',
+            'borrower_rejected_at' => now(),
+            'rejection_reason' => $reason,
+        ]);
+
+        $loan = $transaction->loan;
+
+        // Loan remains awaiting_disbursement so admin can re-initiate
+        $loan->update([
+            'status' => 'awaiting_disbursement',
+        ]);
+
+        Log::info('Borrower rejected disbursement receipt', [
+            'loan_id' => $loan->id,
+            'disbursement_id' => $transaction->id,
+            'reason' => $reason,
+        ]);
+
+        // Notify admins that borrower rejected the disbursement
+        try {
+            $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
+            $admins = \App\Models\User::role('admin')->get();
+            foreach ($admins as $admin) {
+                $notificationService->sendAuto($admin, 'disbursement_rejected', [
+                    'loan_id' => $loan->id,
+                    'reference' => $loan->reference,
+                    'amount' => (float) $transaction->net_amount,
+                    'reason' => $reason ?? 'No reason provided',
+                ]);
+            }
+        } catch (\Throwable $notifError) {
+            Log::warning('Failed to send admin rejection notifications', ['error' => $notifError->getMessage()]);
         }
 
         return $transaction->fresh();

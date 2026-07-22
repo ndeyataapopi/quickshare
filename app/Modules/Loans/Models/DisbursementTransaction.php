@@ -29,6 +29,8 @@ class DisbursementTransaction extends Model
         'reconciled_by',
         'reconciliation_data',
         'borrower_confirmed_at',
+        'borrower_rejected_at',
+        'rejection_reason',
         'ledger_entries',
         'notes',
     ];
@@ -42,6 +44,8 @@ class DisbursementTransaction extends Model
             'processed_at' => 'datetime',
             'next_retry_at' => 'datetime',
             'reconciled_at' => 'datetime',
+            'borrower_confirmed_at' => 'datetime',
+            'borrower_rejected_at' => 'datetime',
             'reconciliation_data' => 'array',
             'ledger_entries' => 'array',
         ];
@@ -84,6 +88,11 @@ class DisbursementTransaction extends Model
     public function isRetried(): bool
     {
         return $this->status === 'retried';
+    }
+
+    public function isRejectedByBorrower(): bool
+    {
+        return $this->status === 'rejected_by_borrower';
     }
 
     public function canRetry(): bool
@@ -140,6 +149,11 @@ class DisbursementTransaction extends Model
                 $q->whereNull('next_retry_at')
                     ->orWhere('next_retry_at', '<=', now());
             });
+    }
+
+    public function scopeRejectedByBorrower($query)
+    {
+        return $query->where('status', 'rejected_by_borrower');
     }
 
     public function scopeReconciliationReady($query)

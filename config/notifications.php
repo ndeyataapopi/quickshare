@@ -92,6 +92,7 @@ return [
         'funding_payment_approved' => ['email', 'database'],
         'funding_payment_rejected' => ['email', 'database'],
         'funding_payment_info_requested' => ['email', 'database'],
+        'disbursement_rejected' => ['email', 'database'],
     ],
 
 ];

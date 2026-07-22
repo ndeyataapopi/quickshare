@@ -18,7 +18,7 @@ return new class extends Migration
             $table->decimal('net_amount', 12, 2);      // To borrower
             
             // Status tracking
-            $table->enum('status', ['awaiting_disbursement', 'processing', 'pending_borrower_confirmation', 'disbursed', 'failed', 'retried'])->default('awaiting_disbursement');
+            $table->enum('status', ['awaiting_disbursement', 'processing', 'pending_borrower_confirmation', 'disbursed', 'failed', 'retried', 'rejected_by_borrower'])->default('awaiting_disbursement');
             
             // Processing
             $table->timestamp('processed_at')->nullable();
@@ -37,6 +37,8 @@ return new class extends Migration
             $table->string('reconciled_by', 64)->nullable();
             $table->json('reconciliation_data')->nullable();
             $table->timestamp('borrower_confirmed_at')->nullable();
+            $table->timestamp('borrower_rejected_at')->nullable();
+            $table->text('rejection_reason')->nullable();
             
             // Ledger data
             $table->json('ledger_entries')->nullable();

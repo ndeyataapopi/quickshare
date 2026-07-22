@@ -39,6 +39,7 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
 
     // Borrower disbursement confirmation (outside kyc_verified - loan already approved)
     Route::post('/loans/{loan}/confirm-disbursement', [DisbursementController::class, 'borrowerConfirm'])->name('loans.disbursement.confirm');
+    Route::post('/loans/{loan}/reject-disbursement', [DisbursementController::class, 'borrowerReject'])->name('loans.disbursement.reject');
 
     // ─── Repayments (Borrower) ────────────────────────────────────────
     Route::middleware(['kyc_verified'])->prefix('repayments')->name('repayments.')->group(function () {

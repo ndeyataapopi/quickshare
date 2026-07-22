@@ -156,10 +156,10 @@ class FundingTest extends TestCase
         $this->assertEquals('funded', $loan->status);
         $this->assertEquals(0, $this->service->getRemainingFunding($loan));
 
+        // Repayment schedule is NOT created at funding stage;
+        // it is created when the borrower confirms disbursement (Stage 7.1)
         $repayment = Repayment::forLoan($loan->id)->first();
-        $this->assertNotNull($repayment);
-        $this->assertEquals('pending', $repayment->status);
-        $this->assertEquals($loan->total_repayment, $repayment->amount);
+        $this->assertNull($repayment);
     }
 
     // ─── Overfunding Protection ──────────────────────────────────────

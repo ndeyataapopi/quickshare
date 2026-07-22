@@ -235,20 +235,10 @@ class FundingService
                 ]
             );
 
-            // If the loan is now fully funded, create the pending repayment schedule
-            // and notify the borrower and all lenders
+            // If the loan is now fully funded, notify the borrower and all lenders.
+            // Repayment schedule is created when the borrower confirms disbursement (Stage 7.1).
             if ($newStatus === 'funded') {
                 FundingCompleted::dispatch($loan->id, $newFundedAmount);
-
-                try {
-                    $this->repaymentService->createRepaymentSchedule($loan);
-                } catch (ApiException $e) {
-                    // Schedule may already exist; ignore duplicate
-                    Log::info('Repayment schedule already exists for loan', [
-                        'loan_id' => $loan->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
 
                 $notificationService->queue(
                     $loan->borrower,

@@ -208,4 +208,92 @@ class DisbursementControllerTest extends TestCase
         $this->assertEquals('marketplace', $loan->status);
         $this->assertDatabaseMissing('disbursement_transactions', ['loan_id' => $loan->id]);
     }
+
+    public function test_borrower_can_reject_disbursement(): void
+    {
+        Storage::fake('private');
+
+        $loan = $this->createFundedLoan();
+
+        $service = app(DisbursementService::class);
+        $service->initiateDisbursement($loan);
+
+        $transaction = $loan->disbursements()->latest()->first();
+        $file = UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf');
+        $proofPath = $file->store('disbursement-proofs', 'private');
+
+        $service->processDisbursement($transaction, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-REJECT-001',
+            'payment_proof_path' => $proofPath,
+        ]);
+
+        $response = $this->actingAs($this->borrower)
+            ->post(route('client.loans.disbursement.reject', $loan), [
+                'reason' => 'Did not receive funds',
+            ]);
+
+        $response->assertRedirect(route('client.dashboard'))
+            ->assertSessionHas('success');
+
+        $loan->refresh();
+        $this->assertEquals('awaiting_disbursement', $loan->status);
+        $this->assertDatabaseHas('disbursement_transactions', [
+            'loan_id' => $loan->id,
+            'status' => 'rejected_by_borrower',
+        ]);
+
+        $transaction->refresh();
+        $this->assertNotNull($transaction->borrower_rejected_at);
+        $this->assertEquals('Did not receive funds', $transaction->rejection_reason);
+    }
+
+    public function test_borrower_can_reject_without_reason(): void
+    {
+        Storage::fake('private');
+
+        $loan = $this->createFundedLoan();
+
+        $service = app(DisbursementService::class);
+        $service->initiateDisbursement($loan);
+
+        $transaction = $loan->disbursements()->latest()->first();
+        $file = UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf');
+        $proofPath = $file->store('disbursement-proofs', 'private');
+
+        $service->processDisbursement($transaction, [
+            'payment_method' => 'bank_transfer',
+            'external_reference' => 'TRX-REJECT-002',
+            'payment_proof_path' => $proofPath,
+        ]);
+
+        $response = $this->actingAs($this->borrower)
+            ->post(route('client.loans.disbursement.reject', $loan));
+
+        $response->assertRedirect(route('client.dashboard'))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('disbursement_transactions', [
+            'loan_id' => $loan->id,
+            'status' => 'rejected_by_borrower',
+        ]);
+    }
+
+    public function test_borrower_cannot_reject_non_pending_disbursement(): void
+    {
+        $loan = $this->createFundedLoan();
+
+        $service = app(DisbursementService::class);
+        $service->initiateDisbursement($loan);
+
+        // Transaction is 'awaiting_disbursement', not 'pending_borrower_confirmation'
+        $response = $this->actingAs($this->borrower)
+            ->post(route('client.loans.disbursement.reject', $loan));
+
+        $response->assertRedirect()
+            ->assertSessionHas('error');
+
+        $loan->refresh();
+        $this->assertEquals('awaiting_disbursement', $loan->status);
+    }
 }
