@@ -96,6 +96,7 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
     // ─── Audit Logs ───────────────────────────────────────────────────
     Route::prefix('audit')->name('audit.')->group(function () {
         Route::get('/', [AuditController::class, 'index'])->name('index');
+        Route::get('/{source}/{id}', [AuditController::class, 'show'])->name('show');
     });
 
     // ─── Reports ──────────────────────────────────────────────────────
