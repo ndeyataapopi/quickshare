@@ -173,52 +173,29 @@ class DisbursementService
             throw new ApiException('Disbursement is not pending borrower confirmation. Status: ' . $transaction->status, 422);
         }
 
-        $transaction->update([
-            'status' => 'disbursed',
-            'borrower_confirmed_at' => now(),
-        ]);
-
         $loan = $transaction->loan;
-        $loan->update([
-            'status' => 'active',
-            'disbursed_at' => now(),
-        ]);
 
-        Log::info('Borrower confirmed disbursement receipt', [
-            'loan_id' => $loan->id,
-            'disbursement_id' => $transaction->id,
-        ]);
-
-        // Create repayment schedule now that the loan is active
-        try {
-            $this->repaymentService()->createRepaymentSchedule($loan);
-        } catch (\Throwable $e) {
-            Log::warning('Repayment schedule creation failed during disbursement confirmation', [
-                'loan_id' => $loan->id,
-                'error' => $e->getMessage(),
+        return DB::transaction(function () use ($transaction, $loan) {
+            $transaction->update([
+                'status' => 'disbursed',
+                'borrower_confirmed_at' => now(),
             ]);
-        }
 
-        // Notify lenders that loan is now active
-        try {
-            $notificationService = app(\App\Modules\Notifications\Services\NotificationService::class);
-            foreach ($loan->fundingTransactions()->confirmed()->with('lender')->get() as $funding) {
-                $notificationService->sendAuto(
-                    $funding->lender,
-                    'loan_disbursed',
-                    [
-                        'loan_id' => $loan->id,
-                        'reference' => $loan->reference,
-                        'amount' => (float) $funding->amount,
-                        'disbursed_at' => now()->toDateString(),
-                    ]
-                );
-            }
-        } catch (\Throwable $notifError) {
-            Log::warning('Failed to send lender notifications', ['error' => $notifError->getMessage()]);
-        }
+            $loan->update([
+                'status' => 'active',
+                'disbursed_at' => now(),
+            ]);
 
-        return $transaction->fresh();
+            Log::info('Borrower confirmed disbursement receipt', [
+                'loan_id' => $loan->id,
+                'disbursement_id' => $transaction->id,
+            ]);
+
+            // Create repayment schedule — must succeed for the loan to be active
+            $this->repaymentService()->createRepaymentSchedule($loan);
+
+            return $transaction->fresh();
+        });
     }
 
     // ─── Borrower Rejects Receipt ────────────────────────────────────
