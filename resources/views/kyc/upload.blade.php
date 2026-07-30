@@ -252,41 +252,168 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const MAX_WIDTH = 1600;
+    const JPEG_QUALITY = 0.82;
+    const IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+    // Compress an image file in the browser using Canvas API.
+    // Returns a Promise that resolves to a File (compressed or original on failure).
+    function compressImage(file) {
+        return new Promise((resolve) => {
+            if (!IMAGE_TYPES.includes(file.type)) {
+                resolve(file);
+                return;
+            }
+
+            const img = new Image();
+            const url = URL.createObjectURL(file);
+
+            img.onload = function() {
+                URL.revokeObjectURL(url);
+
+                let width = img.naturalWidth;
+                let height = img.naturalHeight;
+
+                if (width > MAX_WIDTH) {
+                    height = Math.round((height / width) * MAX_WIDTH);
+                    width = MAX_WIDTH;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const isPng = file.type === 'image/png';
+                const outputType = isPng ? 'image/png' : 'image/jpeg';
+                const quality = isPng ? undefined : JPEG_QUALITY;
+
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        resolve(file);
+                        return;
+                    }
+
+                    const ext = isPng ? '.png' : '.jpg';
+                    const baseName = file.name.replace(/\.[^/.]+$/, '');
+                    const compressedFile = new File(
+                        [blob],
+                        baseName + ext,
+                        { type: outputType, lastModified: Date.now() }
+                    );
+                    resolve(compressedFile);
+                }, outputType, quality);
+            };
+
+            img.onerror = function() {
+                URL.revokeObjectURL(url);
+                resolve(file);
+            };
+
+            img.src = url;
+        });
+    }
+
+    // Check if a file is an image (should be compressed) or PDF (should be left as-is)
+    function isImage(file) {
+        return IMAGE_TYPES.includes(file.type);
+    }
+
+    // Show a status message on the file label
+    function showFileStatus(label, message) {
+        let status = label.parentElement.querySelector('.file-status');
+        if (!status) {
+            status = document.createElement('div');
+            status.className = 'file-status';
+            status.style.cssText = 'margin-top:0.5rem;font-size:0.8rem;color:#007bff;';
+            label.parentElement.appendChild(status);
+        }
+        status.textContent = message;
+    }
+
+    function clearFileStatus(label) {
+        const status = label.parentElement.querySelector('.file-status');
+        if (status) status.remove();
+    }
+
     const fileInputs = document.querySelectorAll('.file-input');
-    
+    const compressedFiles = {};
+
     fileInputs.forEach(input => {
-        input.addEventListener('change', function(e) {
+        const originalChangeHandler = function(e) {
             const file = e.target.files[0];
-            const label = this.nextElementSibling;
+            const label = input.nextElementSibling;
             const fileText = label.querySelector('.file-text');
             const fileInfo = label.querySelector('.file-info');
-            
-            if (file) {
-                // Validate file size (10MB)
-                const maxSize = 10 * 1024 * 1024;
-                if (file.size > maxSize) {
-                    alert('File size must be less than 10MB');
-                    this.value = '';
-                    return;
-                }
-                
-                // Validate file type
-                const allowedTypes = this.getAttribute('accept').split(',');
-                if (!allowedTypes.includes('.' + file.name.split('.').pop().toLowerCase())) {
-                    alert('Invalid file type. Please upload an accepted file format.');
-                    this.value = '';
-                    return;
-                }
-                
-                // Update UI
+
+            if (!file) return;
+
+            // Validate file size (10MB)
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('File size must be less than 10MB');
+                input.value = '';
+                return;
+            }
+
+            // Validate file type
+            const allowedTypes = input.getAttribute('accept').split(',');
+            if (!allowedTypes.includes('.' + file.name.split('.').pop().toLowerCase())) {
+                alert('Invalid file type. Please upload an accepted file format.');
+                input.value = '';
+                return;
+            }
+
+            if (isImage(file)) {
+                // Compress image in the browser
+                showFileStatus(label, 'Preparing image...');
+
+                compressImage(file).then(function(compressed) {
+                    compressedFiles[input.name] = compressed;
+
+                    // Update UI with compressed file info
+                    fileText.textContent = compressed.name;
+                    fileInfo.textContent = `${(compressed.size / 1024 / 1024).toFixed(2)} MB` +
+                        (compressed.size < file.size ? ` (compressed from ${(file.size / 1024 / 1024).toFixed(2)} MB)` : '');
+
+                    label.style.borderColor = '#28a745';
+                    label.style.backgroundColor = '#d4edda';
+
+                    clearFileStatus(label);
+
+                    let preview = label.parentElement.querySelector('.file-preview');
+                    if (!preview) {
+                        preview = document.createElement('div');
+                        preview.className = 'file-preview';
+                        label.parentElement.appendChild(preview);
+                    }
+                    preview.innerHTML = `<i class="mdi mdi-check-circle"></i> ${compressed.name} ready to upload`;
+                }).catch(function() {
+                    // Fallback: use original file
+                    compressedFiles[input.name] = file;
+                    fileText.textContent = file.name;
+                    fileInfo.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+                    label.style.borderColor = '#28a745';
+                    label.style.backgroundColor = '#d4edda';
+                    clearFileStatus(label);
+
+                    let preview = label.parentElement.querySelector('.file-preview');
+                    if (!preview) {
+                        preview = document.createElement('div');
+                        preview.className = 'file-preview';
+                        label.parentElement.appendChild(preview);
+                    }
+                    preview.innerHTML = `<i class="mdi mdi-check-circle"></i> ${file.name} ready to upload`;
+                });
+            } else {
+                // PDF or other non-image: use as-is
+                compressedFiles[input.name] = file;
                 fileText.textContent = file.name;
                 fileInfo.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
-                
-                // Add success styling
                 label.style.borderColor = '#28a745';
                 label.style.backgroundColor = '#d4edda';
-                
-                // Add preview
+
                 let preview = label.parentElement.querySelector('.file-preview');
                 if (!preview) {
                     preview = document.createElement('div');
@@ -295,27 +422,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 preview.innerHTML = `<i class="mdi mdi-check-circle"></i> ${file.name} ready to upload`;
             }
-        });
-        
+        };
+
+        input.addEventListener('change', originalChangeHandler);
+
         // Drag and drop
         const label = input.nextElementSibling;
-        
+
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             label.addEventListener(eventName, preventDefaults, false);
         });
-        
+
         function preventDefaults(e) {
             e.preventDefault();
             e.stopPropagation();
         }
-        
+
         ['dragenter', 'dragover'].forEach(eventName => {
             label.addEventListener(eventName, () => {
                 label.style.borderColor = '#007bff';
                 label.style.backgroundColor = '#e3f2fd';
             });
         });
-        
+
         ['dragleave', 'drop'].forEach(eventName => {
             label.addEventListener(eventName, () => {
                 if (!input.files[0]) {
@@ -324,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
-        
+
         label.addEventListener('drop', function(e) {
             const files = e.dataTransfer.files;
             if (files.length > 0) {
@@ -334,12 +463,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
-    // Form submission with loading state
+
+    // Form submission: replace file inputs with compressed files and show loading state
     const form = document.getElementById('kycForm');
     const submitBtn = document.getElementById('submitBtn');
-    
-    form.addEventListener('submit', function() {
+
+    form.addEventListener('submit', function(e) {
+        // Replace original files with compressed versions before submit
+        Object.keys(compressedFiles).forEach(function(inputName) {
+            const input = form.querySelector(`input[name="${inputName}"]`);
+            if (input && compressedFiles[inputName]) {
+                const dt = new DataTransfer();
+                dt.items.add(compressedFiles[inputName]);
+                input.files = dt.files;
+            }
+        });
+
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="mdi mdi-loading mdi-spin mr-2"></i> Uploading...';
     });

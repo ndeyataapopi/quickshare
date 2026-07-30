@@ -31,8 +31,13 @@
                     <div class="row align-items-center">
                         <div class="col-md-3 text-center">
                             <div class="position-relative d-inline-block">
+                                @if($user->profile_picture)
+                                <img src="{{ asset('storage/' . $user->profile_picture) }}" 
+                                     class="rounded-circle" alt="Profile" style="width: 128px; height: 128px; object-fit: cover;">
+                                @else
                                 <img src="https://ui-avatars.com/api/?name={{ urlencode($user->first_name . ' ' . $user->last_name) }}&size=128&background=0d6efd&color=fff" 
                                      class="rounded-circle" alt="Profile" style="width: 128px; height: 128px;">
+                                @endif
                                 <button class="btn btn-sm btn-primary position-absolute" style="bottom: 5px; right: 5px;">
                                     <i class="mdi mdi-camera"></i>
                                 </button>
