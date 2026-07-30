@@ -51,6 +51,15 @@
         <div class="col-md-4">
             <div class="card text-center border-{{ $tierColor }}">
                 <div class="card-body py-4">
+                    <div class="mb-3 d-flex justify-content-center">
+                        @if($user->profile_picture)
+                        <img src="{{ asset('storage/' . $user->profile_picture) }}" class="rounded-circle border border-{{ $tierColor }}" style="width:80px;height:80px;object-fit:cover;">
+                        @else
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center border border-{{ $tierColor }}" style="width:80px;height:80px;font-size:28px;font-weight:600;">
+                            {{ strtoupper(substr($user->first_name ?? 'U', 0, 1)) }}{{ strtoupper(substr($user->last_name ?? '', 0, 1)) }}
+                        </div>
+                        @endif
+                    </div>
                     <div class="mb-3">
                         <span class="badge badge-{{ $tierColor }} px-3 py-2" style="font-size: 14px;">
                             <i class="mdi mdi-{{ $tier === 'bronze' ? 'medal' : ($tier === 'silver' ? 'medal-outline' : ($tier === 'gold' ? 'trophy' : 'trophy-award')) }} mr-1"></i>

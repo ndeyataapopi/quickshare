@@ -15,7 +15,7 @@ return [
 
     'fees' => [
         'default_interest_rate' => env('LOAN_INTEREST_RATE', 30.00),
-        'default_platform_fee_percent' => env('LOAN_PLATFORM_FEE_PERCENT', 5.00),
+        'default_platform_fee_percent' => env('LOAN_PLATFORM_FEE_PERCENT', 0.00),
     ],
 
     'loan_limits' => [
@@ -35,7 +35,7 @@ return [
             ],
             'minimum_loan' => env('LOAN_TIER_BRONZE_MIN_LOAN', 0.00),
             'maximum_loan' => env('LOAN_LIMIT_BRONZE', 500.00),
-            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_BRONZE', 5.00),
+            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_BRONZE', 0.00),
             'lender_return_percent' => env('LOAN_LENDER_RETURN_BRONZE', 30.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_BRONZE', implode(',', range(7, 30)))),
             'eligibility_rules' => [],
@@ -48,7 +48,7 @@ return [
             ],
             'minimum_loan' => env('LOAN_TIER_SILVER_MIN_LOAN', 0.00),
             'maximum_loan' => env('LOAN_LIMIT_SILVER', 1000.00),
-            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_SILVER', 5.00),
+            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_SILVER', 0.00),
             'lender_return_percent' => env('LOAN_LENDER_RETURN_SILVER', 29.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_SILVER', implode(',', range(7, 30)))),
             'eligibility_rules' => [],
@@ -61,7 +61,7 @@ return [
             ],
             'minimum_loan' => env('LOAN_TIER_GOLD_MIN_LOAN', 0.00),
             'maximum_loan' => env('LOAN_LIMIT_GOLD', 1500.00),
-            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_GOLD', 5.00),
+            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_GOLD', 0.00),
             'lender_return_percent' => env('LOAN_LENDER_RETURN_GOLD', 27.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_GOLD', implode(',', range(7, 30)))),
             'eligibility_rules' => [],
@@ -74,7 +74,7 @@ return [
             ],
             'minimum_loan' => env('LOAN_TIER_PLATINUM_MIN_LOAN', 0.00),
             'maximum_loan' => env('LOAN_LIMIT_PLATINUM', 2500.00),
-            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_PLATINUM', 5.00),
+            'platform_fee_percent' => env('LOAN_PLATFORM_FEE_PLATINUM', 0.00),
             'lender_return_percent' => env('LOAN_LENDER_RETURN_PLATINUM', 25.00),
             'allowed_durations' => $durations(env('LOAN_DURATIONS_PLATINUM', implode(',', range(7, 30)))),
             'eligibility_rules' => [],

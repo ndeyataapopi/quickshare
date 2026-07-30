@@ -16,7 +16,7 @@ class LogProfileUpdate
             'subject_type' => get_class($event->user),
             'subject_id' => $event->user->id,
             'metadata' => ['changed_fields' => $event->changedFields],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

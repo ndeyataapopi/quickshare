@@ -30,7 +30,7 @@ class LoanController extends Controller
     public function create()
     {
         $tier = $this->trustTierService->forScore((float) Auth::user()->trust_score);
-        $minAmount = config('loans.min_amount');
+        $minAmount = config('loan.loan_limits.min_amount');
         $maxAmount = $tier['maximum_loan'];
         $allowedDurations = $tier['allowed_durations'];
         $minTermDays = min($allowedDurations);
@@ -39,14 +39,14 @@ class LoanController extends Controller
         $lenderReturnPercent = $tier['lender_return_percent'];
         $interestRate = $platformFee + $lenderReturnPercent;
         $trustTier = $tier['name'];
-        $maxActive = config('loans.max_active_loans');
+        $maxActive = config('loan.loan_limits.max_active_loans');
 
         return view('client.loans.create', compact('minAmount', 'maxAmount', 'allowedDurations', 'minTermDays', 'maxTermDays', 'interestRate', 'platformFee', 'lenderReturnPercent', 'trustTier', 'maxActive'));
     }
 
     public function agreementPreview(Request $request)
     {
-        $minimumAmount = (float) config('loans.min_amount');
+        $minimumAmount = (float) config('loan.loan_limits.min_amount');
         $tier = $this->trustTierService->forScore((float) $request->user()->trust_score);
         $validated = $request->validate([
             'amount' => ['required', 'numeric', "min:{$minimumAmount}", "max:{$tier['maximum_loan']}"],
@@ -76,7 +76,7 @@ class LoanController extends Controller
             return redirect()->route('client.kyc.upload')->with('error', 'You must complete KYC verification before requesting a loan.');
         }
 
-        $minimumAmount = (float) config('loans.min_amount');
+        $minimumAmount = (float) config('loan.loan_limits.min_amount');
         $tier = $this->trustTierService->forScore((float) Auth::user()->trust_score);
 
         $validated = $request->validate([

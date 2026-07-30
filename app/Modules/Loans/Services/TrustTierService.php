@@ -9,6 +9,8 @@ class TrustTierService
 {
     public function forScore(float $score): array
     {
+        $score = max(0.00, min(100.00, $score));
+
         foreach ($this->tiers() as $key => $tier) {
             $minimum = (float) ($tier['trust_score']['min'] ?? 0);
             $maximum = (float) ($tier['trust_score']['max'] ?? 0);
@@ -18,7 +20,15 @@ class TrustTierService
             }
         }
 
-        throw new InvalidArgumentException("No trust tier is configured for score {$score}.");
+        $tiers = $this->tiers();
+        $firstKey = array_key_first($tiers);
+        $lastKey = array_key_last($tiers);
+
+        if ($score <= (float) ($tiers[$firstKey]['trust_score']['min'] ?? 0)) {
+            return $this->normalize($firstKey, $tiers[$firstKey]);
+        }
+
+        return $this->normalize($lastKey, $tiers[$lastKey]);
     }
 
     public function forName(string $name): array

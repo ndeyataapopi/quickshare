@@ -11,7 +11,7 @@ class LogLoanRejected
     {
         ActivityLog::create([
             'user_id' => $event->borrower->id,
-            'actor_id' => auth()->id(),
+            'actor_id' => auth()->check() ? auth()->id() : null,
             'action' => 'loan.rejected',
             'description' => "Loan #{$event->loanId} rejected: {$event->reason}",
             'subject_type' => \App\Modules\Loans\Models\Loan::class,

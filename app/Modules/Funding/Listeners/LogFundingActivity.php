@@ -19,7 +19,7 @@ class LogFundingActivity
                 'loan_id' => $event->loanId,
                 'amount' => $event->amount,
             ],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

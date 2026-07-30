@@ -24,6 +24,9 @@ use App\Modules\Loans\Listeners\LogLoanCancelled;
 use App\Modules\Loans\Listeners\LogLoanDefaulted;
 use App\Modules\Loans\Listeners\LogLoanRejected;
 use App\Modules\Loans\Listeners\LogLoanRequest;
+use App\Modules\Loans\Listeners\NotifyBorrowerDefaulted;
+use App\Modules\Loans\Listeners\NotifyBorrowerDisbursed;
+use App\Modules\Loans\Listeners\NotifyLendersDefaulted;
 use App\Modules\Loans\Listeners\NotifyLoanStatus;
 use App\Modules\Loans\Listeners\NotifyLoanSubmitted;
 use App\Modules\Loans\Listeners\ProcessLoanDisbursement;
@@ -52,6 +55,8 @@ class LoansServiceProvider extends ServiceProvider
         Event::listen(LoanRejected::class, SyncLoanToExternalProvider::class);
         Event::listen(LoanCancelled::class, LogLoanCancelled::class);
         Event::listen(LoanDefaulted::class, LogLoanDefaulted::class);
+        Event::listen(LoanDefaulted::class, NotifyBorrowerDefaulted::class);
+        Event::listen(LoanDefaulted::class, NotifyLendersDefaulted::class);
         Event::listen(LoanActivated::class, LogLoanActivated::class);
         Event::listen(DisbursementInitiated::class, LogDisbursementInitiated::class);
         Event::listen(DisbursementProcessed::class, LogDisbursementProcessed::class);
@@ -59,6 +64,7 @@ class LoansServiceProvider extends ServiceProvider
         Event::listen(BorrowerRejectedReceipt::class, LogBorrowerRejectedReceipt::class);
         Event::listen(LoanDisbursed::class, ProcessLoanDisbursement::class);
         Event::listen(LoanDisbursed::class, SyncLoanToExternalProvider::class);
+        Event::listen(LoanDisbursed::class, NotifyBorrowerDisbursed::class);
         Event::listen(ExternalLoanStatusUpdated::class, TriggerExternalStatusSync::class);
     }
 }

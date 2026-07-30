@@ -52,7 +52,7 @@
         <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body py-3">
-                    <h4 class="font-weight-bold text-warning mb-0">{{ config('loans.min_funding_amount', 500) }}</h4>
+                    <h4 class="font-weight-bold text-warning mb-0">{{ config('loan.marketplace.min_funding_amount', 500) }}</h4>
                     <small class="text-muted">Min Investment</small>
                 </div>
             </div>
@@ -130,7 +130,7 @@
                     </div>
                     
                     @php
-                        $minFund = config('loans.min_funding_amount', 500);
+                        $minFund = config('loan.marketplace.min_funding_amount', 500);
                     @endphp
                     
                     <div class="mb-3">
@@ -194,7 +194,7 @@
                         @csrf
                         <div class="input-group input-group-sm">
                             <div class="input-group-prepend">
-                                <span class="input-group-text">{{ config('loans.currency_symbol') }}</span>
+                                <span class="input-group-text">{{ config('loan.general.currency_symbol') }}</span>
                             </div>
                             <input type="number" name="amount" class="form-control"
                                    placeholder="{{ $minFund }}"
@@ -208,7 +208,7 @@
                                 </button>
                             </div>
                         </div>
-                        <small class="text-muted">Min: {{ config('loans.currency_symbol') }}{{ number_format($minFund) }}</small>
+                        <small class="text-muted">Min: {{ config('loan.general.currency_symbol') }}{{ number_format($minFund) }}</small>
                     </form>
                     @else
                     <div class="mt-auto">
@@ -331,7 +331,7 @@ $(function() {
     
     // View details functionality
     const loanDetailsContent = document.getElementById('loanDetailsContent');
-    const currencySymbol = {{ json_encode(config('loans.currency_symbol')) }};
+    const currencySymbol = {{ json_encode(config('loan.general.currency_symbol')) }};
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     function formatMoney(amount) {

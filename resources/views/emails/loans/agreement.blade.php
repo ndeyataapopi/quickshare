@@ -17,7 +17,7 @@
         </tr>
         <tr>
             <td style="border-bottom: 1px solid #e5e7eb; font-weight: bold; padding: 8px;">Repayment Amount</td>
-            <td style="border-bottom: 1px solid #e5e7eb; padding: 8px;">{{ config('loans.currency') }} {{ number_format((float) $loan->total_repayment, 2) }}</td>
+            <td style="border-bottom: 1px solid #e5e7eb; padding: 8px;">{{ config('loan.general.currency') }} {{ number_format((float) $loan->total_repayment, 2) }}</td>
         </tr>
         <tr>
             <td style="border-bottom: 1px solid #e5e7eb; font-weight: bold; padding: 8px;">Repayment Date</td>

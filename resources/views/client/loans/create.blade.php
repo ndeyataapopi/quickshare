@@ -33,7 +33,7 @@
                         <div class="col-md-3 col-6">
                             <div class="card text-center border-primary">
                                 <div class="card-body py-2">
-                                    <h6 class="text-primary mb-0">{{ config('loans.currency_symbol') }}{{ number_format($minAmount) }} - {{ number_format($maxAmount) }}</h6>
+                                    <h6 class="text-primary mb-0">{{ config('loan.general.currency_symbol') }}{{ number_format($minAmount) }} - {{ number_format($maxAmount) }}</h6>
                                     <small class="text-muted">Amount Range</small>
                                 </div>
                             </div>
@@ -74,7 +74,7 @@
                                     <div class="col-sm-9">
                                         <div class="input-group">
                                             <div class="input-group-prepend">
-                                                <span class="input-group-text">{{ config('loans.currency_symbol') }}</span>
+                                                <span class="input-group-text">{{ config('loan.general.currency_symbol') }}</span>
                                             </div>
                                             <input type="number" name="amount" id="amount" step="0.01"
                                                 class="form-control @error('amount') is-invalid @enderror"
@@ -82,7 +82,7 @@
                                                 min="{{ $minAmount }}" max="{{ $maxAmount }}" required>
                                         </div>
                                         @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                        <small class="form-text text-muted">Min: {{ config('loans.currency_symbol') }}{{ number_format($minAmount) }}, Max: {{ config('loans.currency_symbol') }}{{ number_format($maxAmount) }}</small>
+                                        <small class="form-text text-muted">Min: {{ config('loan.general.currency_symbol') }}{{ number_format($minAmount) }}, Max: {{ config('loan.general.currency_symbol') }}{{ number_format($maxAmount) }}</small>
                                     </div>
                                 </div>
                                 
@@ -135,7 +135,7 @@
                                     <div class="card-body">
                                         <div class="mb-3">
                                             <small class="text-muted">Loan Amount</small>
-                                            <h5 class="text-primary mb-0" id="calcAmount">{{ config('loans.currency_symbol') }}0</h5>
+                                            <h5 class="text-primary mb-0" id="calcAmount">{{ config('loan.general.currency_symbol') }}0</h5>
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Trust Tier</small>
@@ -143,20 +143,20 @@
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Platform Fee ({{ $platformFee }}%)</small>
-                                            <h5 class="text-warning mb-0" id="calcFee">{{ config('loans.currency_symbol') }}0</h5>
+                                            <h5 class="text-warning mb-0" id="calcFee">{{ config('loan.general.currency_symbol') }}0</h5>
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Lender Return ({{ $lenderReturnPercent }}%)</small>
-                                            <h5 class="text-info mb-0" id="calcLenderReturn">{{ config('loans.currency_symbol') }}0</h5>
+                                            <h5 class="text-info mb-0" id="calcLenderReturn">{{ config('loan.general.currency_symbol') }}0</h5>
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Total Interest ({{ $interestRate }}%)</small>
-                                            <h5 class="text-dark mb-0" id="calcInterest">{{ config('loans.currency_symbol') }}0</h5>
+                                            <h5 class="text-dark mb-0" id="calcInterest">{{ config('loan.general.currency_symbol') }}0</h5>
                                         </div>
                                         <hr>
                                         <div class="mb-3">
                                             <small class="text-muted">Total Repayment</small>
-                                            <h4 class="text-success mb-0" id="calcTotal">{{ config('loans.currency_symbol') }}0</h4>
+                                            <h4 class="text-success mb-0" id="calcTotal">{{ config('loan.general.currency_symbol') }}0</h4>
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Repayment Date</small>
@@ -164,7 +164,7 @@
                                         </div>
                                         <div class="mb-3">
                                             <small class="text-muted">Monthly Payment</small>
-                                            <h5 class="text-primary mb-0" id="calcMonthly">{{ config('loans.currency_symbol') }}0</h5>
+                                            <h5 class="text-primary mb-0" id="calcMonthly">{{ config('loan.general.currency_symbol') }}0</h5>
                                         </div>
                                         <div class="alert alert-info small mb-0">
                                             <i class="mdi mdi-information mr-1"></i>
@@ -233,7 +233,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const currencySymbol = '{{ config('loans.currency_symbol') }}';
+    const currencySymbol = '{{ config('loan.general.currency_symbol') }}';
     const interestRate = {{ $interestRate }};
     const platformFeePercent = {{ $platformFee }};
     const lenderReturnPercent = {{ $lenderReturnPercent }};
@@ -383,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Custom validation
         if (amount < {{ $minAmount }} || amount > {{ $maxAmount }}) {
             e.preventDefault();
-            alert('Amount must be between {{ config('loans.currency_symbol') }}{{ number_format($minAmount) }} and {{ config('loans.currency_symbol') }}{{ number_format($maxAmount) }}');
+            alert('Amount must be between {{ config('loan.general.currency_symbol') }}{{ number_format($minAmount) }} and {{ config('loan.general.currency_symbol') }}{{ number_format($maxAmount) }}');
             return;
         }
         

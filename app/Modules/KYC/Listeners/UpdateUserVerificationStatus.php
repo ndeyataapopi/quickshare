@@ -18,7 +18,7 @@ class UpdateUserVerificationStatus
         $event->user->update(['email_verified_at' => now()]);
 
         // Promote approved KYC selfie to official profile picture
-        $kycSubmission = $event->user->kycSubmission;
+        $kycSubmission = $event->user->kycSubmission()->with('documents')->first();
         if ($kycSubmission && $kycSubmission->documents) {
             $selfie = $kycSubmission->documents->where('document_type', 'selfie')->first();
             if ($selfie) {

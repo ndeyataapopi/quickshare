@@ -499,7 +499,7 @@ class RepaymentService
             ]);
 
         // Fire loan fully repaid event
-        LoanFullyRepaid::dispatch($loan->id);
+        LoanFullyRepaid::dispatch($loan->id, $loan->borrower);
 
         Log::info('Loan fully repaid', [
             'loan_id' => $loan->id,

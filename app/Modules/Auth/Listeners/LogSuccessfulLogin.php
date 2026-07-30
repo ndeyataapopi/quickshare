@@ -15,8 +15,8 @@ class LogSuccessfulLogin
             'description' => "User logged in: {$event->user->email}",
             'subject_type' => get_class($event->user),
             'subject_id' => $event->user->id,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
+            'ip_address' => request()?->ip(),
+            'user_agent' => request()?->userAgent(),
         ]);
     }
 }

@@ -33,7 +33,7 @@ class LogTrustScoreChange
                 'previous_tier' => $previousTier,
                 'new_tier' => $newTier,
             ],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

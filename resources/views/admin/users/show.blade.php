@@ -24,7 +24,19 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title text-uppercase mb-3">Profile</h5>
+                    <div class="d-flex align-items-center mb-3">
+                        @if($user->profile_picture)
+                        <img src="{{ asset('storage/' . $user->profile_picture) }}" class="rounded-circle mr-3" style="width:64px;height:64px;object-fit:cover;flex-shrink:0;">
+                        @else
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3" style="width:64px;height:64px;font-size:22px;font-weight:600;flex-shrink:0;">
+                            {{ strtoupper(substr($user->first_name, 0, 1)) }}{{ strtoupper(substr($user->last_name, 0, 1)) }}
+                        </div>
+                        @endif
+                        <div>
+                            <h5 class="card-title text-uppercase mb-0">{{ $user->first_name }} {{ $user->last_name }}</h5>
+                            <small class="text-muted">{{ $user->email }}</small>
+                        </div>
+                    </div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Full Name</div><div class="col-sm-8 font-weight-bold">{{ $user->first_name }} {{ $user->last_name }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Email</div><div class="col-sm-8">{{ $user->email }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Phone</div><div class="col-sm-8">{{ $user->phone ?? '—' }}</div></div>

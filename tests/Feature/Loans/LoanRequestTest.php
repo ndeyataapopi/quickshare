@@ -131,7 +131,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $response = $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
             ...$this->validAgreementConsent(),
         ]);
@@ -160,7 +160,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
             ...$this->validAgreementConsent(),
         ]);
@@ -173,7 +173,7 @@ class LoanRequestTest extends TestCase
     public function test_loan_request_generates_and_stores_complete_pdf_agreement(): void
     {
         Sanctum::actingAs($this->borrower);
-        $amount = (float) config('loans.min_amount');
+        $amount = (float) config('loan.loan_limits.min_amount');
         $termDays = max(config('loan.trust_tiers.silver.allowed_durations'));
 
         $this->withHeader('User-Agent', 'QuickShare-Test')->postJson('/api/loans/request', [
@@ -240,7 +240,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $response = $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount') - 1,
+            'requested_amount' => (float) config('loan.loan_limits.min_amount') - 1,
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]);
 
@@ -265,12 +265,12 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => min(config('loan.trust_tiers.silver.allowed_durations')) - 1, // below 30 min
         ])->assertStatus(422);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')) + 1, // above 365 max
         ])->assertStatus(422);
     }
@@ -281,7 +281,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => 21,
         ])->assertStatus(422);
     }
@@ -310,7 +310,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($inactive);
 
         $response = $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]);
 
@@ -348,7 +348,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->borrower);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
             'agreement_version' => 'outdated',
         ])->assertUnprocessable()
@@ -367,7 +367,7 @@ class LoanRequestTest extends TestCase
         config(['loan.agreement.terms' => '']);
         $data = LoanRequestData::fromArray([
             'borrower_id' => $this->borrower->id,
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
             ...$this->validAgreementConsent(),
         ]);
@@ -680,7 +680,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($officer);
 
         $this->postJson('/api/loans/request', [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ])->assertStatus(403);
     }

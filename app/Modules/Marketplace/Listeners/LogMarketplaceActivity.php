@@ -16,11 +16,11 @@ class LogMarketplaceActivity
             : "Loan #{$event->loanId} delisted: {$event->reason}";
 
         ActivityLog::create([
-            'user_id' => auth()->id(),
+            'user_id' => auth()->check() ? auth()->id() : null,
             'action' => $action,
             'description' => $description,
             'metadata' => ['loan_id' => $event->loanId],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

@@ -23,11 +23,11 @@
         <tr><td>Loan Number</td><td>{{ $loan->reference }}</td></tr>
         <tr><td>Trust Tier</td><td>{{ ucfirst($calculation->trustTier) }}</td></tr>
         <tr><td>Trust Score</td><td>{{ number_format($calculation->riskScore, 2) }}</td></tr>
-        <tr><td>Loan Amount</td><td>{{ config('loans.currency') }} {{ number_format($calculation->principal, 2) }}</td></tr>
-        <tr><td>Interest</td><td>{{ number_format($calculation->interestRate, 2) }}% ({{ config('loans.currency') }} {{ number_format($calculation->interestAmount, 2) }})</td></tr>
-        <tr><td>Platform Fee</td><td>{{ config('loans.currency') }} {{ number_format($calculation->platformFee, 2) }}</td></tr>
-        <tr><td>Lender Return</td><td>{{ number_format($lenderReturnPercent, 2) }}% ({{ config('loans.currency') }} {{ number_format($lenderReturnAmount, 2) }})</td></tr>
-        <tr><td>Repayment</td><td>{{ config('loans.currency') }} {{ number_format($calculation->totalRepayment, 2) }}</td></tr>
+        <tr><td>Loan Amount</td><td>{{ config('loan.general.currency') }} {{ number_format($calculation->principal, 2) }}</td></tr>
+        <tr><td>Interest</td><td>{{ number_format($calculation->interestRate, 2) }}% ({{ config('loan.general.currency') }} {{ number_format($calculation->interestAmount, 2) }})</td></tr>
+        <tr><td>Platform Fee</td><td>{{ config('loan.general.currency') }} {{ number_format($calculation->platformFee, 2) }}</td></tr>
+        <tr><td>Lender Return</td><td>{{ number_format($lenderReturnPercent, 2) }}% ({{ config('loan.general.currency') }} {{ number_format($lenderReturnAmount, 2) }})</td></tr>
+        <tr><td>Repayment</td><td>{{ config('loan.general.currency') }} {{ number_format($calculation->totalRepayment, 2) }}</td></tr>
         <tr><td>Repayment Date</td><td>{{ $repaymentDate->format('d F Y') }}</td></tr>
     </table>
 

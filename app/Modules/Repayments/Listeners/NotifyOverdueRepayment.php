@@ -27,7 +27,7 @@ class NotifyOverdueRepayment implements ShouldQueue
                 'loan_id' => $event->loanId,
                 'days_overdue' => $event->daysOverdue,
             ],
-            'ip_address' => request()->ip(),
+            'ip_address' => null,
         ]);
 
         // Send overdue notification to borrower via multiple channels

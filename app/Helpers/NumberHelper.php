@@ -35,7 +35,7 @@ if (! function_exists('kpiMoney')) {
      */
     function kpiMoney(float|int|string|null $value, ?string $symbol = null): string
     {
-        $sym = $symbol ?? config('loans.currency_symbol', 'N$');
+        $sym = $symbol ?? config('loan.general.currency_symbol', 'N$');
         return $sym . ' ' . formatKpi($value);
     }
 }

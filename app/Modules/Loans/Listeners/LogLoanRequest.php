@@ -19,7 +19,7 @@ class LogLoanRequest
                 'amount' => $event->amount,
                 'term_days' => $event->termMonths,
             ],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

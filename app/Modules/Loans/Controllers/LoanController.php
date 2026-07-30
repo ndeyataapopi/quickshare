@@ -68,7 +68,7 @@ class LoanController extends Controller
     public function calculate(Request $request): JsonResponse
     {
         $tier = $this->trustTierService->forScore((float) $request->user()->trust_score);
-        $minimumAmount = (float) config('loans.min_amount');
+        $minimumAmount = (float) config('loan.loan_limits.min_amount');
 
         $request->validate([
             'amount' => ['required', 'numeric', "min:{$minimumAmount}", "max:{$tier['maximum_loan']}"],

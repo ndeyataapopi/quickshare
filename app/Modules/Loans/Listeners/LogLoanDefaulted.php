@@ -11,7 +11,7 @@ class LogLoanDefaulted
     {
         ActivityLog::create([
             'user_id' => $event->loan->borrower_id,
-            'actor_id' => auth()->id(),
+            'actor_id' => auth()->check() ? auth()->id() : null,
             'action' => 'loan.defaulted',
             'description' => "Loan #{$event->loan->id} marked as defaulted",
             'subject_type' => get_class($event->loan),

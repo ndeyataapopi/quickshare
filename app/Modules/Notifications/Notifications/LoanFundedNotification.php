@@ -27,7 +27,7 @@ class LoanFundedNotification extends Notification
         $reference = $this->data['reference'] ?? 'N/A';
         $amount    = $this->data['amount'] ?? '0';
         $loanId    = $this->data['loan_id'] ?? null;
-        $currency  = config('loans.currency_symbol', 'N$');
+        $currency  = config('loan.general.currency_symbol', 'N$');
 
         return (new MailMessage)
             ->subject('Loan Fully Funded - QuickShare')

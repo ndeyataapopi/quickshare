@@ -56,6 +56,39 @@
     @endif
 
     <!-- ============================================================== -->
+    <!-- Welcome Banner with Profile Picture  -->
+    <!-- ============================================================== -->
+    <div class="card mb-4">
+        <div class="card-body d-flex align-items-center">
+            @if($user->profile_picture)
+            <img src="{{ asset('storage/' . $user->profile_picture) }}" class="rounded-circle mr-3" style="width:64px;height:64px;object-fit:cover;flex-shrink:0;">
+            @else
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3" style="width:64px;height:64px;font-size:24px;font-weight:600;flex-shrink:0;">
+                {{ strtoupper(substr($user->first_name ?? 'U', 0, 1)) }}{{ strtoupper(substr($user->last_name ?? '', 0, 1)) }}
+            </div>
+            @endif
+            <div>
+                <h4 class="mb-0">Welcome back, {{ $user->first_name }}!</h4>
+                <p class="text-muted mb-0">
+                    @if($kycApproved)
+                        <span class="badge badge-success"><i class="mdi mdi-check-circle"></i> KYC Verified</span>
+                    @else
+                        <span class="badge badge-warning"><i class="mdi mdi-alert"></i> KYC Pending</span>
+                    @endif
+                    <span class="badge badge-{{ $user->trust_tier === 'platinum' ? 'primary' : ($user->trust_tier === 'gold' ? 'warning' : ($user->trust_tier === 'silver' ? 'secondary' : 'info')) }} ml-1">
+                        {{ ucfirst($user->trust_tier ?? 'bronze') }} Tier
+                    </span>
+                </p>
+            </div>
+            <div class="ml-auto">
+                <a href="{{ route('client.profile.edit') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="mdi mdi-account-edit"></i> Edit Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
     <!-- First Cards Row  -->
     <!-- ============================================================== -->
     <div class="row">

@@ -12,8 +12,8 @@ class LogDisbursementInitiated
         $t = $event->transaction;
 
         ActivityLog::create([
-            'user_id' => auth()->id(),
-            'actor_id' => auth()->id(),
+            'user_id' => auth()->check() ? auth()->id() : null,
+            'actor_id' => auth()->check() ? auth()->id() : null,
             'action' => 'disbursement.initiated',
             'description' => "Disbursement initiated for loan #{$t->loan_id}: R{$t->net_amount}",
             'subject_type' => get_class($t),

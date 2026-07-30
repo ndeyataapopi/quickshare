@@ -23,7 +23,7 @@ class MarketplaceController extends Controller
     {
         $loans = Loan::onMarketplace()
             ->where('borrower_id', '!=', Auth::id())
-            ->with('borrower:id,first_name,last_name,trust_score')
+            ->with('borrower:id,trust_score')
             ->latest('approved_at')
             ->paginate(12);
 
@@ -57,7 +57,7 @@ class MarketplaceController extends Controller
     {
         $remaining = $this->loanService->remainingFunding($loan);
         $validated = $request->validate([
-            'amount' => 'required|numeric|min:' . config('loans.min_funding_amount', 500) . '|max:' . $remaining,
+            'amount' => 'required|numeric|min:' . config('loan.marketplace.min_funding_amount', 500) . '|max:' . $remaining,
         ]);
 
         $transaction = $this->fundingService->fund(Auth::user(), $loan, $validated['amount']);
