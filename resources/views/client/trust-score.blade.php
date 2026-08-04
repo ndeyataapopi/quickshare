@@ -200,7 +200,7 @@
                                             <i class="mdi mdi-medal mr-1"></i>Bronze
                                         </span>
                                     </td>
-                                    <td>{{ config('loan.trust_tiers.bronze.trust_score.min', 0) }} – {{ config('loan.trust_tiers.bronze.trust_score.max', 49.99) }}</td>
+                                    <td>{{ config('loan.trust_tiers.bronze.trust_score.min', 30) }} – {{ config('loan.trust_tiers.bronze.trust_score.max', 49.99) }}</td>
                                     <td>{{ kpiMoney(config('loan.trust_tiers.bronze.maximum_loan', 500)) }}</td>
                                     <td>{!! $tier === 'bronze' ? '<span class="badge badge-dark">Current</span>' : '' !!}</td>
                                 </tr>

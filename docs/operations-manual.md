@@ -286,11 +286,23 @@ The admin can:
 
 - **Reject** — Loan moves to `rejected` status. A rejection reason must be provided.
 
-### 4.5 Loan Cancellation
+### 4.5 Borrower Cancellation
 
 Borrowers can cancel their own loans only when in `draft` or `pending_review` status. Once approved and on the marketplace, cancellation is not possible.
 
-### 4.6 Approval SLA (Private Beta)
+### 4.6 Affordability Check (Advisory)
+
+During the loan review process, the admin should run an affordability assessment before approving the loan:
+
+1. On the loan detail page (`/admin/loans/{id}`), scroll to the **Affordability Assessment** card
+2. Click **"Run Assessment"** and enter the borrower's monthly income, expenses, and debt obligations
+3. Review the results: affordability score, DTI ratio, risk classification, and the system's recommendation
+4. Use this information to inform the approve/reject decision
+5. The assessment is stored and linked to the loan for audit purposes
+
+> **Note:** The affordability assessment is advisory and does not block approval. However, admins should exercise caution when approving loans against the assessment's recommendation.
+
+### 4.7 Approval SLA (Private Beta)
 
 - Loan applications should be reviewed within **48 hours** during business days
 - Escalate any application older than 72 hours to the operations lead
@@ -302,6 +314,8 @@ Borrowers can cancel their own loans only when in `draft` or `pending_review` st
 ### 5.1 Overview
 
 The affordability module evaluates a borrower's financial capacity to repay a loan before approval. It uses a weighted scoring model that combines debt-to-income ratio, trust score, repayment history, disposable income, and bank stability data.
+
+The assessment is **advisory** — it does not block loan approval, but it provides the admin with a score, risk classification, and recommendation (approve / reject / manual review) to inform their decision.
 
 ### 5.2 Where It Lives
 
@@ -322,9 +336,25 @@ The affordability module is part of the **Loans Module** and is located at:
 | POST | `/api/loans/affordability/assess` | Run a standalone affordability assessment |
 | POST | `/api/loans/affordability/max-loan` | Calculate maximum loan amount for a user |
 | GET | `/api/loans/affordability/history` | Get assessment history |
-| POST | `/api/loans/admin/{loan}/affordability` | Run affordability assessment for a specific loan (admin) |
+| POST | `/api/loans/admin/{loan}/affordability` | Run affordability assessment for a specific loan (admin API) |
+| POST | `/admin/loans/{loan}/affordability` | Run affordability assessment from admin web panel |
 
-### 5.4 Input Data
+### 5.4 Admin Loan Review Integration
+
+When an admin views a loan at `pending_review` status on the admin panel (`/admin/loans/{id}`):
+
+1. The page displays an **Affordability Assessment** card
+2. If a previous assessment exists for this loan, its results are shown (score, DTI, risk, decision, disposable income, max loan, repayment reliability, decision reasons)
+3. The admin clicks **"Run Assessment"** to open a form with financial input fields
+4. The admin enters the borrower's monthly income, expenses, debt repayments, and optional bank/payslip data
+5. On submission, the `AffordabilityService::approveOrRejectLoan()` method runs the full assessment
+6. The result is stored as an `AffordabilityAssessment` record linked to the loan
+7. The page reloads showing the assessment results
+8. The admin uses this information to inform their approve/reject decision — **it does not block approval**
+
+The API endpoint `GET /api/v1/loans/admin/{loan}` also returns the latest affordability assessment for the loan if one exists.
+
+### 5.5 Input Data
 
 The assessment accepts the following financial inputs:
 
@@ -340,7 +370,7 @@ The assessment accepts the following financial inputs:
 | `bank_avg_income` | No | Average monthly income per bank statements |
 | `bank_avg_expenses` | No | Average monthly expenses per bank statements |
 
-### 5.5 Scoring Model
+### 5.6 Scoring Model
 
 The affordability score (0–100) is calculated using weighted components:
 
@@ -352,7 +382,7 @@ The affordability score (0–100) is calculated using weighted components:
 | **Disposable Income** | 15% | Income minus expenses minus debt repayments, as % of gross income |
 | **Bank Stability** | 10% | Balance coverage and income consistency from bank data |
 
-### 5.6 Decision Engine
+### 5.7 Decision Engine
 
 The system produces one of three decisions:
 
@@ -362,7 +392,7 @@ The system produces one of three decisions:
 | **reject** | Score ≤ 30 OR DTI > 50% OR trust score below minimum OR ≥2 defaults | Auto-reject |
 | **manual_review** | Score between 30–75 | Requires admin manual review |
 
-### 5.7 Risk Classification
+### 5.8 Risk Classification
 
 | Classification | Criteria |
 |---|---|
@@ -372,7 +402,7 @@ The system produces one of three decisions:
 | `high` | Avg signal ≥ 35 |
 | `very_high` | Avg signal < 35 |
 
-### 5.8 Hard Reject Rules
+### 5.9 Hard Reject Rules
 
 Regardless of affordability score, the system will reject if **any** of these conditions are true:
 
@@ -381,7 +411,7 @@ Regardless of affordability score, the system will reject if **any** of these co
 - Borrower has 2 or more defaulted loans
 - Requested loan amount exceeds the borrower's trust-tier maximum loan limit
 
-### 5.9 Trust Tier Loan Limits
+### 5.10 Trust Tier Loan Limits
 
 | Tier | Score Range | Max Loan Amount |
 |---|---|---|
