@@ -20,7 +20,7 @@ return [
 
     'loan_limits' => [
         'min_amount' => env('LOAN_MIN_AMOUNT', 500.00),
-        'max_amount' => env('LOAN_MAX_AMOUNT', 1500.00),
+        'max_amount' => env('LOAN_MAX_AMOUNT', 2500.00),
         'min_term_days' => env('LOAN_MIN_TERM_DAYS', 7),
         'max_term_days' => env('LOAN_MAX_TERM_DAYS', 30),
         'max_active_loans' => env('LOAN_MAX_ACTIVE_LOANS', 1),
@@ -30,7 +30,7 @@ return [
         'bronze' => [
             'name' => env('LOAN_TIER_BRONZE_NAME', 'bronze'),
             'trust_score' => [
-                'min' => env('LOAN_TIER_BRONZE_MIN', 0.00),
+                'min' => env('LOAN_TIER_BRONZE_MIN', 20.00),
                 'max' => env('LOAN_TIER_BRONZE_MAX', 49.99),
             ],
             'minimum_loan' => env('LOAN_TIER_BRONZE_MIN_LOAN', 0.00),
