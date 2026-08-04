@@ -5,6 +5,7 @@ namespace App\Modules\Auth\Services;
 use App\Models\Referral;
 use App\Models\ReferralCode;
 use App\Models\User;
+use App\Modules\TrustScore\Services\TrustScoreService;
 use Illuminate\Support\Str;
 
 class ReferralService
@@ -68,9 +69,7 @@ class ReferralService
 
     protected function rewardReferrer(User $referrer): void
     {
-        // Boost trust score for successful referral
-        $newScore = min(100, $referrer->trust_score + 2.00);
-        $referrer->update(['trust_score' => $newScore]);
+        app(TrustScoreService::class)->onReferralCompleted($referrer, $referrer->id);
     }
 
     protected function generateUniqueCode(): string

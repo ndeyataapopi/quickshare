@@ -2,8 +2,12 @@
 
 namespace App\Modules\TrustScore\Services;
 
+use App\Models\Referral;
 use App\Models\User;
+use App\Modules\KYC\Models\KycSubmission;
+use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Services\TrustTierService;
+use App\Modules\Repayments\Models\Repayment;
 use App\Modules\TrustScore\Events\TrustScoreCalculated;
 use App\Modules\TrustScore\Models\TrustScoreHistory;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +57,93 @@ class TrustScoreService
 
             return $user->fresh();
         });
+    }
+
+    // ─── Full Recalculation from Ground Truth ──────────────────────
+
+    public function recalculateForUser(User $user): float
+    {
+        $score = self::DEFAULT_SCORE;
+
+        // KYC approved: +10
+        $kyc = $user->kycSubmission;
+        if ($kyc && $kyc->status === 'approved') {
+            $score += self::WEIGHT_KYC_APPROVED;
+        }
+
+        // Repayment history
+        $repayments = Repayment::where('borrower_id', $user->id)->get();
+        $onTimeCount = $repayments->filter(fn ($r) => $r->isPaid() && $r->days_overdue <= 0)->count();
+        $overdueCount = $repayments->filter(fn ($r) => $r->isOverdue() || ($r->isPaid() && $r->days_overdue > 0))->count();
+        $defaultedCount = $repayments->filter(fn ($r) => $r->isDefaulted())->count();
+
+        $score += $onTimeCount * self::WEIGHT_REPAYMENT_ON_TIME;
+        $score += $overdueCount * self::WEIGHT_REPAYMENT_LATE;
+        $score += $defaultedCount * self::WEIGHT_REPAYMENT_DEFAULT;
+
+        // Loan fully repaid: +5 each
+        $completedLoans = Loan::where('borrower_id', $user->id)->where('status', 'completed')->count();
+        $score += $completedLoans * self::WEIGHT_LOAN_FULLY_REPAID;
+
+        // Loan defaults: -15 each (in addition to repayment-level default)
+        $defaultedLoans = Loan::where('borrower_id', $user->id)->where('status', 'defaulted')->count();
+        $score += $defaultedLoans * self::WEIGHT_REPAYMENT_DEFAULT;
+
+        // Referrals completed: +2 each
+        $completedReferrals = Referral::where('referrer_id', $user->id)->where('status', 'completed')->count();
+        $score += $completedReferrals * self::WEIGHT_REFERRAL_COMPLETED;
+
+        // Referral defaults: -3 each
+        $referralDefaults = TrustScoreHistory::forUser($user->id)
+            ->where('event_type', 'referral_defaulted')
+            ->count();
+        $score += $referralDefaults * self::WEIGHT_REFERRAL_DEFAULTED;
+
+        // Account age bonus: +1 if active for 6+ months
+        $accountAgeDays = $user->created_at->diffInDays(now());
+        if ($accountAgeDays >= 365) {
+            $score += 1.00;
+        }
+
+        // No defaults for 1 year: +15
+        $recentDefault = Loan::where('borrower_id', $user->id)
+            ->where('status', 'defaulted')
+            ->where('updated_at', '>=', now()->subYear())
+            ->exists();
+        if (! $recentDefault && $completedLoans > 0) {
+            $score += 15.00;
+        }
+
+        $score = $this->clamp($score);
+
+        $previousScore = (float) $user->trust_score;
+
+        if (abs($previousScore - $score) >= 0.01) {
+            $user->update(['trust_score' => $score]);
+
+            TrustScoreHistory::create([
+                'user_id' => $user->id,
+                'previous_score' => $previousScore,
+                'new_score' => $score,
+                'change' => $score - $previousScore,
+                'reason' => 'Trust score recalculated from account history.',
+                'event_type' => 'recalculation',
+                'metadata' => [
+                    'on_time_repayments' => $onTimeCount,
+                    'overdue_repayments' => $overdueCount,
+                    'defaulted_repayments' => $defaultedCount,
+                    'completed_loans' => $completedLoans,
+                    'defaulted_loans' => $defaultedLoans,
+                    'completed_referrals' => $completedReferrals,
+                    'referral_defaults' => $referralDefaults,
+                    'account_age_days' => $accountAgeDays,
+                ],
+            ]);
+
+            event(new TrustScoreCalculated($user->fresh(), $previousScore, $score));
+        }
+
+        return $score;
     }
 
     // ─── Event-Driven Adjustments ────────────────────────────────────

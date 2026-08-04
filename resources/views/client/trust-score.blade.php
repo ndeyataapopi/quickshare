@@ -49,17 +49,8 @@
     <!-- Enhanced Score Display -->
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card text-center border-{{ $tierColor }}">
-                <div class="card-body py-4">
-                    <div class="mb-3 d-flex justify-content-center">
-                        @if($user->profile_picture)
-                        <img src="{{ asset('storage/' . $user->profile_picture) }}" class="rounded-circle border border-{{ $tierColor }}" style="width:80px;height:80px;object-fit:cover;">
-                        @else
-                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center border border-{{ $tierColor }}" style="width:80px;height:80px;font-size:28px;font-weight:600;">
-                            {{ strtoupper(substr($user->first_name ?? 'U', 0, 1)) }}{{ strtoupper(substr($user->last_name ?? '', 0, 1)) }}
-                        </div>
-                        @endif
-                    </div>
+            <div class="card text-center border-{{ $tierColor }} h-100">
+                <div class="card-body py-4 d-flex flex-column justify-content-center">
                     <div class="mb-3">
                         <span class="badge badge-{{ $tierColor }} px-3 py-2" style="font-size: 14px;">
                             <i class="mdi mdi-{{ $tier === 'bronze' ? 'medal' : ($tier === 'silver' ? 'medal-outline' : ($tier === 'gold' ? 'trophy' : 'trophy-award')) }} mr-1"></i>
@@ -80,8 +71,8 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-center border-success">
-                <div class="card-body py-4">
+            <div class="card text-center border-success h-100">
+                <div class="card-body py-4 d-flex flex-column justify-content-center">
                     <i class="mdi mdi-cash-multiple text-success" style="font-size: 48px;"></i>
                     <h4 class="mt-2 text-success">{{ kpiMoney($maxLoan) }}</h4>
                     <small class="text-muted">Max Loan Amount</small>
@@ -94,8 +85,8 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-center border-info">
-                <div class="card-body py-4">
+            <div class="card text-center border-info h-100">
+                <div class="card-body py-4 d-flex flex-column justify-content-center">
                     <i class="mdi mdi-trending-up text-info" style="font-size: 48px;"></i>
                     <h4 class="mt-2 text-info">{{ $scoreChange >= 0 ? '+' : '' }}{{ number_format($scoreChange, 1) }}</h4>
                     <small class="text-muted">Score Change (30 days)</small>
@@ -209,9 +200,9 @@
                                             <i class="mdi mdi-medal mr-1"></i>Bronze
                                         </span>
                                     </td>
-                                    <td>0 – 49</td>
-                                    <td>{{ kpiMoney(5000) }}</td>
-                                    <td>{{ $tier === 'bronze' ? '<span class="badge badge-dark">Current</span>' : '' }}</td>
+                                    <td>{{ config('loan.trust_tiers.bronze.trust_score.min', 0) }} – {{ config('loan.trust_tiers.bronze.trust_score.max', 49.99) }}</td>
+                                    <td>{{ kpiMoney(config('loan.trust_tiers.bronze.maximum_loan', 500)) }}</td>
+                                    <td>{!! $tier === 'bronze' ? '<span class="badge badge-dark">Current</span>' : '' !!}</td>
                                 </tr>
                                 <tr class="{{ $tier === 'silver' ? 'bg-light' : '' }}">
                                     <td>
@@ -219,8 +210,8 @@
                                             <i class="mdi mdi-medal-outline mr-1"></i>Silver
                                         </span>
                                     </td>
-                                    <td>50 – 69</td>
-                                    <td>{{ kpiMoney(15000) }}</td>
+                                    <td>{{ config('loan.trust_tiers.silver.trust_score.min', 50) }} – {{ config('loan.trust_tiers.silver.trust_score.max', 69.99) }}</td>
+                                    <td>{{ kpiMoney(config('loan.trust_tiers.silver.maximum_loan', 1000)) }}</td>
                                     <td>{!! $tier === 'silver' ? '<span class="badge badge-dark">Current</span>' : '' !!}</td>
                                 </tr>
                                 <tr class="{{ $tier === 'gold' ? 'bg-light' : '' }}">
@@ -229,8 +220,8 @@
                                             <i class="mdi mdi-trophy mr-1"></i>Gold
                                         </span>
                                     </td>
-                                    <td>70 – 84</td>
-                                    <td>{{ kpiMoney(50000) }}</td>
+                                    <td>{{ config('loan.trust_tiers.gold.trust_score.min', 70) }} – {{ config('loan.trust_tiers.gold.trust_score.max', 84.99) }}</td>
+                                    <td>{{ kpiMoney(config('loan.trust_tiers.gold.maximum_loan', 1500)) }}</td>
                                     <td>{!! $tier === 'gold' ? '<span class="badge badge-dark">Current</span>' : '' !!}</td>
                                 </tr>
                                 <tr class="{{ $tier === 'platinum' ? 'bg-light' : '' }}">
@@ -239,8 +230,8 @@
                                             <i class="mdi mdi-trophy-award mr-1"></i>Platinum
                                         </span>
                                     </td>
-                                    <td>85 – 100</td>
-                                    <td>{{ kpiMoney(100000) }}</td>
+                                    <td>{{ config('loan.trust_tiers.platinum.trust_score.min', 85) }} – {{ config('loan.trust_tiers.platinum.trust_score.max', 100) }}</td>
+                                    <td>{{ kpiMoney(config('loan.trust_tiers.platinum.maximum_loan', 2500)) }}</td>
                                     <td>{!! $tier === 'platinum' ? '<span class="badge badge-dark">Current</span>' : '' !!}</td>
                                 </tr>
                             </tbody>
