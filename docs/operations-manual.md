@@ -1,9 +1,9 @@
-# QuickShare Private Beta Operations Manual v1.0
+# QuickShare Private Beta Operations Manual v1.1
 
-**Document Version:** 1.0  
+**Document Version:** 1.1  
 **Status:** Private Beta  
 **Classification:** Internal — Operations Team Only  
-**Last Updated:** July 2026
+**Last Updated:** August 2026
 
 ---
 
@@ -13,14 +13,17 @@
 2. [User Onboarding Process](#2-user-onboarding-process)
 3. [KYC Verification Checklist](#3-kyc-verification-checklist)
 4. [Loan Approval Process](#4-loan-approval-process)
-5. [Funding Verification Process](#5-funding-verification-process)
-6. [Disbursement Process](#6-disbursement-process)
-7. [Repayment Verification Process](#7-repayment-verification-process)
-8. [Daily Reconciliation Checklist](#8-daily-reconciliation-checklist)
-9. [Support Process](#9-support-process)
-10. [Incident Handling](#10-incident-handling)
-11. [Backup and Recovery](#11-backup-and-recovery)
-12. [Go-Live Checklist](#12-go-live-checklist)
+5. [Affordability Assessment](#5-affordability-assessment)
+6. [Funding Verification Process](#6-funding-verification-process)
+7. [Disbursement Process](#7-disbursement-process)
+8. [Repayment Verification Process](#8-repayment-verification-process)
+9. [Trust Score System](#9-trust-score-system)
+10. [Collections Process](#10-collections-process)
+11. [Daily Reconciliation Checklist](#11-daily-reconciliation-checklist)
+12. [Support Process](#12-support-process)
+13. [Incident Handling](#13-incident-handling)
+14. [Backup and Recovery](#14-backup-and-recovery)
+15. [Go-Live Checklist](#15-go-live-checklist)
 
 ---
 
@@ -53,11 +56,13 @@ QuickShare is a peer-to-peer lending platform connecting borrowers and lenders. 
 ### 1.4 Key System Components
 
 - **Auth Module** — Registration, OTP verification, email verification, referral codes
-- **KYC Module** — Document submission, encryption, admin review, approval/rejection
-- **Loans Module** — Loan application, approval, marketplace, lifecycle management
+- **KYC Module** — Document submission, encryption, admin review, approval/rejection, selfie-to-profile-picture promotion
+- **Loans Module** — Loan application, approval, marketplace, lifecycle management, affordability assessment
 - **Funding Module** — Lender funding transactions, investment records, payment proof
 - **Disbursement Module** — Outgoing payments to borrowers, borrower confirmation
 - **Repayments Module** — Repayment schedules, borrower submissions, admin approval, lender distribution
+- **Trust Score Module** — Event-driven score adjustments, tier classification, daily recalculation on login
+- **Collections Module** — Overdue repayment escalation, referrer notification, trust score penalties
 - **Notifications Module** — Email and SMS notifications for all key events
 - **Fraud Detection** — Automated fraud scanning and admin review queue
 
@@ -196,7 +201,7 @@ For each KYC submission, the reviewer must verify:
 
 | Decision | Status Set | Action |
 |---|---|---|
-| **Approve** | `approved` | All documents marked approved. User can now borrow/lend. |
+| **Approve** | `approved` | All documents marked approved. User can now borrow/lend. Selfie is decrypted and promoted as the user's profile picture. Trust score increased by +10. |
 | **Reject with resubmission** | `resubmission_required` | Specific documents may be rejected with reasons. User can resubmit. |
 | **Reject permanently** | `rejected` | No resubmission allowed. User cannot use the platform. |
 
@@ -209,7 +214,17 @@ When a submission requires resubmission:
 4. Submission status returns to `pending`
 5. Reviewer re-evaluates the new documents
 
-### 3.8 KYC Review SLA (Private Beta)
+### 3.8 Profile Picture Promotion
+
+When a KYC submission is approved:
+1. The listener `UpdateUserVerificationStatus` fires on the `KycApproved` event
+2. The encrypted selfie is decrypted from the `uploads` disk
+3. The decrypted image is stored on the `public` disk at `profile-pictures/{userId}/selfie.{ext}`
+4. The user's `profile_picture` attribute is updated with the relative path
+5. The profile picture is displayed across all views (navigation, dashboards, profile edit, admin user list, admin user detail, trust score page)
+6. If no profile picture exists, initials are shown as fallback
+
+### 3.9 KYC Review SLA (Private Beta)
 
 - Submissions should be reviewed within **24 hours** during business days
 - Submissions received after 17:00 on Friday should be reviewed by Monday 12:00
@@ -282,19 +297,114 @@ Borrowers can cancel their own loans only when in `draft` or `pending_review` st
 
 ---
 
-## 5. Funding Verification Process
+## 5. Affordability Assessment
 
 ### 5.1 Overview
 
+The affordability module evaluates a borrower's financial capacity to repay a loan before approval. It uses a weighted scoring model that combines debt-to-income ratio, trust score, repayment history, disposable income, and bank stability data.
+
+### 5.2 Where It Lives
+
+The affordability module is part of the **Loans Module** and is located at:
+
+- **Service:** `app/Modules/Loans/Services/AffordabilityService.php`
+- **Controller:** `app/Modules/Loans/Controllers/AffordabilityController.php`
+- **DTO:** `app/Modules/Loans/DTOs/AffordabilityInput.php`
+- **Model:** `app/Modules/Loans/Models/AffordabilityAssessment.php`
+- **Config:** `config/loan.php` under the `affordability` key
+- **API Routes:** `app/Modules/Loans/Routes/api.php` under `/affordability/*`
+- **Tests:** `tests/Feature/Loans/AffordabilityTest.php`
+
+### 5.3 API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/loans/affordability/assess` | Run a standalone affordability assessment |
+| POST | `/api/loans/affordability/max-loan` | Calculate maximum loan amount for a user |
+| GET | `/api/loans/affordability/history` | Get assessment history |
+| POST | `/api/loans/admin/{loan}/affordability` | Run affordability assessment for a specific loan (admin) |
+
+### 5.4 Input Data
+
+The assessment accepts the following financial inputs:
+
+| Field | Required | Description |
+|---|---|---|
+| `monthly_income` | Yes | User's gross monthly income |
+| `monthly_expenses` | No | User's declared monthly living expenses |
+| `existing_debt` | No | Total outstanding debt |
+| `monthly_debt_repayments` | No | Monthly debt repayment obligations |
+| `payslip_gross` | No | Gross salary from payslip |
+| `payslip_net` | No | Net salary from payslip |
+| `bank_avg_balance` | No | Average bank account balance |
+| `bank_avg_income` | No | Average monthly income per bank statements |
+| `bank_avg_expenses` | No | Average monthly expenses per bank statements |
+
+### 5.5 Scoring Model
+
+The affordability score (0–100) is calculated using weighted components:
+
+| Component | Weight | Description |
+|---|---|---|
+| **Debt-to-Income Ratio** | 30% | Lower DTI = higher score. Excellent: ≤20%, Good: ≤35%, Fair: ≤50% |
+| **Trust Score** | 25% | User's current platform trust score (0–100) |
+| **Repayment History** | 20% | Reliability based on completed vs defaulted loans |
+| **Disposable Income** | 15% | Income minus expenses minus debt repayments, as % of gross income |
+| **Bank Stability** | 10% | Balance coverage and income consistency from bank data |
+
+### 5.6 Decision Engine
+
+The system produces one of three decisions:
+
+| Decision | Condition | Action |
+|---|---|---|
+| **approve** | Score ≥ 75 AND DTI ≤ 35% | Auto-approve recommended |
+| **reject** | Score ≤ 30 OR DTI > 50% OR trust score below minimum OR ≥2 defaults | Auto-reject |
+| **manual_review** | Score between 30–75 | Requires admin manual review |
+
+### 5.7 Risk Classification
+
+| Classification | Criteria |
+|---|---|
+| `very_low` | Avg signal ≥ 80 AND DTI ≤ 20% |
+| `low` | Avg signal ≥ 65 AND DTI ≤ 35% |
+| `moderate` | Avg signal ≥ 50 AND DTI ≤ 50% |
+| `high` | Avg signal ≥ 35 |
+| `very_high` | Avg signal < 35 |
+
+### 5.8 Hard Reject Rules
+
+Regardless of affordability score, the system will reject if **any** of these conditions are true:
+
+- DTI ratio exceeds 50%
+- Trust score is below the minimum borrowing threshold (configurable via `loan.minimum_borrow_score`)
+- Borrower has 2 or more defaulted loans
+- Requested loan amount exceeds the borrower's trust-tier maximum loan limit
+
+### 5.9 Trust Tier Loan Limits
+
+| Tier | Score Range | Max Loan Amount |
+|---|---|---|
+| Bronze | 0 – 49.99 | N$500 |
+| Silver | 50 – 69.99 | N$1,000 |
+| Gold | 70 – 84.99 | N$1,500 |
+| Platinum | 85 – 100 | N$2,500 |
+
+---
+
+## 6. Funding Verification Process
+
+### 6.1 Overview
+
 Once a loan is approved and on the marketplace, lenders can fund it. Each lender submits a funding transaction with payment proof. Finance officers must verify each payment before it is applied to the loan.
 
-### 5.2 Funding Transaction States
+### 6.2 Funding Transaction States
 
 ```
 pending → confirmed (or) rejected
 ```
 
-### 5.3 Lender Funding Steps
+### 6.3 Lender Funding Steps
 
 1. **Lender selects a loan from the marketplace**
    - Views loan details, interest rate, and remaining funding needed
@@ -309,7 +419,7 @@ pending → confirmed (or) rejected
    - Enters payment method, reference number, and transaction number
    - Transaction status remains `pending`
 
-### 5.4 Funding Verification Checklist
+### 6.4 Funding Verification Checklist
 
 The finance officer must verify:
 
@@ -322,7 +432,7 @@ The finance officer must verify:
 - [ ] **Loan is still on marketplace** — loan has not been cancelled or expired
 - [ ] **Funding does not exceed remaining amount** — the transaction plus existing funding does not exceed the approved loan amount
 
-### 5.5 Confirmation Actions
+### 6.5 Confirmation Actions
 
 When the finance officer confirms funding:
 
@@ -337,27 +447,27 @@ When the finance officer confirms funding:
    - If loan is fully funded, all participating lenders are notified
 5. **Marketplace cache is cleared** — loan is removed from marketplace listings
 
-### 5.6 Rejection Actions
+### 6.6 Rejection Actions
 
 If the funding proof is invalid:
 1. Transaction status set to `rejected`
 2. Lender is notified with rejection reason
 3. Lender can submit a new funding transaction with corrected proof
 
-### 5.7 Funding Verification SLA (Private Beta)
+### 6.7 Funding Verification SLA (Private Beta)
 
 - Funding proofs should be verified within **12 hours** during business days
 - Escalate any proof older than 24 hours to the finance lead
 
 ---
 
-## 6. Disbursement Process
+## 7. Disbursement Process
 
-### 6.1 Overview
+### 7.1 Overview
 
 Once a loan is fully funded, the platform disburses the net amount to the borrower (gross amount minus platform fee). The disbursement process involves admin initiation, payment execution, and borrower confirmation.
 
-### 6.2 Disbursement Transaction States
+### 7.2 Disbursement Transaction States
 
 ```
 awaiting_disbursement → processing → pending_borrower_confirmation
@@ -366,7 +476,7 @@ awaiting_disbursement → processing → pending_borrower_confirmation
   → failed (payment failure, can retry up to 3 times)
 ```
 
-### 6.3 Disbursement Steps
+### 7.3 Disbursement Steps
 
 #### Step 1: Initiate Disbursement (System/Admin)
 
@@ -408,7 +518,7 @@ awaiting_disbursement → processing → pending_borrower_confirmation
 - Admins are notified immediately
 - Admin must investigate and re-initiate disbursement if needed
 
-### 6.4 Disbursement Failure Handling
+### 7.4 Disbursement Failure Handling
 
 - If the payment fails, transaction status becomes `failed`
 - **Retry policy:** Up to 3 retries with escalating delays:
@@ -418,7 +528,7 @@ awaiting_disbursement → processing → pending_borrower_confirmation
 - After 3 failed attempts, manual intervention is required
 - Failure reason is recorded for each attempt
 
-### 6.5 Disbursement Checklist for Finance Officers
+### 7.5 Disbursement Checklist for Finance Officers
 
 - [ ] **Loan is fully funded** — verify `funded_amount` equals `approved_amount`
 - [ ] **Borrower bank details are correct** — verify recipient account before executing transfer
@@ -428,7 +538,7 @@ awaiting_disbursement → processing → pending_borrower_confirmation
 - [ ] **Borrower has been notified** — confirmation request sent to borrower
 - [ ] **Monitor for borrower confirmation** — follow up if not confirmed within 48 hours
 
-### 6.6 Disbursement SLA (Private Beta)
+### 7.6 Disbursement SLA (Private Beta)
 
 - Disbursement should be initiated within **24 hours** of loan being fully funded
 - Borrower should confirm receipt within **48 hours** of notification
@@ -436,13 +546,13 @@ awaiting_disbursement → processing → pending_borrower_confirmation
 
 ---
 
-## 7. Repayment Verification Process
+## 8. Repayment Verification Process
 
-### 7.1 Overview
+### 8.1 Overview
 
 When a loan is active, the borrower must repay according to the repayment schedule. The borrower submits a repayment with payment proof, and the admin/finance officer verifies and approves it. Upon approval, funds are distributed to all participating lenders.
 
-### 7.2 Repayment States
+### 8.2 Repayment States
 
 ```
 pending → pending_approval → paid
@@ -451,13 +561,13 @@ pending → pending_approval → paid
 
 Additional states: `partial`, `overdue`
 
-### 7.3 Repayment Schedule
+### 8.3 Repayment Schedule
 
 - Currently, QuickShare uses **bullet repayment** — a single repayment covering principal + interest + platform fee
 - Due date is calculated from the loan term (loan activation date + loan term days)
 - A penalty amount may be applied for overdue payments
 
-### 7.4 Borrower Repayment Submission
+### 8.4 Borrower Repayment Submission
 
 1. **Borrower selects repayment(s) to pay**
    - Can pay one or multiple installments at once
@@ -474,7 +584,7 @@ Additional states: `partial`, `overdue`
    - An incoming disbursement transaction is created (Borrower → QuickShare)
    - Transaction status: `awaiting_approval`
 
-### 7.5 Repayment Verification Checklist
+### 8.5 Repayment Verification Checklist
 
 The finance officer must verify:
 
@@ -487,7 +597,7 @@ The finance officer must verify:
 - [ ] **Loan is active** — loan status is `active` or `disbursed`
 - [ ] **Repayment is in `pending_approval` status** — has not already been processed
 
-### 7.6 Repayment Approval Actions
+### 8.6 Repayment Approval Actions
 
 When the finance officer approves a repayment:
 
@@ -502,7 +612,7 @@ When the finance officer approves a repayment:
    - `completed_at` timestamp is recorded
    - Borrower and all lenders are notified
 
-### 7.7 Repayment Rejection
+### 8.7 Repayment Rejection
 
 If the repayment proof is invalid:
 1. Repayment status returns to its previous state (`pending`, `partial`, or `overdue`)
@@ -510,7 +620,7 @@ If the repayment proof is invalid:
 3. Borrower is notified with rejection reason
 4. Borrower can resubmit with corrected proof
 
-### 7.8 Overdue Repayment Handling
+### 8.8 Overdue Repayment Handling
 
 - Repayments past their due date automatically become `overdue`
 - Penalty amounts may be applied
@@ -518,20 +628,136 @@ If the repayment proof is invalid:
 - Admin should contact borrower directly for overdue payments
 - Escalate to legal collection process if repayment is more than 30 days overdue
 
-### 7.9 Repayment Verification SLA (Private Beta)
+### 8.9 Repayment Verification SLA (Private Beta)
 
 - Repayment submissions should be verified within **12 hours** during business days
 - Escalate any submission older than 24 hours to the finance lead
 
 ---
 
-## 8. Daily Reconciliation Checklist
+## 9. Trust Score System
 
-### 8.1 Purpose
+### 9.1 Overview
+
+The trust score is a 0–100 numeric value that represents a user's reliability and standing on the platform. It determines borrowing eligibility, loan tier, and maximum loan amount. The score is adjusted in real-time when events occur and fully recalculated from ground-truth data on every user login.
+
+### 9.2 Where It Lives
+
+- **Service:** `app/Modules/TrustScore/Services/TrustScoreService.php`
+- **Controller (web):** `app/Http/Controllers/TrustScoreController.php`
+- **Controller (API):** `app/Modules/TrustScore/Controllers/TrustScoreController.php`
+- **Model:** `app/Modules/TrustScore/Models/TrustScoreHistory.php`
+- **Events:** `app/Modules/TrustScore/Events/TrustScoreCalculated.php`
+- **Listeners:** `app/Modules/TrustScore/Listeners/`
+- **Provider:** `app/Modules/TrustScore/TrustScoreServiceProvider.php`
+- **Console Command:** `app/Console/Commands/RecalculateTrustScores.php`
+- **View:** `resources/views/client/trust-score.blade.php`
+
+### 9.3 Score Adjustment Weights
+
+| Event | Points | Trigger |
+|---|---|---|
+| On-time repayment | +3.00 | `RepaymentMade` event |
+| Late repayment | -5.00 | `RepaymentOverdue` event (scaled by days overdue) |
+| Loan default | -15.00 | `LoanDefaulted` event / `CollectionService` |
+| Loan fully repaid | +5.00 | `LoanFullyRepaid` event |
+| KYC approved | +10.00 | `KycApproved` event |
+| Referral completed | +2.00 | `ReferralService::rewardReferrer` |
+| Referral defaulted | -3.00 | `CollectionService` when referred user defaults |
+| Account age ≥ 1 year | +1.00 | Recalculation only |
+| No defaults for 1 year | +15.00 | Recalculation only (requires ≥1 completed loan) |
+
+### 9.4 Trust Tiers
+
+| Tier | Score Range | Max Loan | Color |
+|---|---|---|---|
+| Bronze | 0 – 49.99 | N$500 | Warning (yellow) |
+| Silver | 50 – 69.99 | N$1,000 | Secondary (gray) |
+| Gold | 70 – 84.99 | N$1,500 | Info (blue) |
+| Platinum | 85 – 100 | N$2,500 | Primary (dark blue) |
+
+### 9.5 How Scores Stay Up to Date
+
+The trust score is kept current through two mechanisms:
+
+**1. Real-time event-driven adjustments** — When platform events fire (repayment made, loan defaults, KYC approved, etc.), queued listeners adjust the score immediately and log a `TrustScoreHistory` entry.
+
+**2. Full recalculation on login** — When a user logs in, the `RecalculateScoreOnLogin` listener (queued) runs `TrustScoreService::recalculateForUser()`, which recomputes the score from scratch using the user's actual account data:
+- KYC approval status
+- All repayment records (on-time, overdue, defaulted)
+- All loan records (completed, defaulted)
+- All referral records (completed, defaulted)
+- Account age
+- Default-free history for past year
+
+This ensures the score is always accurate even if individual events were missed or failed.
+
+### 9.6 Manual Recalculation
+
+Admins can manually trigger a full recalculation:
+
+```bash
+# Recalculate for all users
+php artisan trust-score:recalculate
+
+# Recalculate for a specific user
+php artisan trust-score:recalculate --user=6
+```
+
+### 9.7 Trust Score History
+
+Every score change is recorded in `trust_score_histories` with:
+- Previous score
+- New score
+- Points changed
+- Reason
+- Event type
+- Metadata (e.g., loan ID, repayment count, days overdue)
+
+Users can view their score history on the Trust Score page, including a line chart and a table of recent changes.
+
+### 9.8 Minimum Borrowing Threshold
+
+Users must have a trust score of at least **50.00** (Silver tier) and an active account status to be eligible to borrow. This is configurable via `loan.minimum_borrow_score`.
+
+---
+
+## 10. Collections Process
+
+### 10.1 Overview
+
+The collections module handles overdue repayments through an escalating escalation process. It applies trust score penalties and notifies referrers when a referred borrower's repayments become overdue.
+
+### 10.2 Where It Lives
+
+- **Service:** `app/Modules/Collections/Services/CollectionService.php`
+- **Controller:** `app/Modules/Collections/Controllers/CollectionsController.php`
+- **Model:** `app/Modules/Collections/Models/CollectionCase.php`, `CollectionLog.php`
+- **Jobs:** `app/Modules/Collections/Jobs/` (ProcessDailyCollectionsJob, NotifyReferrerJob, SendNotificationJob)
+- **Routes:** `app/Modules/Collections/Routes/api.php`
+
+### 10.3 Escalation Levels
+
+| Level | Trigger | Trust Score Penalty |
+|---|---|---|
+| `escalation_level_1` | Repayment overdue | -3.00 |
+| `escalation_level_2` | Extended overdue | -5.00 |
+| `escalation_level_3` | Severe overdue | -8.00 |
+| Loan default | Unrecoverable | -15.00 |
+
+### 10.4 Referrer Notification
+
+When a referred borrower's repayment becomes overdue, the referrer is notified via a queued job (`NotifyReferrerJob`). If the referred user defaults on a loan, the referrer's trust score is penalized by -3.00.
+
+---
+
+## 11. Daily Reconciliation Checklist
+
+### 11.1 Purpose
 
 Daily reconciliation ensures that all financial transactions in the system match actual bank/payment provider records. This is critical for financial integrity and audit compliance.
 
-### 8.2 Reconciliation Scope
+### 11.2 Reconciliation Scope
 
 The following transaction types must be reconciled daily:
 
@@ -540,7 +766,7 @@ The following transaction types must be reconciled daily:
 3. **Repayment transactions** (Borrower → QuickShare, incoming)
 4. **Lender repayment distributions** (QuickShare → Lenders)
 
-### 8.3 Daily Reconciliation Procedure
+### 11.3 Daily Reconciliation Procedure
 
 Perform the following checks **every business day** before 10:00:
 
@@ -577,7 +803,7 @@ Perform the following checks **every business day** before 10:00:
 - [ ] Cross-check total lender distributions against total repayment received
 - [ ] Verify platform fee collection matches expected amounts
 
-### 8.4 Reconciliation Discrepancy Handling
+### 11.4 Reconciliation Discrepancy Handling
 
 | Severity | Description | Action |
 |---|---|---|
@@ -586,7 +812,7 @@ Perform the following checks **every business day** before 10:00:
 | **High** | Missing transaction or large mismatch (> R1,000) | Escalate immediately to operations lead; freeze affected transactions |
 | **Critical** | Suspected fraud or missing funds | Escalate to CEO and compliance officer immediately; initiate incident response |
 
-### 8.5 Reconciliation Records
+### 11.5 Reconciliation Records
 
 - All reconciliation results must be recorded with:
   - Date reconciled
@@ -599,9 +825,9 @@ Perform the following checks **every business day** before 10:00:
 
 ---
 
-## 9. Support Process
+## 12. Support Process
 
-### 9.1 Support Channels
+### 12.1 Support Channels
 
 During private beta, support is provided through:
 
@@ -609,7 +835,7 @@ During private beta, support is provided through:
 - **Email** — support@quickshare.co.za (or designated support email)
 - **Phone** — During business hours (09:00–17:00, Monday–Friday)
 
-### 9.2 Support Ticket Categories
+### 12.2 Support Ticket Categories
 
 | Category | Examples | Priority |
 |---|---|---|
@@ -622,7 +848,7 @@ During private beta, support is provided through:
 | **Technical Bug** | Platform errors, broken pages, incorrect data | High |
 | **General** | FAQs, how-to questions, feedback | Low |
 
-### 9.3 Support Workflow
+### 12.3 Support Workflow
 
 1. **Receive ticket** — via any support channel
 2. **Categorize and prioritize** — assign category and priority
@@ -632,7 +858,7 @@ During private beta, support is provided through:
 6. **Communicate resolution** — inform user of outcome and any actions taken
 7. **Close ticket** — record resolution and close
 
-### 9.4 Escalation Matrix
+### 12.4 Escalation Matrix
 
 | Issue Type | Escalate To | When |
 |---|---|---|
@@ -643,7 +869,7 @@ During private beta, support is provided through:
 | Fraud suspicion | Compliance Officer + Admin | Immediate |
 | Legal threat or regulator contact | CEO + Legal Counsel | Immediate |
 
-### 9.5 Common User Issues & Resolutions
+### 12.5 Common User Issues & Resolutions
 
 - **OTP not received:** Check phone number is correct; resend OTP; verify SMS gateway is operational
 - **Email verification link expired:** Generate new verification link from admin panel
@@ -652,7 +878,7 @@ During private beta, support is provided through:
 - **Disbursement not received:** Verify bank details; check payment proof; contact payment provider; re-initiate if needed
 - **Repayment not reflecting:** Check if proof was submitted; verify with bank; approve if valid
 
-### 9.6 Support Metrics to Track
+### 12.6 Support Metrics to Track
 
 - Average response time
 - Average resolution time
@@ -662,9 +888,9 @@ During private beta, support is provided through:
 
 ---
 
-## 10. Incident Handling
+## 13. Incident Handling
 
-### 10.1 Incident Classification
+### 13.1 Incident Classification
 
 | Severity | Description | Response Time | Examples |
 |---|---|---|---|
@@ -673,7 +899,7 @@ During private beta, support is provided through:
 | **SEV-3 (Medium)** | Partial functionality impaired | 4 hours | Specific page errors, non-critical feature broken |
 | **SEV-4 (Low)** | Minor issues, cosmetic | Next business day | UI glitches, typo, non-blocking bug |
 
-### 10.2 Incident Response Process
+### 13.2 Incident Response Process
 
 #### Step 1: Detect & Report
 
@@ -718,7 +944,7 @@ During private beta, support is provided through:
   - Preventive measures
 - Share learnings with the team
 
-### 10.3 Common Incident Scenarios
+### 13.3 Common Incident Scenarios
 
 #### Payment Processing Failure
 
@@ -755,7 +981,7 @@ During private beta, support is provided through:
 5. Retry failed jobs: `php artisan queue:retry all`
 6. Monitor after restart
 
-### 10.4 Incident Communication Templates
+### 13.4 Incident Communication Templates
 
 #### User-Facing (SEV-1/SEV-2)
 
@@ -767,9 +993,9 @@ During private beta, support is provided through:
 
 ---
 
-## 11. Backup and Recovery
+## 14. Backup and Recovery
 
-### 11.1 Backup Strategy
+### 14.1 Backup Strategy
 
 #### Database Backups
 
@@ -791,13 +1017,13 @@ During private beta, support is provided through:
 - Configuration files: Version controlled
 - Deployment scripts: Version controlled
 
-### 11.2 Backup Verification
+### 14.2 Backup Verification
 
 - **Weekly:** Restore database backup to staging and verify integrity
 - **Monthly:** Perform full disaster recovery drill (restore database + files + config)
 - **Quarterly:** Review backup retention policy and storage capacity
 
-### 11.3 Recovery Procedures
+### 14.3 Recovery Procedures
 
 #### Database Recovery
 
@@ -837,7 +1063,7 @@ During private beta, support is provided through:
 10. Switch DNS/load balancer to new infrastructure
 11. Notify users of service restoration
 
-### 11.4 Recovery Time Objectives (RTO)
+### 14.4 Recovery Time Objectives (RTO)
 
 | Scenario | RTO | RPO |
 |---|---|---|
@@ -849,7 +1075,7 @@ During private beta, support is provided through:
 *RPO = Recovery Point Objective (maximum acceptable data loss)*  
 *RTO = Recovery Time Objective (maximum acceptable downtime)*
 
-### 11.5 Backup Checklist (Daily)
+### 14.5 Backup Checklist (Daily)
 
 - [ ] Verify automated database backup completed successfully
 - [ ] Verify file system backup completed successfully
@@ -859,9 +1085,9 @@ During private beta, support is provided through:
 
 ---
 
-## 12. Go-Live Checklist
+## 15. Go-Live Checklist
 
-### 12.1 Pre-Launch (1 Week Before)
+### 15.1 Pre-Launch (1 Week Before)
 
 #### Infrastructure
 
@@ -910,7 +1136,7 @@ During private beta, support is provided through:
 - [ ] Test data removed from production database
 - [ ] All test/sandbox API keys replaced with production keys
 
-### 12.2 Launch Day
+### 15.2 Launch Day
 
 #### Final Verification
 
@@ -938,7 +1164,7 @@ During private beta, support is provided through:
 - [ ] Have development team on standby for first 24 hours
 - [ ] Document any issues encountered and their resolutions
 
-### 12.3 Post-Launch (First Week)
+### 15.3 Post-Launch (First Week)
 
 - [ ] Daily reconciliation performed every business day
 - [ ] Monitor user registration and onboarding metrics
@@ -952,7 +1178,7 @@ During private beta, support is provided through:
 - [ ] Conduct daily standup to review issues and priorities
 - [ ] Document any process changes needed based on real-world experience
 
-### 12.4 Sign-Off
+### 15.4 Sign-Off
 
 | Role | Name | Signature | Date |
 |---|---|---|---|
@@ -989,6 +1215,13 @@ php artisan optimize
 php artisan migrate --force
 php artisan migrate:status
 php artisan db:seed --class=AdminSeeder
+
+# Storage symlink (profile pictures)
+php artisan storage:link
+
+# Trust score recalculation
+php artisan trust-score:recalculate
+php artisan trust-score:recalculate --user=6
 
 # Logs
 tail -f storage/logs/laravel.log

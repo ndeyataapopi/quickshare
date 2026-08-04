@@ -26,7 +26,7 @@ class TrustScoreService
 
     const MIN_SCORE = 0.00;
     const MAX_SCORE = 100.00;
-    const DEFAULT_SCORE = 50.00;
+    const DEFAULT_SCORE = 20.00;
 
     // ─── Core Adjustment ─────────────────────────────────────────────
 
