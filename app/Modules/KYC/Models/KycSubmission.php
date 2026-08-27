@@ -80,7 +80,7 @@ class KycSubmission extends Model
 
     public function isReviewable(): bool
     {
-        return in_array($this->status, ['pending', 'resubmission_required']);
+        return $this->status === 'pending';
     }
 
     // ─── Document Checks ─────────────────────────────────────────────
@@ -115,7 +115,7 @@ class KycSubmission extends Model
 
     public function scopeReviewable($query)
     {
-        return $query->whereIn('status', ['pending', 'resubmission_required']);
+        return $query->where('status', 'pending');
     }
 
     public function scopeForUser($query, int $userId)

@@ -1,7 +1,6 @@
 @extends('layouts.public')
 
 @section('title', 'How It Works')
-@section('description', 'Learn how QuickShare works — a transparent four-step process for borrowers and lenders on Namibia's peer-to-peer lending platform.')
 
 @section('content')
 <!-- PAGE HERO -->

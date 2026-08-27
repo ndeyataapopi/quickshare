@@ -287,27 +287,27 @@
     {{-- Operational Queues Row 3 --}}
     <div class="row">
 
-        {{-- Lender Payouts Awaiting --}}
+        {{-- Lender Earnings Allocated --}}
         <div class="col-md-6 col-lg-4 mb-4">
             <div class="card h-100">
                 <div class="card-header bg-white">
-                    <h5 class="card-title text-uppercase mb-0"><i class="mdi mdi-bank text-success mr-2"></i>Lender Payouts Awaiting</h5>
+                    <h5 class="card-title text-uppercase mb-0"><i class="mdi mdi-bank text-success mr-2"></i>Lender Earnings Allocated</h5>
                 </div>
                 <div class="card-body">
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Lenders Waiting</span>
-                        <span class="font-weight-bold">{{ $lender_payouts['lenders_waiting'] }}</span>
+                        <span class="text-muted">Lenders Credited</span>
+                        <span class="font-weight-bold">{{ $lender_earnings['lenders_credited'] }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted">Total Payout Amount</span>
-                        <span class="font-weight-bold">N$ {{ number_format($lender_payouts['total_amount'], 2) }}</span>
+                        <span class="text-muted">Total Allocated</span>
+                        <span class="font-weight-bold">N$ {{ number_format($lender_earnings['total_allocated'], 2) }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-3">
-                        <span class="text-muted">Oldest Payout</span>
-                        <span class="font-weight-bold">{{ $lender_payouts['oldest_payout'] ?? '—' }}</span>
+                        <span class="text-muted">Latest Allocation</span>
+                        <span class="font-weight-bold">{{ $lender_earnings['latest_allocation'] ?? '—' }}</span>
                     </div>
-                    <a href="{{ $lender_payouts['view_route'] }}" class="btn btn-success btn-sm btn-block">
-                        <i class="mdi mdi-eye mr-1"></i>View Queue
+                    <a href="{{ $lender_earnings['view_route'] }}" class="btn btn-success btn-sm btn-block">
+                        <i class="mdi mdi-eye mr-1"></i>View Details
                     </a>
                 </div>
             </div>
