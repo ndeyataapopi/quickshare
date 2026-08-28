@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DocumentationController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\KYCController;
 use App\Http\Controllers\Admin\LoanController;
@@ -129,5 +130,11 @@ Route::middleware(['auth', 'verified', 'role:admin|compliance_officer|finance_of
         Route::post('/restart-worker', [SystemStatusController::class, 'restartWorker'])->name('restart-worker');
         Route::post('/retry-failed', [SystemStatusController::class, 'retryFailed'])->name('retry-failed');
         Route::post('/clear-failed', [SystemStatusController::class, 'clearFailed'])->name('clear-failed');
+    });
+
+    // ─── Documentation ────────────────────────────────────────────────
+    Route::prefix('documentation')->name('documentation.')->middleware('permission:view_documentation')->group(function () {
+        Route::get('/', [DocumentationController::class, 'index'])->name('index');
+        Route::get('/{path}', [DocumentationController::class, 'show'])->name('show')->where('path', '.*');
     });
 });

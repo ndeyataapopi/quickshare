@@ -156,6 +156,14 @@
                     </a>
                 </li>
                 @endrole
+                @can('view_documentation')
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark @if(request()->routeIs('admin.documentation.*')) active @endif" href="{{ route('admin.documentation.index') }}">
+                        <i class="mdi mdi-book-open"></i>
+                        <span class="hide-menu">Documentation</span>
+                    </a>
+                </li>
+                @endcan
                 @endhasanyrole
 
                 @role('client')

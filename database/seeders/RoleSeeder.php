@@ -47,6 +47,7 @@ class RoleSeeder extends Seeder
             // Fraud / Referrals
             'manage_fraud_alerts',
             'manage_referrals',
+            'view_documentation',
 
             // Impersonation
             'impersonate_users',
