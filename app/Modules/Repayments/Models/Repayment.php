@@ -38,6 +38,15 @@ class Repayment extends Model
         'payment_proof_path',
         'notes',
         'metadata',
+        'execution_mode',
+        'provider',
+        'provider_reference',
+        'provider_status',
+        'provider_metadata',
+        'provider_error_code',
+        'payment_link_url',
+        'payment_link_expires_at',
+        'payout_method',
     ];
 
     protected function casts(): array
@@ -51,6 +60,8 @@ class Repayment extends Model
             'due_date' => 'date',
             'paid_date' => 'date',
             'metadata' => 'array',
+            'payment_link_expires_at' => 'datetime',
+            'provider_metadata' => 'array',
         ];
     }
 

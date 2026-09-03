@@ -40,6 +40,15 @@ class FundingTransaction extends Model
         'admin_notes',
         'notes',
         'metadata',
+        'execution_mode',
+        'provider',
+        'provider_reference',
+        'provider_status',
+        'provider_metadata',
+        'provider_error_code',
+        'payment_link_url',
+        'payment_link_expires_at',
+        'payout_method',
     ];
 
     protected function casts(): array
@@ -53,6 +62,8 @@ class FundingTransaction extends Model
             'payment_date' => 'datetime',
             'admin_verified_at' => 'datetime',
             'metadata' => 'array',
+            'payment_link_expires_at' => 'datetime',
+            'provider_metadata' => 'array',
         ];
     }
 

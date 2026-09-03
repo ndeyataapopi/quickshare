@@ -34,6 +34,15 @@ class DisbursementTransaction extends Model
         'rejection_reason',
         'ledger_entries',
         'notes',
+        'execution_mode',
+        'provider',
+        'provider_reference',
+        'provider_status',
+        'provider_metadata',
+        'provider_error_code',
+        'payment_link_url',
+        'payment_link_expires_at',
+        'payout_method',
     ];
 
     protected function casts(): array
@@ -49,6 +58,8 @@ class DisbursementTransaction extends Model
             'borrower_rejected_at' => 'datetime',
             'reconciliation_data' => 'array',
             'ledger_entries' => 'array',
+            'payment_link_expires_at' => 'datetime',
+            'provider_metadata' => 'array',
         ];
     }
 

@@ -47,7 +47,7 @@ class OperationsDashboardTest extends TestCase
             'disbursements_awaiting',
             'borrower_confirmations',
             'repayments_awaiting',
-            'lender_payouts',
+            'lender_earnings',
             'failed_jobs',
             'system_alerts',
         ]);
@@ -351,10 +351,10 @@ class OperationsDashboardTest extends TestCase
         $response = $this->actingAs($this->admin)
             ->get(route('admin.operations'));
 
-        $payouts = $response->viewData('lender_payouts');
+        $payouts = $response->viewData('lender_earnings');
 
-        $this->assertEquals(1, $payouts['lenders_waiting']);
-        $this->assertEquals(5750.00, $payouts['total_amount']);
+        $this->assertEquals(1, $payouts['lenders_credited']);
+        $this->assertEquals(5750.00, $payouts['total_allocated']);
     }
 
     public function test_system_alerts_shows_overdue_loans(): void

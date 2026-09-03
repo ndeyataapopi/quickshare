@@ -25,6 +25,16 @@ class LenderRepayment extends Model
         'status',
         'processed_at',
         'transaction_reference',
+        'execution_mode',
+        'provider',
+        'provider_reference',
+        'provider_status',
+        'provider_metadata',
+        'provider_error_code',
+        'payment_link_url',
+        'payment_link_expires_at',
+        'payout_method',
+        'payment_method',
     ];
 
     protected function casts(): array
@@ -36,6 +46,8 @@ class LenderRepayment extends Model
             'penalty_share' => 'decimal:2',
             'funding_percentage' => 'decimal:2',
             'processed_at' => 'datetime',
+            'payment_link_expires_at' => 'datetime',
+            'provider_metadata' => 'array',
         ];
     }
 
