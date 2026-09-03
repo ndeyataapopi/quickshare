@@ -28,8 +28,8 @@
                     <div class="row mb-3"><div class="col-sm-4 text-muted">Borrower Email</div><div class="col-sm-8">{{ $loan->borrower->email }}</div></div>
                     <div class="row mb-3"><div class="col-sm-4 text-muted">Trust Score</div><div class="col-sm-8">{{ number_format($trustScore, 2) }}</div></div>
                     <div class="row mb-3"><div class="col-sm-4 text-muted">Trust Tier</div><div class="col-sm-8 font-weight-bold">{{ ucfirst($tier) }}</div></div>
-                    <div class="row mb-3"><div class="col-sm-4 text-muted">Requested Amount</div><div class="col-sm-8">{{ config('loans.currency_symbol') }} {{ number_format($loan->requested_amount, 2) }}</div></div>
-                    <div class="row mb-3"><div class="col-sm-4 text-muted">Total Repayment</div><div class="col-sm-8 font-weight-bold">{{ config('loans.currency_symbol') }} {{ number_format($loan->total_repayment, 2) }}</div></div>
+                    <div class="row mb-3"><div class="col-sm-4 text-muted">Requested Amount</div><div class="col-sm-8">{{ config('loan.general.currency_symbol') }} {{ number_format($loan->requested_amount, 2) }}</div></div>
+                    <div class="row mb-3"><div class="col-sm-4 text-muted">Total Repayment</div><div class="col-sm-8 font-weight-bold">{{ config('loan.general.currency_symbol') }} {{ number_format($loan->total_repayment, 2) }}</div></div>
                     <div class="row mb-3"><div class="col-sm-4 text-muted">Repayment Date</div><div class="col-sm-8">{{ $loan->repayment_date ? $loan->repayment_date->format('d F Y') : '-' }}</div></div>
                     <div class="row mb-3"><div class="col-sm-4 text-muted">Term</div><div class="col-sm-8">{{ $loan->loan_term_days }} days</div></div>
                     <div class="row mb-3"><div class="col-sm-4 text-muted">Agreement Version</div><div class="col-sm-8">{{ $loan->agreement_version }}</div></div>

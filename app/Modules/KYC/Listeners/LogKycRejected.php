@@ -11,7 +11,7 @@ class LogKycRejected
     {
         ActivityLog::create([
             'user_id' => $event->user->id,
-            'actor_id' => auth()->id(),
+            'actor_id' => auth()->check() ? auth()->id() : null,
             'action' => 'kyc.rejected',
             'description' => "KYC rejected for {$event->user->email}: {$event->reason}",
             'subject_type' => get_class($event->user),
@@ -19,7 +19,7 @@ class LogKycRejected
             'previous_status' => 'pending',
             'new_status' => 'rejected',
             'metadata' => [
-                'reviewer_id' => auth()->id(),
+                'reviewer_id' => auth()->check() ? auth()->id() : null,
                 'reason' => $event->reason,
             ],
             'ip_address' => request()?->ip(),

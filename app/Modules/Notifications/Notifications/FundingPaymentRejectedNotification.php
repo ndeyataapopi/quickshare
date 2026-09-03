@@ -27,7 +27,7 @@ class FundingPaymentRejectedNotification extends Notification
         $reference = $this->data['reference'] ?? 'N/A';
         $amount = $this->data['amount'] ?? '0';
         $reason = $this->data['reason'] ?? 'No reason provided.';
-        $currency = config('loans.currency_symbol', 'N$');
+        $currency = config('loan.general.currency_symbol', 'N$');
         $loanId = $this->data['loan_id'] ?? null;
 
         return (new MailMessage)

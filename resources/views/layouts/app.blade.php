@@ -135,16 +135,24 @@
                         
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle waves-effect waves-dark" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                @if(Auth::user()->profile_picture)
+                                <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" class="rounded-circle" style="width:36px;height:36px;object-fit:cover;">
+                                @else
                                 <span class="rounded-circle d-inline-flex align-items-center justify-content-center bg-primary text-white" style="width:36px;height:36px;font-size:14px;font-weight:600;">
                                     {{ strtoupper(substr(Auth::user()->first_name ?? 'U', 0, 1)) }}{{ strtoupper(substr(Auth::user()->last_name ?? '', 0, 1)) }}
                                 </span>
+                                @endif
                                 <span class="ml-2 font-medium d-none d-md-inline">{{ Auth::user()->first_name }} {{ Auth::user()->last_name }}</span><i class="fas fa-angle-down ml-1"></i>
                             </a>
                             <div class="dropdown-menu dropdown-menu-right user-dd animated flipInY">
                                 <div class="d-flex no-block align-items-center p-3 mb-2 border-bottom">
+                                    @if(Auth::user()->profile_picture)
+                                    <img src="{{ asset('storage/' . Auth::user()->profile_picture) }}" class="rounded-circle" style="width:60px;height:60px;object-fit:cover;flex-shrink:0;">
+                                    @else
                                     <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white" style="width:60px;height:60px;font-size:20px;font-weight:600;flex-shrink:0;">
                                         {{ strtoupper(substr(Auth::user()->first_name ?? 'U', 0, 1)) }}{{ strtoupper(substr(Auth::user()->last_name ?? '', 0, 1)) }}
                                     </div>
+                                    @endif
                                     <div class="ml-2">
                                         <h5 class="mb-0">{{ Auth::user()->first_name }} {{ Auth::user()->last_name }}</h5>
                                         <p class="mb-1 text-muted small">{{ Auth::user()->email }}</p>

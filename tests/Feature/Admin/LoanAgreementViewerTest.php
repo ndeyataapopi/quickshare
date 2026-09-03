@@ -44,8 +44,8 @@ class LoanAgreementViewerTest extends TestCase
             'agreement_path' => $agreementPath,
             'agreement_version' => '1.0',
             'configuration_snapshot' => [
-                'currency' => config('loans.currency'),
-                'currency_symbol' => config('loans.currency_symbol'),
+                'currency' => config('loan.general.currency'),
+                'currency_symbol' => config('loan.general.currency_symbol'),
                 'minimum_borrow_score' => 30,
                 'trust_tier' => [
                     'name' => 'gold',

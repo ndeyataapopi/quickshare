@@ -9,6 +9,22 @@
     </div>
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button></div>@endif
 
+    <div class="card mb-4">
+        <div class="card-body d-flex align-items-center">
+            @if($user->profile_picture)
+            <img src="{{ asset('storage/' . $user->profile_picture) }}" class="rounded-circle mr-3" style="width:56px;height:56px;object-fit:cover;flex-shrink:0;">
+            @else
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3" style="width:56px;height:56px;font-size:20px;font-weight:600;flex-shrink:0;">
+                {{ strtoupper(substr($user->first_name ?? 'U', 0, 1)) }}{{ strtoupper(substr($user->last_name ?? '', 0, 1)) }}
+            </div>
+            @endif
+            <div>
+                <h5 class="mb-0">Welcome back, {{ $user->first_name }}!</h5>
+                <p class="text-muted mb-0">Total Funded: {{ formatCurrencyShort($summary['total_invested'] ?? 0) }}</p>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-3">
             <div class="card"><div class="card-body">

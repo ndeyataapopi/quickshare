@@ -12,6 +12,9 @@ use App\Modules\Repayments\Listeners\LogLenderRepaymentAllocated;
 use App\Modules\Repayments\Listeners\LogRepaymentActivity;
 use App\Modules\Repayments\Listeners\LogRepaymentRejected;
 use App\Modules\Repayments\Listeners\LogRepaymentSubmitted;
+use App\Modules\Repayments\Listeners\NotifyBorrowerLoanCompleted;
+use App\Modules\Repayments\Listeners\NotifyLenderRepaymentAllocated;
+use App\Modules\Repayments\Listeners\NotifyLendersLoanCompleted;
 use App\Modules\Repayments\Listeners\NotifyOverdueRepayment;
 use App\Modules\Repayments\Listeners\NotifyRepaymentReceived;
 use App\Modules\Repayments\Listeners\UpdateLoanStatus;
@@ -33,7 +36,10 @@ class RepaymentsServiceProvider extends ServiceProvider
         Event::listen(RepaymentSubmitted::class, LogRepaymentSubmitted::class);
         Event::listen(RepaymentRejected::class, LogRepaymentRejected::class);
         Event::listen(LenderRepaymentAllocated::class, LogLenderRepaymentAllocated::class);
+        Event::listen(LenderRepaymentAllocated::class, NotifyLenderRepaymentAllocated::class);
         Event::listen(RepaymentOverdue::class, NotifyOverdueRepayment::class);
         Event::listen(LoanFullyRepaid::class, UpdateLoanStatus::class);
+        Event::listen(LoanFullyRepaid::class, NotifyBorrowerLoanCompleted::class);
+        Event::listen(LoanFullyRepaid::class, NotifyLendersLoanCompleted::class);
     }
 }

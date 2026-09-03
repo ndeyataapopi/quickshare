@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             currentRepaymentId = this.dataset.id;
             const amount = this.dataset.amount;
-            paymentAmount.value = '{{ config("loans.currency_symbol") }}' + parseFloat(amount).toLocaleString();
+            paymentAmount.value = '{{ config("loan.general.currency_symbol", "N$") }}' + parseFloat(amount).toLocaleString();
             paymentModal.modal('show');
         });
     });

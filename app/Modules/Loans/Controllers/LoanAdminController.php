@@ -3,6 +3,7 @@
 namespace App\Modules\Loans\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Loans\Models\AffordabilityAssessment;
 use App\Modules\Loans\Models\Loan;
 use App\Modules\Loans\Requests\ApproveLoanRequest;
 use App\Modules\Loans\Requests\RejectLoanRequest;
@@ -32,7 +33,12 @@ class LoanAdminController extends Controller
             'reviewer:id,first_name,last_name',
         ]);
 
-        return $this->success(['loan' => $loan]);
+        $affordabilityAssessment = AffordabilityAssessment::where('loan_id', $loan->id)->latest()->first();
+
+        return $this->success([
+            'loan' => $loan,
+            'affordability_assessment' => $affordabilityAssessment,
+        ]);
     }
 
     public function approve(ApproveLoanRequest $request, Loan $loan): JsonResponse

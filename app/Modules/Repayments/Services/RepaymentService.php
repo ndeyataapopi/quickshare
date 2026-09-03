@@ -249,13 +249,20 @@ class RepaymentService
             // 4. Update Investment.actual_return for each lender
             $this->updateInvestmentEarnings($locked);
 
-            // 4a. Mark LenderRepayment records as processed
-            LenderRepayment::forRepayment($locked->id)
-                ->where('status', 'pending')
-                ->update([
-                    'status' => 'processed',
-                    'processed_at' => now(),
-                ]);
+            // 4a. Mark LenderRepayment records as processed only in manual mode.
+            // Automated lender return payouts are handled by PaymentExecutionOrchestrator
+            // so that duplicate payouts cannot occur.
+            $lenderReturnsConfig = app(\App\Modules\Payments\Services\PaymentConfigurationResolver::class)
+                ->resolve(\App\Modules\Payments\DTOs\PaymentInstruction::OPERATION_LENDER_RETURN);
+
+            if ($lenderReturnsConfig->isManual()) {
+                LenderRepayment::forRepayment($locked->id)
+                    ->where('status', 'pending')
+                    ->update([
+                        'status' => 'processed',
+                        'processed_at' => now(),
+                    ]);
+            }
 
             // 5. Fire RepaymentMade event (triggers borrower notification)
             RepaymentMade::dispatch($loan->id, $locked->borrower, $paymentAmount);
@@ -490,16 +497,23 @@ class RepaymentService
             'completed_at' => now(),
         ]);
 
-        // Process all pending lender repayments for this loan
-        LenderRepayment::whereHas('repayment', fn ($q) => $q->where('loan_id', $loan->id))
-            ->where('status', 'pending')
-            ->update([
-                'status' => 'processed',
-                'processed_at' => now(),
-            ]);
+        // In manual mode, process all pending lender repayments immediately.
+        // In automated mode, the PaymentExecutionOrchestrator executes each
+        // payout separately and guards against duplicate payouts.
+        $lenderReturnsConfig = app(\App\Modules\Payments\Services\PaymentConfigurationResolver::class)
+            ->resolve(\App\Modules\Payments\DTOs\PaymentInstruction::OPERATION_LENDER_RETURN);
+
+        if ($lenderReturnsConfig->isManual()) {
+            LenderRepayment::whereHas('repayment', fn ($q) => $q->where('loan_id', $loan->id))
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'processed',
+                    'processed_at' => now(),
+                ]);
+        }
 
         // Fire loan fully repaid event
-        LoanFullyRepaid::dispatch($loan->id);
+        LoanFullyRepaid::dispatch($loan->id, $loan->borrower);
 
         Log::info('Loan fully repaid', [
             'loan_id' => $loan->id,

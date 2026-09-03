@@ -55,7 +55,7 @@ trait HasDatabaseChannel
     protected function databaseMessage(string $type, $notifiable): string
     {
         $reference = $this->data['reference'] ?? 'N/A';
-        $currency = config('loans.currency_symbol', 'N$');
+        $currency = config('loan.general.currency_symbol', 'N$');
         $amount = isset($this->data['amount'])
             ? $currency . ' ' . number_format((float) $this->data['amount'], 2)
             : null;
@@ -86,7 +86,7 @@ trait HasDatabaseChannel
 
     protected function databaseDetails(string $type): array
     {
-        $currency = config('loans.currency_symbol', 'N$');
+        $currency = config('loan.general.currency_symbol', 'N$');
         $details = [];
 
         if (! empty($this->data['reference'])) {

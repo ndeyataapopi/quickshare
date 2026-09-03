@@ -92,7 +92,7 @@
                         @endif
                         <div class="{{ isset($showSidebar) && $showSidebar ? 'col-md-7' : 'col-12' }} auth-form">
                             <div class="text-center mb-4">
-                                <h3 class="auth-logo">QuickShare</h3>
+                                <h3 class="auth-logo"><a href="{{ route('home') }}" class="text-decoration-none" style="color: inherit;">QuickShare</a></h3>
                                 <p class="text-muted">{{ $subtitle ?? 'Sign in to continue' }}</p>
                             </div>
                             

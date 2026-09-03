@@ -13,7 +13,7 @@ class LogLenderRepaymentAllocated
 
         ActivityLog::create([
             'user_id' => $lr->lender_id,
-            'actor_id' => auth()->id(),
+            'actor_id' => auth()->check() ? auth()->id() : null,
             'action' => 'lender_repayment.allocated',
             'description' => "Lender repayment allocated: R{$lr->amount} to lender #{$lr->lender_id}",
             'subject_type' => get_class($lr),

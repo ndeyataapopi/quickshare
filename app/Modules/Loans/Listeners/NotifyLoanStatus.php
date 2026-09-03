@@ -29,7 +29,7 @@ class NotifyLoanStatus implements ShouldQueue
                 'loan_id' => $event->loanId,
                 'reason' => $event instanceof LoanRejected ? $event->reason : null,
             ]),
-            'ip_address' => request()->ip(),
+            'ip_address' => null,
         ]);
 
         // Loan approval/rejection notifications via email

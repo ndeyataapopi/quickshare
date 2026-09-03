@@ -16,7 +16,7 @@ class LogKycSubmission
             'subject_type' => get_class($event->user),
             'subject_id' => $event->user->id,
             'metadata' => ['document_type' => $event->documentType],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

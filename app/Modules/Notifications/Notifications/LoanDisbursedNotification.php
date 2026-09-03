@@ -28,7 +28,7 @@ class LoanDisbursedNotification extends Notification
         $amount           = $this->data['amount'] ?? '0';
         $loanId           = $this->data['loan_id'] ?? null;
         $disbursementDate = $this->data['disbursed_at'] ?? now()->toDateString();
-        $currency         = config('loans.currency_symbol', 'N$');
+        $currency         = config('loan.general.currency_symbol', 'N$');
 
         return (new MailMessage)
             ->subject('Funds Disbursed - QuickShare')

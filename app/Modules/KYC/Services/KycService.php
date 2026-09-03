@@ -279,7 +279,8 @@ class KycService
     protected function ensureCanSubmit(User $user): void
     {
         $activeSubmission = KycSubmission::forUser($user->id)
-            ->whereIn('status', ['pending', 'approved'])
+            ->whereIn('status', ['pending', 'approved', 'resubmission_required'])
+            ->latest('submitted_at')
             ->first();
 
         if ($activeSubmission?->isApproved()) {
@@ -288,6 +289,10 @@ class KycService
 
         if ($activeSubmission?->isPending()) {
             throw new ApiException('You already have a pending KYC submission.', 422);
+        }
+
+        if ($activeSubmission?->requiresResubmission()) {
+            throw new ApiException('Your previous KYC submission requires resubmission. Please update your existing submission instead of creating a new one.', 422);
         }
     }
 

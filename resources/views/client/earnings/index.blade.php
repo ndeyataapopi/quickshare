@@ -196,9 +196,9 @@
                                             <button class="btn btn-sm btn-outline-primary view-details" data-id="{{ $e->id }}">
                                                 <i class="mdi mdi-eye"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-success download-receipt" data-id="{{ $e->id }}">
+                                            <a href="{{ route('client.earnings.receipt', $e) }}" class="btn btn-sm btn-outline-success" target="_blank">
                                                 <i class="mdi mdi-download"></i>
-                                            </button>
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -386,20 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Download receipt functionality
-    const downloadButtons = document.querySelectorAll('.download-receipt');
-    downloadButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const earningId = this.dataset.id;
-            
-            const link = document.createElement('a');
-            link.href = '#';
-            link.download = `earning-receipt-${earningId}.pdf`;
-            link.click();
-            
-            showToast('Receipt download started. Check your downloads folder.');
-        });
-    });
+    // Download receipt is now handled by server-side route link
     
     // Toast notification helper
     function showToast(message) {

@@ -22,7 +22,7 @@ class SendWelcomeNotification implements ShouldQueue
             'description' => "New user registered: {$event->user->email}",
             'subject_type' => get_class($event->user),
             'subject_id' => $event->user->id,
-            'ip_address' => request()->ip(),
+            'ip_address' => null,
         ]);
 
         // Send welcome notification

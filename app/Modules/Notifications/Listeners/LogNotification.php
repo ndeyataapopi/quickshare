@@ -19,7 +19,7 @@ class LogNotification
                 'channel' => $event->channel,
                 'type' => $event->type,
             ],
-            'ip_address' => request()->ip(),
+            'ip_address' => request()?->ip(),
         ]);
     }
 }

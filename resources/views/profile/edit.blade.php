@@ -91,9 +91,13 @@
         <div class="col-md-4">
             <div class="card">
                 <div class="card-body text-center">
+                    @if($user->profile_picture)
+                    <img src="{{ asset('storage/' . $user->profile_picture) }}" class="rounded-circle mb-3" style="width:80px;height:80px;object-fit:cover;">
+                    @else
                     <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center mb-3" style="width:80px;height:80px;font-size:28px;font-weight:600;">
                         {{ strtoupper(substr($user->first_name,0,1)) }}{{ strtoupper(substr($user->last_name,0,1)) }}
                     </div>
+                    @endif
                     <h5 class="mb-1">{{ $user->first_name }} {{ $user->last_name }}</h5>
                     <p class="text-muted small">{{ $user->email }}</p>
                     <span class="badge badge-primary">{{ ucfirst($user->roles->first()?->name ?? 'Client') }}</span>

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Loans\DTOs\AffordabilityInput;
 use App\Modules\Loans\Mail\LoanAgreementMail;
+use App\Modules\Loans\Models\AffordabilityAssessment;
 use App\Modules\Loans\Models\Loan;
+use App\Modules\Loans\Services\AffordabilityService;
 use App\Modules\Loans\Services\LoanFinancialSummaryService;
 use App\Modules\Loans\Services\LoanService;
 use App\Modules\Loans\Services\TrustTierService;
@@ -18,6 +21,7 @@ class LoanController extends Controller
         private LoanService $loanService,
         private TrustTierService $trustTierService,
         private LoanFinancialSummaryService $summaryService,
+        private AffordabilityService $affordabilityService,
     ) {}
 
     public function index(Request $request)
@@ -50,8 +54,29 @@ class LoanController extends Controller
     public function show(Loan $loan)
     {
         $financialSummary = $this->summaryService->generate($loan);
+        $affordabilityAssessment = AffordabilityAssessment::where('loan_id', $loan->id)->latest()->first();
 
-        return view('admin.loans.show', compact('loan', 'financialSummary'));
+        return view('admin.loans.show', compact('loan', 'financialSummary', 'affordabilityAssessment'));
+    }
+
+    public function assessAffordability(Request $request, Loan $loan)
+    {
+        $validated = $request->validate([
+            'monthly_income'         => ['required', 'numeric', 'min:0'],
+            'monthly_expenses'       => ['sometimes', 'numeric', 'min:0'],
+            'existing_debt'          => ['sometimes', 'numeric', 'min:0'],
+            'monthly_debt_repayments'=> ['sometimes', 'numeric', 'min:0'],
+            'payslip_gross'          => ['sometimes', 'numeric', 'min:0'],
+            'payslip_net'            => ['sometimes', 'numeric', 'min:0'],
+            'bank_avg_balance'       => ['sometimes', 'numeric', 'min:0'],
+            'bank_avg_income'        => ['sometimes', 'numeric', 'min:0'],
+            'bank_avg_expenses'      => ['sometimes', 'numeric', 'min:0'],
+        ]);
+
+        $input = AffordabilityInput::fromArray($validated);
+        $assessment = $this->affordabilityService->approveOrRejectLoan($loan, $input);
+
+        return redirect()->route('admin.loans.show', $loan)->with('success', "Affordability assessment completed: {$assessment->decision} (score: {$assessment->affordability_score}).");
     }
 
     public function update(Request $request, Loan $loan)

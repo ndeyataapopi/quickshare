@@ -29,7 +29,9 @@ class RecalculateTrustScore implements ShouldQueue
                 $event->daysOverdue,
                 $event->loanId,
             ),
-            $event instanceof LoanFullyRepaid => null, // handled by dedicated listener
+            $event instanceof LoanFullyRepaid => $event->borrower
+                ? $this->trustScoreService->onLoanFullyRepaid($event->borrower, $event->loanId)
+                : null,
         };
     }
 }

@@ -17,6 +17,8 @@ use App\Modules\Funding\Listeners\LogFundingPaymentRejected;
 use App\Modules\Funding\Listeners\LogFundingPaymentSubmitted;
 use App\Modules\Funding\Listeners\LogInvestmentCreated;
 use App\Modules\Funding\Listeners\NotifyBorrowerFunded;
+use App\Modules\Funding\Listeners\NotifyLenderFundingApproved;
+use App\Modules\Funding\Listeners\NotifyLenderFundingRejected;
 use App\Modules\Funding\Listeners\TriggerLoanDisbursement;
 use App\Modules\Funding\Services\FundingService;
 use Illuminate\Support\Facades\Event;
@@ -38,7 +40,9 @@ class FundingServiceProvider extends ServiceProvider
         Event::listen(FundingInitiated::class, LogFundingInitiated::class);
         Event::listen(FundingPaymentSubmitted::class, LogFundingPaymentSubmitted::class);
         Event::listen(FundingPaymentApproved::class, LogFundingPaymentApproved::class);
+        Event::listen(FundingPaymentApproved::class, NotifyLenderFundingApproved::class);
         Event::listen(FundingPaymentRejected::class, LogFundingPaymentRejected::class);
+        Event::listen(FundingPaymentRejected::class, NotifyLenderFundingRejected::class);
         Event::listen(InvestmentCreated::class, LogInvestmentCreated::class);
     }
 }

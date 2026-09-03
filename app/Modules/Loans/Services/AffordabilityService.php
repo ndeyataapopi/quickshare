@@ -209,7 +209,7 @@ class AffordabilityService
         array $repaymentHistory,
         ?Loan $loan,
     ): array {
-        $cfg = config('loans.affordability');
+        $cfg = config('loan.affordability');
         $reasons = [];
 
         // Hard reject rules

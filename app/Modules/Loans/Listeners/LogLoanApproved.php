@@ -11,7 +11,7 @@ class LogLoanApproved
     {
         ActivityLog::create([
             'user_id' => $event->borrower->id,
-            'actor_id' => auth()->id(),
+            'actor_id' => auth()->check() ? auth()->id() : null,
             'action' => 'loan.approved',
             'description' => "Loan #{$event->loanId} approved for {$event->borrower->first_name} {$event->borrower->last_name}",
             'subject_type' => \App\Modules\Loans\Models\Loan::class,

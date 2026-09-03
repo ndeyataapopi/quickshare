@@ -10,7 +10,7 @@ class LogFundingCompleted
     public function handle(FundingCompleted $event): void
     {
         ActivityLog::create([
-            'user_id' => auth()->id(),
+            'user_id' => auth()->check() ? auth()->id() : null,
             'action' => 'loan.funded',
             'description' => "Loan #{$event->loanId} fully funded with R{$event->totalFunded}",
             'loan_id' => $event->loanId,

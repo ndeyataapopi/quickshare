@@ -124,20 +124,20 @@ class OperationsDashboardService
         ];
     }
 
-    // ─── Lender Payouts Awaiting ──────────────────────────────────────
+    // ─── Lender Earnings Allocated ─────────────────────────────────────
 
-    public function getLenderPayoutsAwaiting(): array
+    public function getLenderEarningsAllocated(): array
     {
         $oldest = LenderRepayment::processed()
             ->oldest('processed_at')
             ->first();
 
         return [
-            'lenders_waiting' => LenderRepayment::processed()
+            'lenders_credited' => LenderRepayment::processed()
                 ->distinct('lender_id')
                 ->count('lender_id'),
-            'total_amount' => (float) LenderRepayment::processed()->sum('amount'),
-            'oldest_payout' => $oldest?->processed_at?->diffForHumans() ?? null,
+            'total_allocated' => (float) LenderRepayment::processed()->sum('amount'),
+            'latest_allocation' => $oldest?->processed_at?->diffForHumans() ?? null,
             'view_route' => route('admin.repayments.index'),
         ];
     }
@@ -253,7 +253,7 @@ class OperationsDashboardService
         $disbursements = $this->getDisbursementsAwaitingProcessing();
         $borrowerConfirmations = $this->getBorrowerConfirmationsAwaiting();
         $repayments = $this->getRepaymentsAwaitingApproval();
-        $lenderPayouts = $this->getLenderPayoutsAwaiting();
+        $lenderEarnings = $this->getLenderEarningsAllocated();
 
         $items = [
             ['label' => 'Pending KYC', 'count' => $pendingKyc['pending_verification'] + $pendingKyc['resubmissions'], 'route' => $pendingKyc['view_route']],
@@ -262,7 +262,7 @@ class OperationsDashboardService
             ['label' => 'Borrower Disbursements', 'count' => $disbursements['count'], 'route' => $disbursements['view_route']],
             ['label' => 'Borrower Confirmations', 'count' => $borrowerConfirmations['count'], 'route' => $borrowerConfirmations['view_route']],
             ['label' => 'Repayments Awaiting Approval', 'count' => $repayments['count'], 'route' => $repayments['view_route']],
-            ['label' => 'Lender Payouts Awaiting', 'count' => $lenderPayouts['lenders_waiting'], 'route' => $lenderPayouts['view_route']],
+            ['label' => 'Lender Earnings Allocated', 'count' => $lenderEarnings['lenders_credited'], 'route' => $lenderEarnings['view_route']],
         ];
 
         $total = array_sum(array_column($items, 'count'));
@@ -286,7 +286,7 @@ class OperationsDashboardService
             'disbursements_awaiting' => $this->getDisbursementsAwaitingProcessing(),
             'borrower_confirmations' => $this->getBorrowerConfirmationsAwaiting(),
             'repayments_awaiting' => $this->getRepaymentsAwaitingApproval(),
-            'lender_payouts' => $this->getLenderPayoutsAwaiting(),
+            'lender_earnings' => $this->getLenderEarningsAllocated(),
             'failed_jobs' => $this->getFailedJobs(),
             'system_alerts' => $this->getSystemAlerts(),
         ];

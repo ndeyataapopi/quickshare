@@ -163,6 +163,9 @@ class NotificationService
             'funding_payment_rejected' => \App\Modules\Notifications\Notifications\FundingPaymentRejectedNotification::class,
             'funding_payment_info_requested' => \App\Modules\Notifications\Notifications\FundingPaymentInfoRequestedNotification::class,
             'disbursement_rejected' => \App\Modules\Notifications\Notifications\DisbursementRejectedNotification::class,
+            'loan_completed' => \App\Modules\Notifications\Notifications\GenericNotification::class,
+            'loan_defaulted' => \App\Modules\Notifications\Notifications\GenericNotification::class,
+            'lender_repayment_allocated' => \App\Modules\Notifications\Notifications\GenericNotification::class,
         ];
 
         return $classes[$type] ?? \App\Modules\Notifications\Notifications\GenericNotification::class;

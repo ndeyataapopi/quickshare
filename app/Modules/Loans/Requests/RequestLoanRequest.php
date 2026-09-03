@@ -15,7 +15,7 @@ class RequestLoanRequest extends FormRequest
 
     public function rules(): array
     {
-        $minimumAmount = (float) config('loans.min_amount');
+        $minimumAmount = (float) config('loan.loan_limits.min_amount');
         $tier = app(TrustTierService::class)->forScore((float) $this->user()->trust_score);
 
         return [
@@ -31,8 +31,8 @@ class RequestLoanRequest extends FormRequest
 
     public function messages(): array
     {
-        $currency = config('loans.currency_symbol', 'N$');
-        $minimumAmount = (float) config('loans.min_amount');
+        $currency = config('loan.general.currency_symbol', 'N$');
+        $minimumAmount = (float) config('loan.loan_limits.min_amount');
         $tier = app(TrustTierService::class)->forScore((float) $this->user()->trust_score);
 
         return [

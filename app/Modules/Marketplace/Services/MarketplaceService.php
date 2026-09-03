@@ -43,7 +43,7 @@ class MarketplaceService
 
         return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($loanId) {
             $loan = Loan::onMarketplace()
-                ->with('borrower:id,first_name,trust_score')
+                ->with('borrower:id,trust_score')
                 ->find($loanId);
 
             if (! $loan) {
@@ -146,9 +146,9 @@ class MarketplaceService
         $column = $allowedSorts[$sortField] ?? 'loans.approved_at';
         $query->orderBy($column, $sortDir);
 
-        // Eager load anonymized borrower data
+        // Eager load anonymized borrower data (only trust_score needed)
         $query->with(['borrower' => function ($q) {
-            $q->select('id', 'first_name', 'trust_score');
+            $q->select('id', 'trust_score');
         }]);
 
         return $query;
@@ -227,7 +227,7 @@ class MarketplaceService
             'id' => $loan->id,
             'reference' => $loan->reference,
             'borrower' => [
-                'name' => trim($borrower->first_name . ' ' . $borrower->last_name),
+                'name' => 'Borrower #' . substr(md5($borrower->id), 0, 8),
                 'id_hash' => substr(md5($borrower->id), 0, 8),
                 'trust_score' => $trustScore,
                 'trust_tier' => TrustScoreService::getTier($trustScore),

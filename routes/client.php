@@ -67,11 +67,13 @@ Route::middleware(['auth', 'verified', 'role:client', 'active_user'])->prefix('c
     Route::middleware(['kyc_verified'])->prefix('investments')->name('investments.')->group(function () {
         Route::get('/', [InvestmentController::class, 'index'])->name('index');
         Route::get('/{investment}', [InvestmentController::class, 'show'])->name('show');
+        Route::get('/{investment}/statement', [InvestmentController::class, 'downloadStatement'])->name('statement');
     });
 
     // ─── Earnings (Lender) ────────────────────────────────────────────
     Route::middleware(['kyc_verified'])->prefix('earnings')->name('earnings.')->group(function () {
         Route::get('/', [EarningsController::class, 'index'])->name('index');
+        Route::get('/{investment}/receipt', [EarningsController::class, 'downloadReceipt'])->name('receipt');
     });
 
     // ─── Analytics ────────────────────────────────────────────────────

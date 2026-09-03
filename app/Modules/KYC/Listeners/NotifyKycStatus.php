@@ -33,7 +33,7 @@ class NotifyKycStatus
                 'subject_type' => get_class($event->user),
                 'subject_id' => $event->user->id,
                 'metadata' => $event instanceof KycRejected ? ['reason' => $event->reason] : [],
-                'ip_address' => request()->ip(),
+                'ip_address' => request()?->ip(),
             ]);
 
             // Send notification to user

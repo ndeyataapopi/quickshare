@@ -21,6 +21,38 @@ class KYCController extends Controller
 
     public function store(Request $request)
     {
+        $user = Auth::user();
+
+        // If the user has a submission awaiting resubmission, route through resubmit flow
+        $existingSubmission = KycSubmission::where('user_id', $user->id)
+            ->where('status', 'resubmission_required')
+            ->latest('submitted_at')
+            ->first();
+
+        if ($existingSubmission) {
+            $validated = $request->validate([
+                'national_id'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'payslip'         => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'bank_statement'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+                'selfie'          => 'nullable|file|mimes:jpg,jpeg,png|max:10240',
+            ]);
+
+            $documents = [];
+            foreach (['national_id', 'selfie', 'payslip', 'bank_statement'] as $type) {
+                if ($request->hasFile($type)) {
+                    $documents[$type] = $request->file($type);
+                }
+            }
+
+            if (empty($documents)) {
+                return redirect()->route('client.kyc.upload')->withErrors(['documents' => 'At least one document must be uploaded for resubmission.']);
+            }
+
+            $this->kycService->resubmit($user, $existingSubmission, $documents);
+
+            return redirect()->route('client.kyc.upload')->with('success', 'KYC documents resubmitted successfully. We will review within 1–2 business days.');
+        }
+
         $validated = $request->validate([
             'document_type'   => 'required|in:national_id,passport,drivers_license',
             'document_number' => 'required|string|max:255',
@@ -33,7 +65,7 @@ class KYCController extends Controller
             'terms'           => 'required|accepted',
         ]);
 
-        $this->kycService->submitKYC(Auth::user(), $validated);
+        $this->kycService->submitKYC($user, $validated);
 
         return redirect()->route('client.kyc.upload')->with('success', 'KYC documents submitted successfully. We will review within 1–2 business days.');
     }

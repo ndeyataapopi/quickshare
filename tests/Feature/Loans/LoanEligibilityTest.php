@@ -96,7 +96,7 @@ class LoanEligibilityTest extends TestCase
     protected function validLoanRequest(): array
     {
         return [
-            'requested_amount' => (float) config('loans.min_amount'),
+            'requested_amount' => (float) config('loan.loan_limits.min_amount'),
             'loan_term_days' => (int) config('loan.trust_tiers.bronze.allowed_durations.0'),
             'agreement_read' => true,
             'agreement_terms' => true,

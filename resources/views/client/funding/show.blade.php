@@ -27,7 +27,7 @@
                     <h5 class="card-title text-uppercase mb-4">Investment Details</h5>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Reference</div><div class="col-sm-8 font-weight-bold">{{ $transaction->transaction_reference }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Loan</div><div class="col-sm-8">{{ $transaction->loan->reference }}</div></div>
-                    <div class="row mb-2"><div class="col-sm-4 text-muted">Borrower</div><div class="col-sm-8">{{ $transaction->loan->borrower->first_name }} {{ $transaction->loan->borrower->last_name }}</div></div>
+                    <div class="row mb-2"><div class="col-sm-4 text-muted">Borrower</div><div class="col-sm-8">Borrower #{{ substr(md5($transaction->loan->borrower_id), 0, 8) }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Amount Invested</div><div class="col-sm-8 font-weight-bold">N$ {{ number_format($transaction->amount, 2) }}</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Interest Rate</div><div class="col-sm-8">{{ $transaction->interest_rate }}%</div></div>
                     <div class="row mb-2"><div class="col-sm-4 text-muted">Expected Return</div><div class="col-sm-8 text-success font-weight-bold">N$ {{ number_format($transaction->expected_return, 2) }}</div></div>

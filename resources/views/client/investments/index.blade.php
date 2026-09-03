@@ -192,9 +192,9 @@
                                                 <i class="mdi mdi-eye"></i>
                                             </a>
                                             @if($investment->status === 'completed')
-                                                <button class="btn btn-sm btn-outline-success download-statement" data-id="{{ $investment->id }}">
+                                                <a href="{{ route('client.investments.statement', $investment) }}" class="btn btn-sm btn-outline-success" target="_blank">
                                                     <i class="mdi mdi-download"></i>
-                                                </button>
+                                                </a>
                                             @endif
                                             @if($investment->status === 'active')
                                                 <button class="btn btn-sm btn-outline-info view-schedule" data-id="{{ $investment->id }}">
@@ -347,22 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 5000);
     });
     
-    // Download statement functionality
-    const downloadButtons = document.querySelectorAll('.download-statement');
-    downloadButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const investmentId = this.dataset.id;
-            
-            // Simulate download
-            const link = document.createElement('a');
-            link.href = '#';
-            link.download = `investment-statement-${investmentId}.pdf`;
-            link.click();
-            
-            // Show success message
-            showToast('Statement download started. Check your downloads folder.');
-        });
-    });
+    // Download statement is now handled by server-side route link
     
     // View schedule functionality
     const scheduleButtons = document.querySelectorAll('.view-schedule');

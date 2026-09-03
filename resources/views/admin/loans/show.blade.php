@@ -97,6 +97,157 @@
         </div>
     </div>
 
+    {{-- Affordability Assessment --}}
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-uppercase mb-3">
+                        Affordability Assessment
+                        <small class="text-muted font-weight-normal">(Advisory — does not block approval)</small>
+                    </h5>
+
+                    @if(session('success') && strpos(session('success'), 'Affordability') !== false)
+                        <div class="alert alert-success p-2">{{ session('success') }}</div>
+                    @endif
+
+                    @if($affordabilityAssessment)
+                    <div class="row mb-3">
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Affordability Score</small>
+                            <h6 class="mb-0">{{ $affordabilityAssessment->affordability_score }} / 100</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">DTI Ratio</small>
+                            <h6 class="mb-0">{{ $affordabilityAssessment->debt_to_income_ratio }}%</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Risk Classification</small>
+                            <h6 class="mb-0 text-capitalize">{{ str_replace('_', ' ', $affordabilityAssessment->risk_classification) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Decision</small>
+                            @php $dm=['approve'=>'success','reject'=>'danger','manual_review'=>'warning']; @endphp
+                            <h6 class="mb-0"><span class="badge badge-{{ $dm[$affordabilityAssessment->decision] ?? 'secondary' }}">{{ str_replace('_', ' ', $affordabilityAssessment->decision) }}</span></h6>
+                        </div></div></div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Disposable Income</small>
+                            <h6 class="mb-0">N$ {{ number_format($affordabilityAssessment->disposable_income, 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Max Loan Amount</small>
+                            <h6 class="mb-0">N$ {{ number_format($affordabilityAssessment->max_loan_amount, 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Max Monthly Repayment</small>
+                            <h6 class="mb-0">N$ {{ number_format($affordabilityAssessment->max_monthly_repayment, 2) }}</h6>
+                        </div></div></div>
+                        <div class="col-md-3"><div class="card bg-light"><div class="card-body py-2">
+                            <small class="text-muted d-block">Repayment Reliability</small>
+                            <h6 class="mb-0">{{ $affordabilityAssessment->repayment_reliability }}%</h6>
+                        </div></div></div>
+                    </div>
+
+                    @if($affordabilityAssessment->decision_reasons)
+                    <div class="alert alert-info p-2 mb-3">
+                        <small><strong>Decision Reasons:</strong> {{ $affordabilityAssessment->decision_reasons }}</small>
+                    </div>
+                    @endif
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr><td class="text-muted font-weight-bold" style="width:30%">Monthly Income</td><td>N$ {{ number_format($affordabilityAssessment->monthly_income, 2) }}</td></tr>
+                                <tr><td class="text-muted font-weight-bold">Monthly Expenses</td><td>N$ {{ number_format($affordabilityAssessment->monthly_expenses, 2) }}</td></tr>
+                                <tr><td class="text-muted font-weight-bold">Existing Debt</td><td>N$ {{ number_format($affordabilityAssessment->existing_debt, 2) }}</td></tr>
+                                <tr><td class="text-muted font-weight-bold">Monthly Debt Repayments</td><td>N$ {{ number_format($affordabilityAssessment->monthly_debt_repayments, 2) }}</td></tr>
+                                <tr><td class="text-muted font-weight-bold">Trust Score at Assessment</td><td>{{ $affordabilityAssessment->trust_score }} ({{ $affordabilityAssessment->trust_tier }})</td></tr>
+                                <tr><td class="text-muted font-weight-bold">Loan History</td><td>{{ $affordabilityAssessment->completed_loans }} completed / {{ $affordabilityAssessment->defaulted_loans }} defaulted / {{ $affordabilityAssessment->late_repayments }} late (total: {{ $affordabilityAssessment->total_loans }})</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    @endif
+
+                    <button class="btn btn-outline-info btn-sm" type="button" data-toggle="collapse" data-target="#affordabilityForm" aria-expanded="false">
+                        <i class="mdi mdi-calculator mr-1"></i> {{ $affordabilityAssessment ? 'Run New Assessment' : 'Run Assessment' }}
+                    </button>
+
+                    <div class="collapse mt-3" id="affordabilityForm">
+                        <form method="POST" action="{{ route('admin.loans.affordability', $loan) }}">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Monthly Income (N$) <span class="text-danger">*</span></label>
+                                        <input type="number" name="monthly_income" class="form-control form-control-sm" step="0.01" required placeholder="e.g. 8000">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Monthly Expenses (N$)</label>
+                                        <input type="number" name="monthly_expenses" class="form-control form-control-sm" step="0.01" placeholder="e.g. 3500">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Monthly Debt Repayments (N$)</label>
+                                        <input type="number" name="monthly_debt_repayments" class="form-control form-control-sm" step="0.01" placeholder="e.g. 500">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Existing Debt Total (N$)</label>
+                                        <input type="number" name="existing_debt" class="form-control form-control-sm" step="0.01" placeholder="e.g. 10000">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Payslip Gross (N$)</label>
+                                        <input type="number" name="payslip_gross" class="form-control form-control-sm" step="0.01" placeholder="Optional">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Payslip Net (N$)</label>
+                                        <input type="number" name="payslip_net" class="form-control form-control-sm" step="0.01" placeholder="Optional">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Bank Avg Balance (N$)</label>
+                                        <input type="number" name="bank_avg_balance" class="form-control form-control-sm" step="0.01" placeholder="Optional">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Bank Avg Income (N$)</label>
+                                        <input type="number" name="bank_avg_income" class="form-control form-control-sm" step="0.01" placeholder="Optional">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label class="small text-muted">Bank Avg Expenses (N$)</label>
+                                        <input type="number" name="bank_avg_expenses" class="form-control form-control-sm" step="0.01" placeholder="Optional">
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-info btn-sm">
+                                <i class="mdi mdi-calculator mr-1"></i> Run Affordability Assessment
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @if(isset($financialSummary))
     <div class="row mt-3">
         <div class="col-12">

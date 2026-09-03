@@ -56,7 +56,7 @@ class LoanAgreementPreviewTest extends TestCase
     public function test_borrower_can_preview_calculated_agreement_as_embedded_pdf(): void
     {
         $response = $this->actingAs($this->borrower)->get(route('client.loans.agreement-preview', [
-            'amount' => (float) config('loans.min_amount'),
+            'amount' => (float) config('loan.loan_limits.min_amount'),
             'repayment_period' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]));
 
@@ -79,7 +79,7 @@ class LoanAgreementPreviewTest extends TestCase
     public function test_unauthenticated_user_cannot_preview_agreement(): void
     {
         $this->get(route('client.loans.agreement-preview', [
-            'amount' => (float) config('loans.min_amount'),
+            'amount' => (float) config('loan.loan_limits.min_amount'),
             'repayment_period' => max(config('loan.trust_tiers.silver.allowed_durations')),
         ]))->assertRedirect(route('login'));
     }
@@ -87,7 +87,7 @@ class LoanAgreementPreviewTest extends TestCase
     public function test_final_web_submission_requires_current_agreement_consent(): void
     {
         $this->actingAs($this->borrower)->from(route('client.loans.create'))->post(route('client.loans.store'), [
-            'amount' => (float) config('loans.min_amount'),
+            'amount' => (float) config('loan.loan_limits.min_amount'),
             'purpose' => 'Education',
             'repayment_period' => max(config('loan.trust_tiers.silver.allowed_durations')),
             'agreement_version' => 'outdated',
@@ -107,7 +107,7 @@ class LoanAgreementPreviewTest extends TestCase
     {
         $this->actingAs($this->borrower)
             ->post(route('client.loans.store'), [
-                'amount' => (float) config('loans.min_amount'),
+                'amount' => (float) config('loan.loan_limits.min_amount'),
                 'purpose' => 'Education',
                 'repayment_period' => (string) max(config('loan.trust_tiers.silver.allowed_durations')),
                 'agreement_read' => '1',
@@ -126,7 +126,7 @@ class LoanAgreementPreviewTest extends TestCase
             ->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
             ->withHeader('User-Agent', 'QuickShare-Browser')
             ->post(route('client.loans.store'), [
-                'amount' => (float) config('loans.min_amount'),
+                'amount' => (float) config('loan.loan_limits.min_amount'),
                 'purpose' => 'Education',
                 'repayment_period' => max(config('loan.trust_tiers.silver.allowed_durations')),
                 'agreement_read' => '1',

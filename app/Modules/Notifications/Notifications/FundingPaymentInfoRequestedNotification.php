@@ -27,7 +27,7 @@ class FundingPaymentInfoRequestedNotification extends Notification
         $reference = $this->data['reference'] ?? 'N/A';
         $amount = $this->data['amount'] ?? '0';
         $message = $this->data['message'] ?? 'Please provide additional information.';
-        $currency = config('loans.currency_symbol', 'N$');
+        $currency = config('loan.general.currency_symbol', 'N$');
         $transactionId = $this->data['transaction_id'] ?? null;
 
         return (new MailMessage)

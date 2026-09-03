@@ -17,7 +17,7 @@ class NotifyUserDeactivation implements ShouldQueue
             'subject_type' => get_class($event->user),
             'subject_id' => $event->user->id,
             'metadata' => ['reason' => $event->reason],
-            'ip_address' => request()->ip(),
+            'ip_address' => null,
         ]);
 
         // TODO: Send deactivation notification

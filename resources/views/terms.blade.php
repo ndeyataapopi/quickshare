@@ -1,54 +1,73 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Terms of Service - {{ config('app.name') }}</title>
-    <link rel="stylesheet" href="{{ asset('dist/css/style.min.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/MaterialDesign-Webfont/5.3.45/css/materialdesignicons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
-    <style>body{font-family:'Nunito',sans-serif;} .hero-section{background:linear-gradient(135deg,#4f9ef8 0%,#7c3aed 100%);padding:80px 0;}</style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background:rgba(0,0,0,.15);position:absolute;width:100%;z-index:10;">
-        <div class="container">
-            <a class="navbar-brand font-weight-bold" href="{{ url('/') }}"><span class="badge badge-light text-primary mr-1" style="font-size:14px">QS</span> QuickShare</a>
-            <div class="collapse navbar-collapse"><ul class="navbar-nav ml-auto">
-                <li class="nav-item"><a class="nav-link" href="{{ url('/') }}">Home</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('privacy') }}">Privacy</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('login') }}">Login</a></li>
-            </ul></div>
+@extends('layouts.public')
+
+@section('title', 'Terms of Service')
+@section('description', 'QuickShare Terms of Service — the terms and conditions for using our Namibian peer-to-peer lending platform.')
+
+@section('content')
+<!-- PAGE HERO -->
+<section class="page-hero">
+    <div class="container">
+        <h1>Terms of Service</h1>
+        <p>Please read these terms carefully before using QuickShare.</p>
+    </div>
+</section>
+
+<!-- TERMS CONTENT -->
+<section style="background:white;">
+    <div class="container">
+        <div style="max-width:900px;margin:auto;">
+            <div class="content-card">
+                <h3>1. Acceptance of Terms</h3>
+                <p>By accessing or using QuickShare, you agree to be bound by these Terms of Service.</p>
+            </div>
+            <div class="content-card">
+                <h3>2. Eligibility</h3>
+                <p>You must be at least 18 years old and legally capable of entering a binding contract to use QuickShare. A valid Namibian national ID is required for KYC verification.</p>
+            </div>
+            <div class="content-card">
+                <h3>3. Account Registration</h3>
+                <p>You agree to provide accurate, complete, and current information during registration and are responsible for maintaining your account credentials.</p>
+            </div>
+            <div class="content-card">
+                <h3>4. Borrowing Terms</h3>
+                <ul>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Loan requests are subject to administrator review and lender funding</li>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Interest rates are based on your trust score tier, loan amount, and term</li>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> You agree to repay loans per the agreed schedule</li>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Failure to repay may result in collections action and trust score impact</li>
+                </ul>
+            </div>
+            <div class="content-card">
+                <h3>5. Lending Terms</h3>
+                <ul>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Lending involves risk, including borrower default risk</li>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Returns are not guaranteed</li>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Diversify across multiple loans to mitigate risk</li>
+                    <li><i class="fa-solid fa-circle-check" aria-hidden="true"></i> QuickShare is not responsible for lending losses</li>
+                </ul>
+            </div>
+            <div class="content-card">
+                <h3>6. Trust Score</h3>
+                <p>QuickShare uses a trust score based on repayment history, KYC verification, account age, and referral credibility. Higher scores qualify for better rates and higher loan limits across Bronze, Silver, Gold, and Platinum tiers.</p>
+            </div>
+            <div class="content-card">
+                <h3>7. Fees</h3>
+                <p>QuickShare charges platform fees on successful loan transactions. Fees are displayed before confirming any transaction. The default platform fee is {{ config('loan.fees.default_platform_fee_percent') }}%.</p>
+            </div>
+            <div class="content-card">
+                <h3>8. Prohibited Activities</h3>
+                <p>You agree not to use QuickShare for fraud, money laundering, or any illegal activity. Users found engaging in prohibited activities will be suspended and reported to relevant authorities.</p>
+            </div>
+            <div class="content-card">
+                <h3>9. Limitation of Liability</h3>
+                <p>QuickShare shall not be liable for indirect, incidental, or consequential damages arising from use of our platform.</p>
+            </div>
+            <div class="content-card">
+                <h3>10. Contact Us</h3>
+                <p>For questions: <a href="mailto:support@quickshare.nepticgroup.com" style="color:var(--primary);font-weight:600;">support@quickshare.nepticgroup.com</a></p>
+                <p><small>Last updated: {{ date('F j, Y') }}</small></p>
+            </div>
         </div>
-    </nav>
-    <section class="hero-section text-white text-center"><div class="container pt-5"><h1 class="display-4 font-weight-bold mb-3">Terms of Service</h1><p class="lead mb-0">Please read these terms carefully before using QuickShare.</p></div></section>
-
-    <section class="py-5 bg-white">
-        <div class="container"><div class="row justify-content-center"><div class="col-lg-8">
-            <h5 class="font-weight-bold mt-4">1. Acceptance of Terms</h5>
-            <p class="text-muted">By accessing or using QuickShare, you agree to be bound by these Terms of Service.</p>
-            <h5 class="font-weight-bold mt-4">2. Eligibility</h5>
-            <p class="text-muted">You must be at least 18 years old and legally capable of entering a binding contract to use QuickShare.</p>
-            <h5 class="font-weight-bold mt-4">3. Account Registration</h5>
-            <p class="text-muted">You agree to provide accurate, complete, and current information during registration and are responsible for maintaining your account credentials.</p>
-            <h5 class="font-weight-bold mt-4">4. Borrowing Terms</h5>
-            <ul class="text-muted"><li>Loan requests are subject to lender approval</li><li>Interest rates are based on your trust score, loan amount, and term</li><li>You agree to repay loans per the agreed schedule</li><li>Failure to repay may result in collections action and trust score impact</li></ul>
-            <h5 class="font-weight-bold mt-4">5. Lending Terms</h5>
-            <ul class="text-muted"><li>Lending involves risk, including borrower default risk</li><li>Returns are not guaranteed</li><li>Diversify investments across multiple loans to mitigate risk</li><li>QuickShare is not responsible for investment losses</li></ul>
-            <h5 class="font-weight-bold mt-4">6. Trust Score</h5>
-            <p class="text-muted">QuickShare uses a proprietary trust score based on repayment history, KYC, account age, and other factors. Higher scores qualify for better rates.</p>
-            <h5 class="font-weight-bold mt-4">7. Fees</h5>
-            <p class="text-muted">QuickShare charges platform fees on successful loan transactions. Fees are displayed before confirming any transaction.</p>
-            <h5 class="font-weight-bold mt-4">8. Prohibited Activities</h5>
-            <p class="text-muted">You agree not to use QuickShare for fraud, money laundering, or any illegal activity.</p>
-            <h5 class="font-weight-bold mt-4">9. Limitation of Liability</h5>
-            <p class="text-muted">QuickShare shall not be liable for indirect, incidental, or consequential damages arising from use of our platform.</p>
-            <h5 class="font-weight-bold mt-4">10. Contact Us</h5>
-            <p class="text-muted">For questions: <a href="mailto:support@quickshare.com">support@quickshare.com</a></p>
-            <p class="text-muted"><small>Last updated: {{ date('F j, Y') }}</small></p>
-        </div></div></div>
-    </section>
-
-    <footer class="bg-dark text-white py-4 text-center"><small>&copy; {{ date('Y') }} QuickShare. All rights reserved.</small></footer>
-    <script src="{{ asset('dist/js/jquery.min.js') }}"></script>
-    <script src="{{ asset('dist/js/bootstrap.bundle.min.js') }}"></script>
-</body>
-</html>
+    </div>
+</section>
+@endsection

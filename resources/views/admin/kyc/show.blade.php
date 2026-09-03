@@ -23,9 +23,13 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between mb-4">
                         <div class="d-flex align-items-center">
+                            @if($submission->user->profile_picture)
+                            <img src="{{ asset('storage/' . $submission->user->profile_picture) }}" class="rounded-circle mr-3" style="width:56px;height:56px;object-fit:cover;flex-shrink:0;">
+                            @else
                             <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3" style="width:56px;height:56px;font-size:20px;font-weight:600;flex-shrink:0;">
                                 {{ strtoupper(substr($submission->user->first_name,0,1)) }}{{ strtoupper(substr($submission->user->last_name,0,1)) }}
                             </div>
+                            @endif
                             <div>
                                 <h5 class="mb-0">{{ $submission->user->first_name }} {{ $submission->user->last_name }}</h5>
                                 <small class="text-muted">{{ $submission->user->email }} &bull; {{ $submission->user->phone }}</small>
